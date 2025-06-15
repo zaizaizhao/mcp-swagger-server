@@ -1,0 +1,64 @@
+{
+  "name": "mcp-swagger-server",
+  "version": "1.0.0",
+  "description": "A Model Context Protocol (MCP) server for Swagger/OpenAPI documentation that transforms OpenAPI specifications into MCP format, enabling AI assistants to interact with REST APIs through standardized protocol.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "dev": "nodemon --exec ts-node src/index.ts --transport streamable --port 3322",
+    "start": "node dist/index.js",
+    "start:managed": "node dist/index.js --managed --auto-restart",
+    "start:sse": "node dist/index.js --transport sse --port 3322",
+    "start:stdio": "node dist/index.js --transport stdio",
+    "start:streamable": "node dist/index.js --transport streamable --port 3322",
+    "manager": "ts-node src/tools/mcp-manager.ts",
+    "manager:start": "ts-node src/tools/mcp-manager.ts start",
+    "manager:stop": "ts-node src/tools/mcp-manager.ts stop",
+    "manager:restart": "ts-node src/tools/mcp-manager.ts restart",
+    "manager:status": "ts-node src/tools/mcp-manager.ts status",
+    "manager:logs": "ts-node src/tools/mcp-manager.ts logs"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "swagger",
+    "openapi",
+    "api",
+    "rest",
+    "ai",
+    "assistant",
+    "converter",
+    "bridge"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/mcp-swagger-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/mcp-swagger-server/issues"
+  },
+  "homepage": "https://github.com/yourusername/mcp-swagger-server#readme",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "axios": "^1.9.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "js-yaml": "^4.1.0",
+    "zod": "^3.25.28",
+    "zod-to-json-schema": "^3.24.5"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/inspector": "^0.13.0",
+    "@types/cors": "^2.8.18",
+    "@types/express": "^5.0.2",
+    "@types/js-yaml": "^4.0.9",
+    "cross-env": "^7.0.3",
+    "nodemon": "^3.0.1",
+    "rimraf": "^5.0.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}

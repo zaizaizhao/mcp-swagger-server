@@ -1,0 +1,15 @@
+{
+  "maxRetries": 10,
+  "retryDelay": 1000,
+  "backoffMultiplier": 1.5,
+  "maxRetryDelay": 30000,
+  "healthCheckInterval": 30000,
+  "healthCheckTimeout": 5000,
+  "autoRestart": true,
+  "restartOnError": true,
+  "restartOnExit": true,
+  "restartOnMemoryLimit": 512,
+  "logLevel": "info",
+  "logToFile": true,
+  "logFilePath": "mcp-server.log"
+}

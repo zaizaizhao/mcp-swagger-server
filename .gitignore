@@ -1,0 +1,77 @@
+# MCP Swagger Server .gitignore
+# =========================
+
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+.npm
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+.pnpm-debug.log*
+
+# Build outputs
+dist/
+build/
+out/
+.output/
+.nuxt/
+.next/
+.vite/
+.turbo/
+
+
+# Log files
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor directories and files
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+.directory
+Thumbs.db
+
+# Project specific
+coverage/
+temp/
+tmp/
+.cache/
+.temp/
+packages/*/dist/
+*.tsbuildinfo
+.eslintcache
+
+# MCP specific
+*.mcp-server.log
+*.mcp-server-stats.json
+
+# Test related
+/coverage
+/.nyc_output
+
+# Docs
+/docs
+
+# Debug
+.debug/
+debug.log
+debug/

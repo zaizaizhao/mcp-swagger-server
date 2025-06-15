@@ -1,0 +1,582 @@
+/* Apple-inspired Design System */
+
+/* CSS Variables for Design System */
+:root {
+  /* Apple Colors */
+  --apple-blue: #007aff;
+  --apple-blue-light: #5ac8fa;
+  --apple-blue-dark: #0051d0;
+  --apple-green: #28cd41;
+  --apple-orange: #ff9500;
+  --apple-red: #ff3b30;
+  --apple-purple: #af52de;
+  --apple-teal: #59c7c8;
+  
+  /* Neutral Colors */
+  --system-gray: #8e8e93;
+  --system-gray-2: #aeaeb2;
+  --system-gray-3: #c7c7cc;
+  --system-gray-4: #d1d1d6;
+  --system-gray-5: #e5e5ea;
+  --system-gray-6: #f2f2f7;
+  
+  /* Background Colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-tertiary: #f2f2f7;
+  --bg-quaternary: rgba(116, 116, 128, 0.08);
+  
+  /* Text Colors */
+  --text-primary: #1d1d1f;
+  --text-secondary: #86868b;
+  --text-tertiary: #6e6e73;
+  --text-quaternary: #86868b;
+  
+  /* Border & Shadow */
+  --border-color: rgba(0, 0, 0, 0.08);
+  --shadow-light: 0 2px 16px rgba(0, 0, 0, 0.04);
+  --shadow-medium: 0 4px 24px rgba(0, 0, 0, 0.08);
+  --shadow-heavy: 0 8px 32px rgba(0, 0, 0, 0.12);
+  
+  /* Border Radius */
+  --radius-small: 8px;
+  --radius-medium: 12px;
+  --radius-large: 16px;
+  --radius-xl: 20px;
+  
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+}
+
+/* Global Reset & Base Styles */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+}
+
+/* Typography */
+.gradient-text {
+  background: linear-gradient(135deg, var(--apple-blue) 0%, var(--apple-purple) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 600;
+}
+
+/* Apple-style Glassmorphism */
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow-medium);
+}
+
+/* Enhanced Hover Effects */
+.shadow-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.shadow-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-heavy);
+}
+
+/* Apple-style Buttons */
+.apple-button {
+  background: var(--apple-blue);
+  color: white;
+  border: none;
+  border-radius: var(--radius-medium);
+  padding: var(--spacing-md) var(--spacing-xl);
+  font-weight: 500;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+}
+
+.apple-button:hover {
+  background: var(--apple-blue-dark);
+  transform: translateY(-1px);
+}
+
+.apple-button:active {
+  transform: translateY(0);
+}
+
+.apple-button-secondary {
+  background: var(--system-gray-6);
+  color: var(--text-primary);
+}
+
+.apple-button-secondary:hover {
+  background: var(--system-gray-5);
+}
+
+/* Element Plus Apple-style Customizations */
+
+/* Cards */
+.el-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow-light);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.el-card:hover {
+  box-shadow: var(--shadow-medium);
+  transform: translateY(-2px);
+}
+
+.el-card__header {
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+  padding: var(--spacing-lg) !important;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.el-card__body {
+  padding: var(--spacing-lg) !important;
+}
+
+/* Buttons */
+.el-button {
+  border-radius: var(--radius-medium);
+  font-weight: 500;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 40px;
+  padding: var(--spacing-sm) var(--spacing-lg);
+}
+
+.el-button--primary {
+  background: var(--apple-blue);
+  border-color: var(--apple-blue);
+  color: white;
+}
+
+.el-button--primary:hover {
+  background: var(--apple-blue-dark);
+  border-color: var(--apple-blue-dark);
+  transform: translateY(-1px);
+}
+
+.el-button--success {
+  background: var(--apple-green);
+  border-color: var(--apple-green);
+}
+
+.el-button--warning {
+  background: var(--apple-orange);
+  border-color: var(--apple-orange);
+}
+
+.el-button--danger {
+  background: var(--apple-red);
+  border-color: var(--apple-red);
+}
+
+.el-button--large {
+  min-width: 120px;
+  min-height: 44px;
+  font-size: 16px;
+}
+
+/* Inputs */
+.el-input__wrapper {
+  border-radius: var(--radius-medium);
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  transition: all 0.2s ease;
+}
+
+.el-input__wrapper:hover {
+  border-color: var(--system-gray-3);
+}
+
+.el-input__wrapper.is-focus {
+  border-color: var(--apple-blue);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+}
+
+.el-input__inner {
+  color: var(--text-primary);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.el-input__inner::placeholder {
+  color: var(--text-quaternary);
+}
+
+/* Select */
+.el-select__wrapper {
+  border-radius: var(--radius-medium);
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+}
+
+.el-select__wrapper.is-focused {
+  border-color: var(--apple-blue);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+}
+
+/* Upload */
+.el-upload-dragger {
+  border-radius: var(--radius-large) !important;
+  border: 2px dashed var(--border-color) !important;
+  background: var(--bg-secondary) !important;
+  transition: all 0.3s ease !important;
+}
+
+.el-upload-dragger:hover {
+  border-color: var(--apple-blue) !important;
+  background: rgba(0, 122, 255, 0.02) !important;
+}
+
+/* Tabs */
+.el-tabs--border-card {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-large);
+  overflow: hidden;
+}
+
+.el-tabs--border-card .el-tabs__header {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  margin: 0;
+}
+
+.el-tabs__nav-wrap::after {
+  display: none;
+}
+
+.el-tabs__item {
+  color: var(--text-secondary);
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.el-tabs__item.is-active {
+  color: var(--apple-blue);
+  background: var(--bg-primary);
+}
+
+.el-tabs__item:hover {
+  color: var(--apple-blue);
+}
+
+/* Tags */
+.el-tag {
+  margin: var(--spacing-xs);
+  border-radius: var(--radius-small);
+  border: none;
+  font-weight: 500;
+  padding: var(--spacing-xs) var(--spacing-sm);
+}
+
+.el-tag--primary {
+  background: rgba(0, 122, 255, 0.1);
+  color: var(--apple-blue);
+}
+
+.el-tag--success {
+  background: rgba(40, 205, 65, 0.1);
+  color: var(--apple-green);
+}
+
+.el-tag--warning {
+  background: rgba(255, 149, 0, 0.1);
+  color: var(--apple-orange);
+}
+
+.el-tag--danger {
+  background: rgba(255, 59, 48, 0.1);
+  color: var(--apple-red);
+}
+
+/* Statistics */
+.el-statistic__number {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+}
+
+.el-statistic__title {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* Collapse */
+.el-collapse {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-medium);
+  overflow: hidden;
+}
+
+.el-collapse-item__header {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-weight: 500;
+  border-bottom: 1px solid var(--border-color);
+  padding: var(--spacing-md) var(--spacing-lg);
+}
+
+.el-collapse-item__wrap {
+  border-bottom: none;
+}
+
+.el-collapse-item__content {
+  padding: var(--spacing-lg);
+  background: var(--bg-primary);
+}
+
+/* Message */
+.el-message {
+  border-radius: var(--radius-medium);
+  box-shadow: var(--shadow-medium);
+  border: 1px solid var(--border-color);
+}
+
+.el-message--success {
+  background: rgba(40, 205, 65, 0.05);
+  border-color: rgba(40, 205, 65, 0.2);
+}
+
+.el-message--warning {
+  background: rgba(255, 149, 0, 0.05);
+  border-color: rgba(255, 149, 0, 0.2);
+}
+
+.el-message--error {
+  background: rgba(255, 59, 48, 0.05);
+  border-color: rgba(255, 59, 48, 0.2);
+}
+
+.el-message--info {
+  background: rgba(0, 122, 255, 0.05);
+  border-color: rgba(0, 122, 255, 0.2);
+}
+
+/* Loading */
+.el-loading-mask {
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+}
+
+.el-loading-spinner .circular {
+  color: var(--apple-blue);
+}
+
+/* Dropdown */
+.el-dropdown-menu {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-medium);
+  box-shadow: var(--shadow-medium);
+  background: var(--bg-primary);
+  backdrop-filter: blur(20px);
+}
+
+.el-dropdown-menu__item {
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+}
+
+.el-dropdown-menu__item:hover {
+  background: var(--bg-secondary);
+  color: var(--apple-blue);
+}
+
+/* Popover */
+.el-popover {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-medium);
+  box-shadow: var(--shadow-medium);
+  background: var(--bg-primary);
+  backdrop-filter: blur(20px);
+}
+
+/* Tooltip */
+.el-tooltip__popper {
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: var(--radius-small);
+  backdrop-filter: blur(10px);
+}
+
+/* Dialog */
+.el-dialog {
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-heavy);
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+}
+
+.el-dialog__header {
+  padding: var(--spacing-xl) var(--spacing-xl) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.el-dialog__title {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.el-dialog__body {
+  padding: var(--spacing-lg) var(--spacing-xl);
+}
+
+/* Form */
+.el-form-item__label {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.el-form-item__error {
+  color: var(--apple-red);
+  font-size: 14px;
+}
+
+/* Progress */
+.el-progress-bar__outer {
+  background-color: var(--system-gray-5);
+  border-radius: var(--radius-small);
+}
+
+.el-progress-bar__inner {
+  background: linear-gradient(90deg, var(--apple-blue) 0%, var(--apple-blue-light) 100%);
+  border-radius: var(--radius-small);
+}
+
+/* Switch */
+.el-switch.is-checked .el-switch__core {
+  background-color: var(--apple-green);
+  border-color: var(--apple-green);
+}
+
+.el-switch__core {
+  border-radius: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Radio & Checkbox */
+.el-radio__input.is-checked .el-radio__inner {
+  background-color: var(--apple-blue);
+  border-color: var(--apple-blue);
+}
+
+.el-checkbox__input.is-checked .el-checkbox__inner {
+  background-color: var(--apple-blue);
+  border-color: var(--apple-blue);
+}
+
+/* Table */
+.el-table {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-medium);
+  overflow: hidden;
+}
+
+.el-table th.el-table__cell {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.el-table tr {
+  background: var(--bg-primary);
+}
+
+.el-table tr:hover {
+  background: var(--bg-secondary);
+}
+
+.el-table td.el-table__cell {
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* Pagination */
+.el-pagination .el-pager li {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-small);
+  margin: 0 2px;
+  transition: all 0.2s ease;
+}
+
+.el-pagination .el-pager li:hover {
+  background: var(--bg-secondary);
+}
+
+.el-pagination .el-pager li.is-active {
+  background: var(--apple-blue);
+  border-color: var(--apple-blue);
+  color: white;
+}
+
+/* Steps */
+.el-steps {
+  margin: var(--spacing-lg) 0;
+}
+
+.el-step__title {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.el-step__description {
+  color: var(--text-secondary);
+}
+
+.el-step__head.is-process {
+  background: var(--apple-blue);
+  border-color: var(--apple-blue);
+}
+
+.el-step__head.is-finish {
+  background: var(--apple-green);
+  border-color: var(--apple-green);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  :root {
+    --spacing-md: 12px;
+    --spacing-lg: 18px;
+    --spacing-xl: 24px;
+  }
+  
+  .el-card__header {
+    padding: var(--spacing-md) !important;
+  }
+  
+  .el-card__body {
+    padding: var(--spacing-md) !important;
+  }
+}

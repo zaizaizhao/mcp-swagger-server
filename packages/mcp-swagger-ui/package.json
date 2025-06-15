@@ -1,0 +1,49 @@
+{
+  "name": "mcp-swagger-ui",
+  "version": "1.0.0",
+  "description": "Vue 3 前端界面，用于将 OpenAPI/Swagger 规范转换为 MCP 格式",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc && vite build",
+    "preview": "vite preview",
+    "type-check": "vue-tsc --noEmit",
+    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore"
+  },
+  "dependencies": {
+    "vue": "^3.4.0",
+    "vue-router": "^4.2.5",
+    "pinia": "^2.1.7",
+    "axios": "^1.6.0",
+    "element-plus": "^2.4.0",
+    "@element-plus/icons-vue": "^2.3.0",
+    "highlight.js": "^11.9.0",
+    "monaco-editor": "^0.44.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.9.0",
+    "@vitejs/plugin-vue": "^4.5.0",
+    "@vue/eslint-config-prettier": "^8.0.0",
+    "@vue/eslint-config-typescript": "^12.0.0",
+    "@vue/tsconfig": "^0.4.0",
+    "eslint": "^8.53.0",
+    "eslint-plugin-vue": "^9.18.0",
+    "prettier": "^3.0.0",
+    "typescript": "~5.2.0",
+    "unplugin-auto-import": "^0.16.7",
+    "unplugin-vue-components": "^0.25.2",
+    "vite": "^5.0.0",
+    "vue-tsc": "^1.8.0"
+  },
+  "keywords": [
+    "vue3",
+    "mcp",
+    "swagger",
+    "openapi",
+    "converter",
+    "frontend",
+    "ui"
+  ],
+  "author": "",
+  "license": "MIT"
+}

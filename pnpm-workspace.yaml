@@ -1,0 +1,2 @@
+ packages:
+  - 'packages/*'  # 包含packages目录下的所有子目录
