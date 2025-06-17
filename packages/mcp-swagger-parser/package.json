@@ -1,0 +1,73 @@
+{
+  "name": "@mcp-swagger/parser",
+  "version": "0.1.0",
+  "description": "OpenAPI/Swagger specification parser for MCP projects",  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "dev": "tsc --watch",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "type-check": "tsc --noEmit",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@apidevtools/swagger-parser": "^10.1.0",
+    "axios": "^1.6.0",
+    "js-yaml": "^4.1.0",
+    "zod": "^3.25.28"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-typescript": "^11.1.6",
+    "@types/js-yaml": "^4.0.5",
+    "@types/node": "^20.9.0",
+    "eslint": "^8.53.0",
+    "jest": "^29.7.0",
+    "rimraf": "^5.0.5",
+    "rollup": "^4.0.0",
+    "rollup-plugin-dts": "^6.1.0",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.2.0"
+  },
+  "peerDependencies": {
+    "typescript": ">=4.5.0"
+  },
+  "keywords": [
+    "openapi",
+    "swagger",
+    "parser",
+    "mcp",
+    "api",
+    "specification",
+    "rest",
+    "typescript"
+  ],
+  "author": "MCP Swagger Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zaizaizhao/mcp-swagger-server.git",
+    "directory": "packages/mcp-swagger-parser"
+  },
+  "bugs": {
+    "url": "https://github.com/zaizaizhao/mcp-swagger-server/issues"
+  },
+  "homepage": "https://github.com/zaizaizhao/mcp-swagger-server/tree/main/packages/mcp-swagger-parser#readme"
+}
