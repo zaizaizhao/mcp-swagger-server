@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Swagger Server - 前端界面原型</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            padding: 40px;
+        }
+        
+        .input-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 2px dashed #dee2e6;
+            transition: all 0.3s ease;
+        }
+        
+        .input-section:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+        
+        .input-tabs {
+            display: flex;
+            margin-bottom: 30px;
+            background: #e9ecef;
+            border-radius: 8px;
+            padding: 4px;
+        }
+        
+        .tab-button {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .tab-button.active {
+            background: white;
+            color: #667eea;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .file-upload-area {
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .file-upload-area:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+        
+        .file-upload-area.dragover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+        
+        .upload-icon {
+            font-size: 3rem;
+            color: #6c757d;
+            margin-bottom: 15px;
+        }
+        
+        .upload-text {
+            font-size: 1.1rem;
+            color: #6c757d;
+            margin-bottom: 10px;
+        }
+        
+        .upload-hint {
+            font-size: 0.9rem;
+            color: #adb5bd;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 30px 0;
+        }
+        
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+        
+        .preview-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .preview-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status-loading {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .api-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .info-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .info-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+        
+        .info-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .endpoints-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .endpoint-card {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .endpoint-card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        
+        .endpoint-method {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-right: 10px;
+        }
+        
+        .method-get { background: #d4edda; color: #155724; }
+        .method-post { background: #d1ecf1; color: #0c5460; }
+        .method-put { background: #fff3cd; color: #856404; }
+        .method-delete { background: #f8d7da; color: #721c24; }
+        
+        .endpoint-path {
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.9rem;
+            color: #495057;
+        }
+        
+        .endpoint-summary {
+            margin-top: 8px;
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        
+        .config-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .config-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .config-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #495057;
+        }
+        
+        .config-option {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .config-checkbox {
+            margin-right: 10px;
+        }
+        
+        .results-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 30px;
+        }
+        
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .download-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn-download {
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .btn-download:hover {
+            background: #218838;
+        }
+        
+        .code-preview {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 30px;
+            background: #f8f9fa;
+            color: #6c757d;
+            border-top: 1px solid #dee2e6;
+        }
+        
+        @media (max-width: 768px) {
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .api-info {
+                grid-template-columns: 1fr;
+            }
+            
+            .endpoints-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .config-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <div class="header">
+            <h1>🔄 MCP Swagger Server</h1>
+            <p>将您的 OpenAPI/Swagger 规范转换为 MCP 格式，让 AI 助手能够与您的 REST API 无缝交互</p>
+        </div>
+
+        <div class="main-content">
+            <!-- 输入部分 -->
+            <div class="input-section">
+                <div class="input-tabs">
+                    <button class="tab-button active" onclick="switchTab('url')">🌐 URL 输入</button>
+                    <button class="tab-button" onclick="switchTab('file')">📁 文件上传</button>
+                    <button class="tab-button" onclick="switchTab('text')">📝 文本输入</button>
+                </div>
+
+                <!-- URL 输入标签页 -->
+                <div class="tab-content active" id="url-tab">
+                    <div class="form-group">
+                        <label class="form-label">Swagger/OpenAPI URL</label>
+                        <input type="url" class="form-input" placeholder="https://petstore.swagger.io/v2/swagger.json" 
+                               value="https://petstore.swagger.io/v2/swagger.json">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">认证信息 (可选)</label>
+                        <input type="text" class="form-input" placeholder="Bearer token 或 API Key">
+                    </div>
+                </div>
+
+                <!-- 文件上传标签页 -->
+                <div class="tab-content" id="file-tab">
+                    <div class="file-upload-area" onclick="document.getElementById('file-input').click()">
+                        <div class="upload-icon">📄</div>
+                        <div class="upload-text">点击选择文件或拖拽文件到此处</div>
+                        <div class="upload-hint">支持 .json, .yaml, .yml 格式的 OpenAPI 规范文件</div>
+                        <input type="file" id="file-input" style="display: none;" accept=".json,.yaml,.yml">
+                    </div>
+                </div>
+
+                <!-- 文本输入标签页 -->
+                <div class="tab-content" id="text-tab">
+                    <div class="form-group">
+                        <label class="form-label">粘贴 OpenAPI/Swagger 规范</label>
+                        <textarea class="form-input" rows="10" placeholder="在此粘贴您的 OpenAPI JSON 或 YAML 内容..."></textarea>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-primary">
+                        <span class="loading-spinner" style="display: none;"></span>
+                        🔄 转换为 MCP
+                    </button>
+                    <button class="btn btn-secondary">🔍 验证规范</button>
+                </div>
+
+                <div class="progress-bar" style="display: none;">
+                    <div class="progress-fill"></div>
+                </div>
+            </div>
+
+            <!-- API 信息预览 -->
+            <div class="preview-section">
+                <div class="preview-header">
+                    <h3 class="preview-title">📋 API 信息预览</h3>
+                    <span class="status-badge status-success">✅ 已解析</span>
+                </div>
+
+                <div class="api-info">
+                    <div class="info-card">
+                        <div class="info-label">API 标题</div>
+                        <div class="info-value">Swagger Petstore</div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-label">版本</div>
+                        <div class="info-value">1.0.6</div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-label">服务器</div>
+                        <div class="info-value">https://petstore.swagger.io/v2</div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-label">端点数量</div>
+                        <div class="info-value">20 个</div>
+                    </div>
+                </div>
+
+                <h4 style="margin: 20px 0 15px 0; color: #495057;">🔗 API 端点</h4>
+                <div class="endpoints-grid">
+                    <div class="endpoint-card">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/pet/findByStatus</span>
+                        <div class="endpoint-summary">根据状态查找宠物</div>
+                    </div>
+                    <div class="endpoint-card">
+                        <span class="endpoint-method method-post">POST</span>
+                        <span class="endpoint-path">/pet</span>
+                        <div class="endpoint-summary">添加新宠物到商店</div>
+                    </div>
+                    <div class="endpoint-card">
+                        <span class="endpoint-method method-put">PUT</span>
+                        <span class="endpoint-path">/pet</span>
+                        <div class="endpoint-summary">更新现有宠物</div>
+                    </div>
+                    <div class="endpoint-card">
+                        <span class="endpoint-method method-delete">DELETE</span>
+                        <span class="endpoint-path">/pet/{petId}</span>
+                        <div class="endpoint-summary">删除宠物</div>
+                    </div>
+                    <div class="endpoint-card">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/store/inventory</span>
+                        <div class="endpoint-summary">返回宠物库存</div>
+                    </div>
+                    <div class="endpoint-card">
+                        <span class="endpoint-method method-post">POST</span>
+                        <span class="endpoint-path">/store/order</span>
+                        <div class="endpoint-summary">下单购买宠物</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 转换配置 -->
+            <div class="config-section">
+                <h3 style="margin-bottom: 20px; color: #495057;">⚙️ 转换配置</h3>
+                
+                <div class="config-grid">
+                    <div class="config-card">
+                        <div class="config-title">🎯 端点过滤</div>
+                        <div class="config-option">
+                            <input type="checkbox" class="config-checkbox" checked>
+                            <label>仅包含 GET 方法</label>
+                        </div>
+                        <div class="config-option">
+                            <input type="checkbox" class="config-checkbox" checked>
+                            <label>仅包含 POST 方法</label>
+                        </div>
+                        <div class="config-option">
+                            <input type="checkbox" class="config-checkbox">
+                            <label>包含已弃用的端点</label>
+                        </div>
+                    </div>
+
+                    <div class="config-card">
+                        <div class="config-title">🏷️ 标签过滤</div>
+                        <div class="config-option">
+                            <input type="checkbox" class="config-checkbox" checked>
+                            <label>pet (宠物相关)</label>
+                        </div>
+                        <div class="config-option">
+                            <input type="checkbox" class="config-checkbox" checked>
+                            <label>store (商店相关)</label>
+                        </div>
+                        <div class="config-option">
+                            <input type="checkbox" class="config-checkbox">
+                            <label>user (用户相关)</label>
+                        </div>
+                    </div>
+
+                    <div class="config-card">
+                        <div class="config-title">🔧 高级选项</div>
+                        <div class="config-option">
+                            <input type="checkbox" class="config-checkbox" checked>
+                            <label>生成参数验证</label>
+                        </div>
+                        <div class="config-option">
+                            <input type="checkbox" class="config-checkbox">
+                            <label>包含响应示例</label>
+                        </div>
+                        <div class="config-option">
+                            <input type="checkbox" class="config-checkbox" checked>
+                            <label>优化工具名称</label>
+                        </div>
+                    </div>
+
+                    <div class="config-card">
+                        <div class="config-title">🌐 传输协议</div>
+                        <div class="config-option">
+                            <input type="radio" name="transport" class="config-checkbox" checked>
+                            <label>stdio (标准输入输出)</label>
+                        </div>
+                        <div class="config-option">
+                            <input type="radio" name="transport" class="config-checkbox">
+                            <label>SSE (服务器发送事件)</label>
+                        </div>
+                        <div class="config-option">
+                            <input type="radio" name="transport" class="config-checkbox">
+                            <label>HTTP Stream (流式HTTP)</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 转换结果 -->
+            <div class="results-section">
+                <div class="results-header">
+                    <h3 class="preview-title">📦 转换结果</h3>
+                    <div class="download-buttons">
+                        <button class="btn-download">💾 下载 MCP 配置</button>
+                        <button class="btn-download">📋 复制到剪贴板</button>
+                        <button class="btn-download">🚀 直接启动服务</button>
+                    </div>
+                </div>
+
+                <div class="code-preview">
+{
+  "mcpServers": {
+    "swagger-petstore": {
+      "command": "node",
+      "args": ["dist/index.js", "--transport", "stdio"],
+      "env": {
+        "SWAGGER_URL": "https://petstore.swagger.io/v2/swagger.json"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "get_pet_findByStatus",
+      "description": "根据状态查找宠物",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["available", "pending", "sold"]
+            },
+            "description": "需要过滤的状态值"
+          }
+        },
+        "required": ["status"]
+      }
+    },
+    {
+      "name": "post_pet",
+      "description": "添加新宠物到商店",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "integer"},
+              "category": {"type": "object"},
+              "name": {"type": "string"},
+              "photoUrls": {"type": "array"},
+              "tags": {"type": "array"},
+              "status": {"type": "string"}
+            },
+            "required": ["name", "photoUrls"]
+          }
+        },
+        "required": ["body"]
+      }
+    }
+  ]
+}
+                </div>
+            </div>
+        </div>
+
+        <!-- 页脚 -->
+        <div class="footer">
+            <p>🤖 Powered by MCP Swagger Server | 让 AI 助手轻松调用您的 REST API</p>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tabName) {
+            // 隐藏所有标签页内容
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // 移除所有按钮的激活状态
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+            
+            // 显示选中的标签页内容
+            document.getElementById(tabName + '-tab').classList.add('active');
+            
+            // 激活选中的按钮
+            event.target.classList.add('active');
+        }
+
+        // 文件拖拽功能
+        const fileUploadArea = document.querySelector('.file-upload-area');
+        
+        fileUploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileUploadArea.classList.add('dragover');
+        });
+        
+        fileUploadArea.addEventListener('dragleave', () => {
+            fileUploadArea.classList.remove('dragover');
+        });
+        
+        fileUploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileUploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                console.log('文件已选择:', files[0].name);
+                // 这里可以添加文件处理逻辑
+            }
+        });
+
+        // 模拟转换过程
+        document.querySelector('.btn-primary').addEventListener('click', function() {
+            const button = this;
+            const spinner = button.querySelector('.loading-spinner');
+            const progressBar = document.querySelector('.progress-bar');
+            const progressFill = document.querySelector('.progress-fill');
+            
+            // 显示加载状态
+            spinner.style.display = 'inline-block';
+            button.disabled = true;
+            progressBar.style.display = 'block';
+            
+            // 模拟进度
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 30;
+                if (progress > 100) progress = 100;
+                
+                progressFill.style.width = progress + '%';
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        spinner.style.display = 'none';
+                        button.disabled = false;
+                        progressBar.style.display = 'none';
+                        progressFill.style.width = '0%';
+                        alert('🎉 转换完成！MCP 工具已生成。');
+                    }, 500);
+                }
+            }, 200);
+        });
+    </script>
+</body>
+</html>

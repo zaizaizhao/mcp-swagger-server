@@ -69,7 +69,7 @@ packages/*/dist/
 /.nyc_output
 
 # Docs
-/docs
+# /docs
 
 # Debug
 .debug/
