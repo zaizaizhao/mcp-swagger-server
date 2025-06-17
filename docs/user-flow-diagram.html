@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Swagger Server - 用户交互流程图</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f8f9fa;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .flow-diagram {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            margin: 30px 0;
+        }
+        
+        .flow-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 30px;
+            position: relative;
+        }
+        
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .flow-steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .step-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .step-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        .step-number {
+            position: absolute;
+            top: -10px;
+            left: 20px;
+            background: #667eea;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .step-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 10px;
+            margin-top: 10px;
+        }
+        
+        .step-description {
+            color: #6c757d;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .step-details {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .detail-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+        
+        .arrow-down {
+            text-align: center;
+            font-size: 2rem;
+            color: #667eea;
+            margin: 10px 0;
+        }
+        
+        .flow-branch {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .branch-option {
+            flex: 1;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+        
+        .branch-option:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+        
+        .branch-title {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .branch-description {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .error-handling {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+        }
+        
+        .success-path {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+        
+        .decision-point {
+            background: #d1ecf1;
+            border-left-color: #17a2b8;
+        }
+        
+        .user-journey {
+            margin: 40px 0;
+        }
+        
+        .journey-timeline {
+            position: relative;
+            padding-left: 40px;
+        }
+        
+        .journey-timeline::before {
+            content: '';
+            position: absolute;
+            left: 20px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #667eea;
+        }
+        
+        .journey-step {
+            position: relative;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .journey-step::before {
+            content: '';
+            position: absolute;
+            left: -28px;
+            top: 20px;
+            width: 16px;
+            height: 16px;
+            background: #667eea;
+            border-radius: 50%;
+            border: 3px solid white;
+        }
+        
+        .journey-title {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 8px;
+        }
+        
+        .journey-description {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .wireframe-section {
+            margin: 40px 0;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+        
+        .wireframe-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .wireframe-card {
+            background: white;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .wireframe-title {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 10px;
+        }
+        
+        .wireframe-elements {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            text-align: left;
+            width: 100%;
+        }
+        
+        .wireframe-elements li {
+            padding: 5px 0;
+            color: #6c757d;
+            font-size: 0.9rem;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .wireframe-elements li:last-child {
+            border-bottom: none;
+        }
+        
+        @media (max-width: 768px) {
+            .flow-steps {
+                grid-template-columns: 1fr;
+            }
+            
+            .flow-branch {
+                flex-direction: column;
+            }
+            
+            .wireframe-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔄 MCP Swagger Server</h1>
+            <p>用户交互流程图 & 界面原型设计</p>
+        </div>
+
+        <div class="content">
+            <!-- 主要用户流程 -->
+            <div class="flow-diagram">
+                <div class="flow-section">
+                    <h2 class="section-title">🚀 主要用户流程</h2>
+                    
+                    <div class="flow-steps">
+                        <div class="step-card">
+                            <div class="step-number">1</div>
+                            <div class="step-title">🌐 选择输入方式</div>
+                            <div class="step-description">
+                                用户可以通过三种方式提供 OpenAPI 规范
+                            </div>
+                            <div class="step-details">
+                                <div class="detail-item">📝 URL 地址输入</div>
+                                <div class="detail-item">📁 文件上传</div>
+                                <div class="detail-item">✏️ 文本粘贴</div>
+                            </div>
+                        </div>
+
+                        <div class="step-card">
+                            <div class="step-number">2</div>
+                            <div class="step-title">🔍 规范验证</div>
+                            <div class="step-description">
+                                系统自动验证 OpenAPI 规范的格式和完整性
+                            </div>
+                            <div class="step-details">
+                                <div class="detail-item">✅ 格式验证</div>
+                                <div class="detail-item">📊 结构分析</div>
+                                <div class="detail-item">⚠️ 问题检测</div>
+                            </div>
+                        </div>
+
+                        <div class="step-card">
+                            <div class="step-number">3</div>
+                            <div class="step-title">📋 API 预览</div>
+                            <div class="step-description">
+                                展示解析后的 API 信息和端点列表
+                            </div>
+                            <div class="step-details">
+                                <div class="detail-item">📈 基本信息</div>
+                                <div class="detail-item">🔗 端点列表</div>
+                                <div class="detail-item">🏷️ 标签分类</div>
+                            </div>
+                        </div>
+
+                        <div class="step-card">
+                            <div class="step-number">4</div>
+                            <div class="step-title">⚙️ 配置选项</div>
+                            <div class="step-description">
+                                用户可以自定义转换参数和过滤条件
+                            </div>
+                            <div class="step-details">
+                                <div class="detail-item">🎯 端点过滤</div>
+                                <div class="detail-item">🔧 高级选项</div>
+                                <div class="detail-item">🌐 传输协议</div>
+                            </div>
+                        </div>
+
+                        <div class="step-card">
+                            <div class="step-number">5</div>
+                            <div class="step-title">🔄 执行转换</div>
+                            <div class="step-description">
+                                系统将 OpenAPI 规范转换为 MCP 格式
+                            </div>
+                            <div class="step-details">
+                                <div class="detail-item">⚡ 快速转换</div>
+                                <div class="detail-item">📊 进度显示</div>
+                                <div class="detail-item">🎯 结果优化</div>
+                            </div>
+                        </div>
+
+                        <div class="step-card">
+                            <div class="step-number">6</div>
+                            <div class="step-title">📦 结果输出</div>
+                            <div class="step-description">
+                                提供多种方式获取转换结果
+                            </div>
+                            <div class="step-details">
+                                <div class="detail-item">💾 下载文件</div>
+                                <div class="detail-item">📋 复制代码</div>
+                                <div class="detail-item">🚀 直接启动</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 决策分支 -->
+                <div class="flow-section">
+                    <h2 class="section-title">🔀 输入方式分支</h2>
+                    
+                    <div class="flow-branch">
+                        <div class="branch-option">
+                            <div class="branch-title">🌐 URL 输入</div>
+                            <div class="branch-description">
+                                <strong>场景</strong>: API 规范已在线发布<br>
+                                <strong>优势</strong>: 实时获取最新版本<br>
+                                <strong>要求</strong>: 网络访问权限
+                            </div>
+                        </div>
+                        
+                        <div class="branch-option">
+                            <div class="branch-title">📁 文件上传</div>
+                            <div class="branch-description">
+                                <strong>场景</strong>: 本地开发或私有 API<br>
+                                <strong>优势</strong>: 支持本地文件<br>
+                                <strong>格式</strong>: JSON, YAML, YML
+                            </div>
+                        </div>
+                        
+                        <div class="branch-option">
+                            <div class="branch-title">📝 文本输入</div>
+                            <div class="branch-description">
+                                <strong>场景</strong>: 快速测试或调试<br>
+                                <strong>优势</strong>: 即时编辑和验证<br>
+                                <strong>用途</strong>: 原型设计和测试
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 错误处理流程 -->
+                <div class="flow-section">
+                    <h2 class="section-title">⚠️ 错误处理流程</h2>
+                    
+                    <div class="flow-steps">
+                        <div class="step-card error-handling">
+                            <div class="step-number">!</div>
+                            <div class="step-title">🚫 输入验证失败</div>
+                            <div class="step-description">
+                                当用户输入无效时的处理流程
+                            </div>
+                            <div class="step-details">
+                                <div class="detail-item">❌ 显示具体错误信息</div>
+                                <div class="detail-item">💡 提供修复建议</div>
+                                <div class="detail-item">🔄 允许重新输入</div>
+                            </div>
+                        </div>
+
+                        <div class="step-card error-handling">
+                            <div class="step-number">!</div>
+                            <div class="step-title">🌐 网络访问失败</div>
+                            <div class="step-description">
+                                URL 无法访问时的处理流程
+                            </div>
+                            <div class="step-details">
+                                <div class="detail-item">🔄 自动重试机制</div>
+                                <div class="detail-item">⏱️ 超时设置</div>
+                                <div class="detail-item">🔐 认证问题检测</div>
+                            </div>
+                        </div>
+
+                        <div class="step-card error-handling">
+                            <div class="step-number">!</div>
+                            <div class="step-title">⚙️ 转换失败</div>
+                            <div class="step-description">
+                                MCP 转换过程中出现错误时的处理
+                            </div>
+                            <div class="step-details">
+                                <div class="detail-item">📝 详细错误日志</div>
+                                <div class="detail-item">🔧 参数调整建议</div>
+                                <div class="detail-item">💬 技术支持联系</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 成功路径 -->
+                <div class="flow-section">
+                    <h2 class="section-title">✅ 成功完成流程</h2>
+                    
+                    <div class="flow-steps">
+                        <div class="step-card success-path">
+                            <div class="step-number">✓</div>
+                            <div class="step-title">🎉 转换成功</div>
+                            <div class="step-description">
+                                MCP 工具成功生成后的后续操作
+                            </div>
+                            <div class="step-details">
+                                <div class="detail-item">📊 结果统计显示</div>
+                                <div class="detail-item">🔍 工具列表预览</div>
+                                <div class="detail-item">⚡ 性能指标报告</div>
+                            </div>
+                        </div>
+
+                        <div class="step-card success-path">
+                            <div class="step-number">✓</div>
+                            <div class="step-title">💾 结果保存</div>
+                            <div class="step-description">
+                                多种方式保存和使用转换结果
+                            </div>
+                            <div class="step-details">
+                                <div class="detail-item">📁 配置文件下载</div>
+                                <div class="detail-item">📋 一键复制代码</div>
+                                <div class="detail-item">🔗 分享结果链接</div>
+                            </div>
+                        </div>
+
+                        <div class="step-card success-path">
+                            <div class="step-number">✓</div>
+                            <div class="step-title">🚀 服务启动</div>
+                            <div class="step-description">
+                                直接启动 MCP 服务或集成到现有系统
+                            </div>
+                            <div class="step-details">
+                                <div class="detail-item">⚡ 一键启动服务</div>
+                                <div class="detail-item">🔧 自定义启动参数</div>
+                                <div class="detail-item">📈 运行状态监控</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 用户旅程时间线 -->
+            <div class="user-journey">
+                <h2 class="section-title">👤 用户旅程时间线</h2>
+                
+                <div class="journey-timeline">
+                    <div class="journey-step">
+                        <div class="journey-title">🎯 需求识别</div>
+                        <div class="journey-description">
+                            用户意识到需要将现有的 REST API 集成到 AI 助手中，发现了 MCP 协议的优势
+                        </div>
+                    </div>
+                    
+                    <div class="journey-step">
+                        <div class="journey-title">🔍 工具发现</div>
+                        <div class="journey-description">
+                            用户找到 MCP Swagger Server 工具，了解其功能和优势
+                        </div>
+                    </div>
+                    
+                    <div class="journey-step">
+                        <div class="journey-title">🚀 首次使用</div>
+                        <div class="journey-description">
+                            用户访问 Web 界面，选择合适的输入方式（URL/文件/文本）
+                        </div>
+                    </div>
+                    
+                    <div class="journey-step">
+                        <div class="journey-title">⚙️ 配置定制</div>
+                        <div class="journey-description">
+                            根据具体需求调整转换参数，如端点过滤、传输协议等
+                        </div>
+                    </div>
+                    
+                    <div class="journey-step">
+                        <div class="journey-title">🔄 执行转换</div>
+                        <div class="journey-description">
+                            点击转换按钮，观察进度，等待转换完成
+                        </div>
+                    </div>
+                    
+                    <div class="journey-step">
+                        <div class="journey-title">📋 结果验证</div>
+                        <div class="journey-description">
+                            检查生成的 MCP 工具配置，确认符合预期
+                        </div>
+                    </div>
+                    
+                    <div class="journey-step">
+                        <div class="journey-title">🚀 部署集成</div>
+                        <div class="journey-description">
+                            下载配置文件或直接启动服务，集成到 AI 助手环境中
+                        </div>
+                    </div>
+                    
+                    <div class="journey-step">
+                        <div class="journey-title">✅ 成功应用</div>
+                        <div class="journey-description">
+                            AI 助手成功调用 REST API，实现预期的功能集成
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 界面布局原型 -->
+            <div class="wireframe-section">
+                <h2 class="section-title">🎨 界面布局原型</h2>
+                
+                <div class="wireframe-grid">
+                    <div class="wireframe-card">
+                        <div class="wireframe-title">📱 头部区域</div>
+                        <ul class="wireframe-elements">
+                            <li>🏷️ 产品标题</li>
+                            <li>📝 功能描述</li>
+                            <li>🎨 品牌标识</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="wireframe-card">
+                        <div class="wireframe-title">📥 输入区域</div>
+                        <ul class="wireframe-elements">
+                            <li>🔄 标签页切换</li>
+                            <li>📝 输入表单</li>
+                            <li>🔘 操作按钮</li>
+                            <li>📊 进度指示</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="wireframe-card">
+                        <div class="wireframe-title">👁️ 预览区域</div>
+                        <ul class="wireframe-elements">
+                            <li>📊 API 基本信息</li>
+                            <li>🔗 端点列表</li>
+                            <li>🏷️ 状态指示器</li>
+                            <li>📈 统计信息</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="wireframe-card">
+                        <div class="wireframe-title">⚙️ 配置区域</div>
+                        <ul class="wireframe-elements">
+                            <li>✅ 选项卡片</li>
+                            <li>🔘 单选/多选</li>
+                            <li>📝 参数输入</li>
+                            <li>💾 配置保存</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="wireframe-card">
+                        <div class="wireframe-title">📦 结果区域</div>
+                        <ul class="wireframe-elements">
+                            <li>💻 代码预览</li>
+                            <li>📥 下载按钮</li>
+                            <li>📋 复制功能</li>
+                            <li>🚀 启动选项</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="wireframe-card">
+                        <div class="wireframe-title">📄 页脚区域</div>
+                        <ul class="wireframe-elements">
+                            <li>ℹ️ 版权信息</li>
+                            <li>🔗 相关链接</li>
+                            <li>📞 联系方式</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

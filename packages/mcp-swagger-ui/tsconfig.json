@@ -14,8 +14,9 @@
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true,
     "jsx": "preserve",
+    // Vite 处理构建，TypeScript 只做类型检查
+    "noEmit": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
@@ -23,10 +24,11 @@
   },
   "include": [
     "src/**/*.ts",
-    "src/**/*.tsx",
+    "src/**/*.tsx", 
     "src/**/*.vue",
     "vite.config.ts"
-  ],  "exclude": [
+  ],
+  "exclude": [
     "node_modules",
     "dist"
   ],

@@ -100,12 +100,17 @@
         // "allowUnreachableCode": true,                     /* Disable error reporting for unreachable code. */
         /* Completeness */
         // "skipDefaultLibCheck": true,                      /* Skip type checking .d.ts files that are included with TypeScript. */
-        "skipLibCheck": true, /* Skip type checking all .d.ts files. */
-        "baseUrl": ".",
+        "skipLibCheck": true, /* Skip type checking all .d.ts files. */        "baseUrl": ".",
         "paths": {
             "@/*": [
                 "./packages/*"
             ]
-        }
-    }
+        },
+        "composite": true
+    },
+    "references": [
+        { "path": "./packages/mcp-swagger-parser" },
+        { "path": "./packages/mcp-swagger-server" },
+        { "path": "./packages/mcp-swagger-ui" }
+    ]
 }
