@@ -1,5 +1,4 @@
-{
-  "compilerOptions": {
+{  "compilerOptions": {
     "target": "ES2020",
     "module": "ESNext",
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
@@ -17,16 +16,18 @@
     "jsx": "preserve",
     // Vite 处理构建，TypeScript 只做类型检查
     "noEmit": true,
+    // 支持 import.meta
+    "types": ["vite/client"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }
-  },
-  "include": [
+  },"include": [
     "src/**/*.ts",
     "src/**/*.tsx", 
     "src/**/*.vue",
-    "vite.config.ts"
+    "vite.config.ts",
+    "test-parser.ts"
   ],
   "exclude": [
     "node_modules",

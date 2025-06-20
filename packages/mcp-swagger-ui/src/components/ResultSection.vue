@@ -193,7 +193,7 @@ import {
   Timer,
   Search
 } from '@element-plus/icons-vue'
-import { downloadFile, copyToClipboard } from '@/utils/api'
+import { downloadFile, copyToClipboard as copyToClipboardUtil } from '@/utils/api'
 import type { ConvertResult } from '@/types'
 
 // Props
@@ -295,7 +295,7 @@ const downloadConfig = () => {
 // 复制代码到剪贴板
 const copyCode = async (code: string) => {
   try {
-    const success = await copyToClipboard(code)
+    const success = await copyToClipboardUtil(code)
     if (success) {
       showOperationMessage('✅ 代码已复制到剪贴板')
       ElMessage.success('代码已复制')

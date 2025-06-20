@@ -3,9 +3,9 @@
  */
 
 import axios from 'axios';
-import type { OpenAPISpec } from '../types/index.js';
-import { OpenAPINetworkError, OpenAPIParseError, ERROR_CODES } from '../errors/index.js';
-import { BaseParser } from './base-parser.js';
+import type { OpenAPISpec } from '../types/index';
+import { OpenAPINetworkError, OpenAPIParseError, ERROR_CODES } from '../errors/index';
+import { BaseParser } from './base-parser';
 
 export interface UrlParseOptions {
   timeout?: number;

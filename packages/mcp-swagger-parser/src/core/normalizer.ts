@@ -3,8 +3,8 @@
  */
 
 import SwaggerParser from '@apidevtools/swagger-parser';
-import type { OpenAPISpec, ParserConfig } from '../types/index.js';
-import { OpenAPIParseError, ERROR_CODES } from '../errors/index.js';
+import type { OpenAPISpec, ParserConfig } from '../types/index';
+import { OpenAPIParseError, ERROR_CODES } from '../errors/index';
 
 export class Normalizer {
   private config: ParserConfig;

@@ -8,6 +8,7 @@ import type {
   ConvertResult 
 } from '@/types'
 import { convertApi, validateApi, previewApi } from '@/utils/api'
+import { getAvailableTags, getParserStats } from '@/utils/parser'
 
 export const useAppStore = defineStore('app', {
   state: (): AppState => ({
@@ -164,6 +165,33 @@ export const useAppStore = defineStore('app', {
         this.error = error instanceof Error ? error.message : '转换失败'
       } finally {
         this.loading = false
+      }    },
+
+    async getParserStatistics() {
+      if (!this.isValidInput) {
+        return null
+      }
+
+      try {
+        return await getParserStats(this.inputSource)
+      } catch (error) {
+        console.error('获取解析器统计信息失败:', error)
+        return null
+      }
+    },
+
+    async refreshAvailableTags() {
+      if (!this.isValidInput) {
+        return
+      }
+
+      try {
+        const tags = await getAvailableTags(this.inputSource)
+        // 这里可以更新可用标签列表，如果需要的话
+        return tags
+      } catch (error) {
+        console.error('获取可用标签失败:', error)
+        return []
       }
     }
   }

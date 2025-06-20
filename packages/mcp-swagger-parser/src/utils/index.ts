@@ -2,7 +2,7 @@
  * Enhanced utility functions for OpenAPI parsing and transformation
  */
 
-import type { OpenAPISpec, SchemaObject, ReferenceObject, PathItemObject, TagObject } from '../types/index.js';
+import type { OpenAPISpec, SchemaObject, ReferenceObject, PathItemObject, TagObject } from '../types/index';
 
 /**
  * Check if an object is a reference object

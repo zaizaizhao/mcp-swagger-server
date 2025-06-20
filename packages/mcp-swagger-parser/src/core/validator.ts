@@ -6,10 +6,9 @@ import SwaggerParser from '@apidevtools/swagger-parser';
 import type { 
   OpenAPISpec, 
   ValidationResult, 
-  ValidationError, 
-  ValidationWarning,
+  ValidationError,   ValidationWarning,
   ParserConfig 
-} from '../types/index.js';
+} from '../types/index';
 
 export class Validator {
   private config: ParserConfig;

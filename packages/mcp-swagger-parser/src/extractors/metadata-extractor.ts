@@ -2,7 +2,7 @@
  * Metadata extractor for OpenAPI specifications
  */
 
-import type { OpenAPISpec, TagObject, ExternalDocumentationObject } from '../types/index.js';
+import type { OpenAPISpec, TagObject, ExternalDocumentationObject } from '../types/index';
 
 export interface ApiMetadata {
   info: {

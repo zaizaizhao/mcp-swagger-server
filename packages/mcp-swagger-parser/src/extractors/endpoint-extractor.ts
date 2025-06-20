@@ -9,7 +9,7 @@ import type {
   RequestBodyObject,
   ResponsesObject,
   SecurityRequirementObject 
-} from '../types/index.js';
+} from '../types/index';
 
 export class EndpointExtractor {
   /**

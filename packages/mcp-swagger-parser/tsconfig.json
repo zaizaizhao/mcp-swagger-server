@@ -1,6 +1,5 @@
 {
-  "extends": "../../tsconfig.json",
-  "compilerOptions": {
+  "extends": "../../tsconfig.json",  "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
     "declaration": true,
@@ -16,17 +15,7 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
-    "baseUrl": "./src",
-    "paths": {
-      "@/*": ["*"],
-      "@/types/*": ["types/*"],
-      "@/core/*": ["core/*"],
-      "@/parsers/*": ["parsers/*"],
-      "@/extractors/*": ["extractors/*"],
-      "@/transformer/*": ["transformer/*"],
-      "@/utils/*": ["utils/*"],
-      "@/errors/*": ["errors/*"]
-    }
+    "baseUrl": "./src"
   },
   "include": [
     "src/**/*"

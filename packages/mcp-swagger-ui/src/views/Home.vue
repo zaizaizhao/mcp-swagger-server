@@ -131,23 +131,20 @@
             <div class="info-value">{{ appStore.apiInfo.title || 'N/A' }}</div>
           </div>
           <div class="info-card">
-            <div class="info-label">版本</div>
-            <div class="info-value">{{ appStore.apiInfo.version || 'N/A' }}</div>
+            <div class="info-label">版本</div>            <div class="info-value">{{ appStore.apiInfo.version || 'N/A' }}</div>
           </div>
           <div class="info-card">
             <div class="info-label">服务器</div>
-            <div class="info-value">{{ appStore.apiInfo.server || 'N/A' }}</div>
+            <div class="info-value">{{ appStore.apiInfo.serverUrl || 'N/A' }}</div>
           </div>
           <div class="info-card">
             <div class="info-label">端点数量</div>
-            <div class="info-value">{{ appStore.apiInfo.endpoints?.length || 0 }} 个</div>
+            <div class="info-value">{{ appStore.apiInfo.totalEndpoints || 0 }} 个</div>
           </div>
-        </div>
-
-        <h4 style="margin: 20px 0 15px 0; color: #495057;">🔗 API 端点</h4>
+        </div>        <h4 style="margin: 20px 0 15px 0; color: #495057;">🔗 API 端点</h4>
         <div class="endpoints-grid">
           <div 
-            v-for="endpoint in appStore.apiInfo.endpoints?.slice(0, 6)" 
+            v-for="endpoint in appStore.endpoints?.slice(0, 6)" 
             :key="`${endpoint.method}-${endpoint.path}`"
             class="endpoint-card"
           >
@@ -161,8 +158,8 @@
             <div class="endpoint-summary">{{ endpoint.summary || endpoint.description || '无描述' }}</div>
           </div>
         </div>
-        <div v-if="(appStore.apiInfo.endpoints?.length || 0) > 6" class="more-endpoints">
-          <span>还有 {{ (appStore.apiInfo.endpoints?.length || 0) - 6 }} 个端点...</span>
+        <div v-if="(appStore.endpoints?.length || 0) > 6" class="more-endpoints">
+          <span>还有 {{ (appStore.endpoints?.length || 0) - 6 }} 个端点...</span>
         </div>
       </div>
 

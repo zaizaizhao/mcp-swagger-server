@@ -2,7 +2,7 @@
  * Schema extractor for OpenAPI specifications
  */
 
-import type { OpenAPISpec, SchemaObject, ComponentsObject } from '../types/index.js';
+import type { OpenAPISpec, SchemaObject, ComponentsObject } from '../types/index';
 
 export interface ExtractedSchema {
   name: string;

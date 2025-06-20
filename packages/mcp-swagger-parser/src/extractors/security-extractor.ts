@@ -7,7 +7,7 @@ import type {
   SecuritySchemeObject, 
   SecurityRequirementObject,
   ReferenceObject 
-} from '../types/index.js';
+} from '../types/index';
 
 export interface ExtractedSecurityScheme {
   name: string;

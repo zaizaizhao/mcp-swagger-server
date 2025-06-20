@@ -8,17 +8,17 @@ import type {
   ParseResult,
   ParserConfig, 
   ValidationResult 
-} from '../types/index.js';
+} from '../types/index';
 import { 
   OpenAPIParseError, 
   OpenAPIValidationError, 
   ERROR_CODES 
-} from '../errors/index.js';
-import { UrlParser } from '../parsers/url-parser.js';
-import { FileParser } from '../parsers/file-parser.js';
-import { TextParser } from '../parsers/text-parser.js';
-import { Validator } from './validator.js';
-import { Normalizer } from './normalizer.js';
+} from '../errors/index';
+import { UrlParser } from '../parsers/url-parser';
+import { FileParser } from '../parsers/file-parser';
+import { TextParser } from '../parsers/text-parser';
+import { Validator } from './validator';
+import { Normalizer } from './normalizer';
 
 /**
  * Default parser configuration

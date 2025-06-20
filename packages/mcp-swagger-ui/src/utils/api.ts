@@ -1,6 +1,12 @@
 import axios from 'axios'
 import type { InputSource, ConvertConfig, ApiResponse } from '@/types'
 import { demoApiInfo, demoEndpoints, demoConvertResult } from './demo-data'
+import { 
+  validateOpenAPISpec, 
+  previewOpenAPISpec, 
+  convertToMCP,
+  ParserError 
+} from './parser'
 
 // 创建 axios 实例
 const api = axios.create({
@@ -12,7 +18,7 @@ const api = axios.create({
 })
 
 // 检查是否启用演示模式
-const isDemoMode = import.meta.env.VITE_ENABLE_DEMO_MODE === 'true'
+const isDemoMode = import.meta.env.VITE_FORCE_MOCK_MODE === 'true'
 
 // 响应拦截器
 api.interceptors.response.use(
@@ -42,12 +48,22 @@ export async function validateApi(source: InputSource): Promise<ApiResponse> {
       }
     }
     
-    const response = await api.post('/validate', { source })
-    return response
+    // 使用新的解析器验证
+    const validation = await validateOpenAPISpec(source)
+    
+    return {
+      success: validation.valid,
+      data: {
+        valid: validation.valid,
+        errors: validation.errors,
+        warnings: validation.warnings
+      },
+      message: validation.valid ? '验证成功' : '验证失败'
+    }
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : '验证失败'
+      error: error instanceof ParserError ? error.message : '验证失败'
     }
   }
 }
@@ -68,12 +84,19 @@ export async function previewApi(source: InputSource): Promise<ApiResponse> {
         message: '预览成功'
       }
     }
-    const response = await api.post('/preview', { source })
-    return response
+    
+    // 使用新的解析器预览
+    const preview = await previewOpenAPISpec(source)
+    
+    return {
+      success: true,
+      data: preview,
+      message: '预览成功'
+    }
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : '预览失败'
+      error: error instanceof ParserError ? error.message : '预览失败'
     }
   }
 }
@@ -95,12 +118,18 @@ export async function convertApi(params: {
       }
     }
     
-    const response = await api.post('/convert', params)
-    return response
+    // 使用新的解析器转换
+    const convertResult = await convertToMCP(params.source, params.config)
+    
+    return {
+      success: true,
+      data: convertResult,
+      message: '转换成功'
+    }
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : '转换失败'
+      error: error instanceof ParserError ? error.message : '转换失败'
     }
   }
 }
