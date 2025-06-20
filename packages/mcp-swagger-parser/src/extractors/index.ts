@@ -2,7 +2,7 @@
  * Extractors for OpenAPI specifications
  */
 
-export * from './endpoint-extractor.js';
-export * from './schema-extractor.js';
-export * from './security-extractor.js';
-export * from './metadata-extractor.js';
+export * from './endpoint-extractor';
+export * from './schema-extractor';
+export * from './security-extractor';
+export * from './metadata-extractor';

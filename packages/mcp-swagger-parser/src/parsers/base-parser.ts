@@ -2,8 +2,8 @@
  * Base parser class for OpenAPI specifications
  */
 
-import type { OpenAPISpec } from '../types/index.js';
-import { OpenAPIParseError, ERROR_CODES } from '../errors/index.js';
+import type { OpenAPISpec } from '../types/index';
+import { OpenAPIParseError, ERROR_CODES } from '../errors/index';
 
 export abstract class BaseParser {
   /**

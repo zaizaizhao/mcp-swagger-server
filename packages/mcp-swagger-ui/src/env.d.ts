@@ -3,7 +3,7 @@
 interface ImportMetaEnv {
   readonly VITE_APP_TITLE: string
   readonly VITE_API_BASE_URL: string
-  readonly VITE_ENABLE_DEMO_MODE: string
+  readonly VITE_FORCE_MOCK_MODE: string
 }
 
 interface ImportMeta {

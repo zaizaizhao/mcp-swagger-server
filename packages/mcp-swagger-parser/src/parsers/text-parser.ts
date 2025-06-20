@@ -2,9 +2,9 @@
  * Text parser for OpenAPI specifications
  */
 
-import type { OpenAPISpec } from '../types/index.js';
-import { OpenAPIParseError, ERROR_CODES } from '../errors/index.js';
-import { BaseParser } from './base-parser.js';
+import type { OpenAPISpec } from '../types/index';
+import { OpenAPIParseError, ERROR_CODES } from '../errors/index';
+import { BaseParser } from './base-parser';
 
 export interface TextParseOptions {
   format?: 'json' | 'yaml' | 'auto';

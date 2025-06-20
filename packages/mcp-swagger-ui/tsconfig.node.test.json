@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "moduleResolution": "node",
+    "allowImportingTsExtensions": false,
+    "noEmit": false,
+    "outDir": "./dist-test"
+  },
+  "include": [
+    "test-parser.ts",
+    "src/utils/parser.ts",
+    "src/utils/mock.ts",
+    "src/types/index.ts"
+  ],
+  "exclude": [
+    "src/**/*.vue"
+  ]
+}

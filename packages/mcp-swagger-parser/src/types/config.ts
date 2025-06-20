@@ -2,7 +2,7 @@
  * Configuration types for the parser
  */
 
-import type { ValidationRule } from './input.js';
+import type { ValidationRule } from './input';
 
 export interface ParserConfig {
   validateSchema?: boolean;
