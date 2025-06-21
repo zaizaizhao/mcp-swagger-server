@@ -1,8 +1,10 @@
 {
   "name": "@mcp-swagger/parser",
   "version": "0.1.0",
-  "description": "OpenAPI/Swagger specification parser for MCP projects",  "main": "dist/index.js",
-  "types": "dist/index.d.ts",  "exports": {
+  "description": "OpenAPI/Swagger specification parser for MCP projects",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
     ".": {
       "import": "./dist/index.js",
       "require": "./dist/index.js",
@@ -13,7 +15,8 @@
     "dist",
     "README.md",
     "CHANGELOG.md"
-  ],  "scripts": {
+  ],
+  "scripts": {
     "build": "tsc",
     "build:watch": "tsc --watch",
     "dev": "tsc --watch",
