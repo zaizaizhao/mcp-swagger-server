@@ -1,12 +1,28 @@
 {
   "name": "mcp-swagger-server",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "MCP Swagger Server - A comprehensive monorepo for OpenAPI/Swagger to MCP conversion",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "node scripts/build.js",
+    "build:packages": "node scripts/build.js --non-ui",
+    "dev": "node scripts/dev.js",
+    "dev:ui": "pnpm --filter=mcp-swagger-ui run dev",
+    "clean": "node scripts/clean.js",
+    "clean:build": "node scripts/clean.js --build-only",
+    "diagnostic": "node scripts/diagnostic.js",
+    "postinstall": "pnpm run build:packages",
+    "test": "pnpm -r run test",
+    "lint": "pnpm -r run lint",
+    "type-check": "pnpm -r run type-check"
   },
-  "keywords": [],
+  "keywords": [
+    "mcp",
+    "swagger",
+    "openapi",
+    "monorepo",
+    "model-context-protocol"
+  ],
   "author": "",
   "license": "MIT",
   "devDependencies": {

@@ -2,7 +2,7 @@
   "name": "mcp-swagger-server",
   "version": "1.0.0",
   "description": "A Model Context Protocol (MCP) server for Swagger/OpenAPI documentation that transforms OpenAPI specifications into MCP format, enabling AI assistants to interact with REST APIs through standardized protocol.",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
