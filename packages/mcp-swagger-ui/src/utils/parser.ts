@@ -214,7 +214,8 @@ export async function previewOpenAPISpec(source: InputSource): Promise<{
                 })
             })
         })
-
+        console.log('🔍 预览的 API 信息:', apiInfo);
+        
         return { apiInfo, endpoints }
     } catch (error) {
         throw new ParserError(
@@ -243,7 +244,8 @@ export async function convertToMCP(
 
     try {
         const { parseFromUrl, parseFromFile, parseFromString, transformToMCPTools } = await import('@mcp-swagger/parser')
-
+        console.log('🔄 导入解析和转换函数');
+        
         // 解析 OpenAPI 规范
         let parseResult: any
 

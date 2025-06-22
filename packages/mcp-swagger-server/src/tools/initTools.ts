@@ -2,12 +2,17 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
 import { z } from "zod";
 import { transformOpenApiToMcpTools, MCPTool } from "../transform";
 
-export async function initTools(server: McpServer) {
+export async function initTools(server: McpServer, openApiData?: any) {
     console.log("🔧 初始化 MCP 工具...");
     
     try {
+        // 如果没有提供 openApiData，使用默认的 swagger.json
+        if (!openApiData) {
+            console.log("⚠️ 未提供 OpenAPI 数据，将使用默认的 swagger.json 文件");
+        }
+        
         // 从 OpenAPI 规范生成工具
-        const tools = await transformOpenApiToMcpTools();
+        const tools = await transformOpenApiToMcpTools(undefined, undefined, openApiData);
         
         console.log(`📦 成功生成 ${tools.length} 个工具`);
           // 打印工具摘要
@@ -20,6 +25,20 @@ export async function initTools(server: McpServer) {
         
     } catch (error) {
         console.error("❌ 初始化工具失败:", error);
+        
+        // 如果是解析错误且没有提供 openApiData，尝试使用默认配置
+        if ((error as any)?.code === 'VALIDATION_ERROR' && !openApiData) {
+            console.log("🔄 尝试使用默认配置重新初始化...");
+            try {
+                const tools = await transformOpenApiToMcpTools();
+                await registerTools(server, tools);
+                console.log("✅ 使用默认配置初始化完成");
+                return;
+            } catch (fallbackError) {
+                console.error("❌ 默认配置初始化也失败:", fallbackError);
+            }
+        }
+        
         throw error;
     }
 }

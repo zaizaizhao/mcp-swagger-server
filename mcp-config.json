@@ -1,5 +1,4 @@
 {
-  
   "maxRetries": 10,
   "retryDelay": 1000,
   "backoffMultiplier": 1.5,

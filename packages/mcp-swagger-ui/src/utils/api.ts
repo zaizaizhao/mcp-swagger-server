@@ -1,12 +1,7 @@
 import axios from 'axios'
 import type { InputSource, ConvertConfig, ApiResponse } from '@/types'
 import { demoApiInfo, demoEndpoints, demoConvertResult } from './demo-data'
-import { 
-  validateOpenAPISpec, 
-  previewOpenAPISpec, 
-  convertToMCP,
-  ParserError 
-} from './parser'
+import { mcpApiService } from '@/services/mcpApi'
 
 // 创建 axios 实例
 const api = axios.create({
@@ -35,6 +30,27 @@ api.interceptors.response.use(
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 /**
+ * 获取 OpenAPI 内容
+ */
+async function getOpenApiContent(source: InputSource): Promise<string> {
+  if (source.type === 'url') {
+    const headers: Record<string, string> = {}
+    
+    // 添加认证头
+    if (source.auth?.type === 'bearer' && source.auth.token) {
+      headers.Authorization = `Bearer ${source.auth.token}`
+    } else if (source.auth?.type === 'apikey' && source.auth.token) {
+      headers['X-API-Key'] = source.auth.token
+    }
+    
+    const response = await axios.get(source.content, { headers })
+    return typeof response.data === 'string' ? response.data : JSON.stringify(response.data)
+  }
+  
+  return source.content
+}
+
+/**
  * 验证 OpenAPI 规范
  */
 export async function validateApi(source: InputSource): Promise<ApiResponse> {
@@ -48,8 +64,14 @@ export async function validateApi(source: InputSource): Promise<ApiResponse> {
       }
     }
     
-    // 使用新的解析器验证
-    const validation = await validateOpenAPISpec(source)
+    // 构建源配置
+    const sourceConfig = {
+      type: source.type === 'url' ? 'url' : 'content',
+      content: source.type === 'url' ? source.content : await getOpenApiContent(source)
+    }
+    
+    // 使用 MCP API 验证
+    const validation = await mcpApiService.validateOpenApi(sourceConfig)
     
     return {
       success: validation.valid,
@@ -63,7 +85,7 @@ export async function validateApi(source: InputSource): Promise<ApiResponse> {
   } catch (error) {
     return {
       success: false,
-      error: error instanceof ParserError ? error.message : '验证失败'
+      error: error instanceof Error ? error.message : '验证失败'
     }
   }
 }
@@ -85,18 +107,43 @@ export async function previewApi(source: InputSource): Promise<ApiResponse> {
       }
     }
     
-    // 使用新的解析器预览
-    const preview = await previewOpenAPISpec(source)
+    // 构建源配置
+    const sourceConfig = {
+      type: source.type === 'url' ? 'url' : 'content',
+      content: source.type === 'url' ? source.content : await getOpenApiContent(source)
+    }
+    
+    // 使用 MCP API 解析
+    const parseResult = await mcpApiService.parseOpenApi(sourceConfig)
+    
+    // 转换为前端期望的格式
+    const apiInfo = {
+      title: parseResult.info?.title || 'Unknown API',
+      version: parseResult.info?.version || '1.0.0',
+      description: parseResult.info?.description || '',
+      serverUrl: parseResult.servers?.[0]?.url || '',
+      totalEndpoints: parseResult.paths?.length || 0
+    }
+    
+    // 转换端点数据
+    const endpoints = parseResult.paths?.map((path: any) => ({
+      method: path.method,
+      path: path.path,
+      summary: path.summary || '',
+      description: path.description || '',
+      tags: path.tags || [],
+      deprecated: path.deprecated || false
+    })) || []
     
     return {
       success: true,
-      data: preview,
+      data: { apiInfo, endpoints },
       message: '预览成功'
     }
   } catch (error) {
     return {
       success: false,
-      error: error instanceof ParserError ? error.message : '预览失败'
+      error: error instanceof Error ? error.message : '预览失败'
     }
   }
 }
@@ -118,18 +165,70 @@ export async function convertApi(params: {
       }
     }
     
-    // 使用新的解析器转换
-    const convertResult = await convertToMCP(params.source, params.config)
+    // 获取 OpenAPI 内容
+    const openApiContent = await getOpenApiContent(params.source)
     
-    return {
-      success: true,
-      data: convertResult,
-      message: '转换成功'
+    // 尝试解析为 JSON 对象，如果失败则使用字符串
+    let openApiData: string | object
+    try {
+      openApiData = JSON.parse(openApiContent)
+    } catch {
+      openApiData = openApiContent
+    }
+    
+    // 创建 MCP 服务器
+    const createRequest = {
+      openApiData,
+      config: {
+        name: params.config.name || 'Generated MCP Server',
+        version: params.config.version || '1.0.0',
+        description: params.config.description || 'MCP server generated from OpenAPI specification',
+        port: params.config.port,
+        transport: params.config.transport as 'streamable' | 'sse' | 'stdio' || 'stdio'
+      }
+    }
+    
+    const createResult = await mcpApiService.createServer(createRequest)
+    
+    if (createResult.success) {
+      // 获取工具列表来构建转换结果
+      const tools = await mcpApiService.getTools()
+      
+      // 构建 MCP 配置格式的结果
+      const convertResult = {
+        mcpVersion: "1.0.0",
+        name: "mcp-swagger-server",
+        version: "1.0.0",
+        description: `Generated MCP server with ${tools.length} tools`,
+        schema: {
+          tools: tools.map(tool => ({
+            name: tool.name,
+            description: tool.description,
+            inputSchema: tool.inputSchema
+          }))
+        },
+        metadata: {
+          toolsCount: tools.length,
+          endpoint: createResult.endpoint,
+          createdAt: new Date().toISOString()
+        }
+      }
+      
+      return {
+        success: true,
+        data: convertResult,
+        message: '转换成功'
+      }
+    } else {
+      return {
+        success: false,
+        error: createResult.message || '转换失败'
+      }
     }
   } catch (error) {
     return {
       success: false,
-      error: error instanceof ParserError ? error.message : '转换失败'
+      error: error instanceof Error ? error.message : '转换失败'
     }
   }
 }

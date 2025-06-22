@@ -4,7 +4,24 @@ import { parseArgs } from 'node:util';
 // 导出主要API和类型
 export { createMcpServer, runSseServer, runStdioServer, runStreamableServer } from './server';
 
-export * from './tools/initTools';
+// 导出核心层
+export * from './core';
+
+// 导出类型
+export * from './types';
+
+// 导出转换函数
+export { transformOpenApiToMcpTools } from './transform/transformOpenApiToMcpTools';
+
+// 导出适配器层
+export * from './adapters/CLIAdapter';
+export * from './adapters/HTTPAdapter';
+export * from './adapters/ProgrammaticAdapter';
+
+// 导出兼容层
+export * from './lib';
+
+// 导出传输层
 export * from './transportUtils';
 
 
