@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  mcp-swagger-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+      - "3322:3322"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - MCP_PORT=3322
+      - API_KEY=dev-api-key-change-in-production
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+      - LOG_LEVEL=debug
+      - METRICS_ENABLED=true
+      - HEALTH_CHECK_ENABLED=true
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: ["npm", "run", "start:dev"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add a simple web UI for testing
+  swagger-ui:
+    image: swaggerapi/swagger-ui
+    ports:
+      - "8080:8080"
+    environment:
+      - SWAGGER_JSON_URL=http://localhost:3001/api-json
+    depends_on:
+      - mcp-swagger-api
+
+networks:
+  default:
+    name: mcp-swagger-network

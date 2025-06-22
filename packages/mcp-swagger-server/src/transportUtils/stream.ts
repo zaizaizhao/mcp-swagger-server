@@ -6,11 +6,11 @@ import {
 import { InMemoryEventStore } from "../tools/InMemoryEventStore";
 import { randomUUID } from "node:crypto";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
-import type { IncomingMessage, ServerResponse } from "node:http";
+import type { IncomingMessage, ServerResponse, Server } from "node:http";
 import { createBaseHttpServer, RequestHandlers } from "../tools/httpServer";
 import { getBody } from "../tools/getBody";
 
-export async function startStreamableMcpServer(server: McpServer, endpoint: string, port: number,eventStore: EventStore = new InMemoryEventStore(),): Promise<void> {
+export async function startStreamableMcpServer(server: McpServer, endpoint: string, port: number,eventStore: EventStore = new InMemoryEventStore(),): Promise<Server> {
     const activeTransports: Record<
     string,
     {
@@ -188,11 +188,13 @@ export async function startStreamableMcpServer(server: McpServer, endpoint: stri
   };
 
   // Create the HTTP server using our factory
-  createBaseHttpServer(port, endpoint, {
+  const httpServer = createBaseHttpServer(port, endpoint, {
     handleRequest,
     cleanup,
     serverType: "HTTP Streamable Server",
   });
     // const transport = new StreamableServerTransport();
     // await server.connect(transport);
+    
+    return httpServer;
 }

@@ -24,6 +24,27 @@ out/
 .vite/
 .turbo/
 
+# TypeScript build artifacts
+*.js
+*.js.map
+*.d.ts
+# But allow specific config files
+!*.config.js
+!rollup.config.js
+!jest.config.js
+!webpack.config.js
+!vite.config.js
+!tailwind.config.js
+!postcss.config.js
+!commitlint.config.js
+!eslint.config.js
+!prettier.config.js
+!babel.config.js
+# And allow dist directories
+!dist/**/*.js
+!dist/**/*.d.ts
+!dist/**/*.js.map
+
 
 # Log files
 logs

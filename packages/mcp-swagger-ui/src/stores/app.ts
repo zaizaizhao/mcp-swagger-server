@@ -9,9 +9,15 @@ import type {
 } from '@/types'
 import { convertApi, validateApi, previewApi } from '@/utils/api'
 import { getAvailableTags, getParserStats } from '@/utils/parser'
+import { mcpApiService, type McpServerStatus } from '@/services/mcpApi'
+
+interface ExtendedAppState extends AppState {
+  mcpServerStatus: McpServerStatus | null
+  mcpTools: any[]
+}
 
 export const useAppStore = defineStore('app', {
-  state: (): AppState => ({
+  state: (): ExtendedAppState => ({
     inputSource: {
       type: 'url',
       content: 'https://petstore.swagger.io/v2/swagger.json'
@@ -27,13 +33,18 @@ export const useAppStore = defineStore('app', {
         generateValidation: true,
         includeExamples: false,
         optimizeNames: true
-      }
+      },
+      name: 'Generated MCP Server',
+      version: '1.0.0',
+      description: 'MCP server generated from OpenAPI specification'
     },
     apiInfo: null,
     endpoints: [],
     convertResult: null,
     loading: false,
-    error: null
+    error: null,
+    mcpServerStatus: null,
+    mcpTools: []
   }),
 
   getters: {
@@ -71,6 +82,15 @@ export const useAppStore = defineStore('app', {
         
         return true
       })
+    },
+
+    // MCP 相关 getters
+    isMcpServerRunning: (state) => {
+      return state.mcpServerStatus?.serverRunning || false
+    },
+
+    mcpToolsCount: (state) => {
+      return state.mcpServerStatus?.toolsCount || 0
     }
   },
 
@@ -192,6 +212,84 @@ export const useAppStore = defineStore('app', {
       } catch (error) {
         console.error('获取可用标签失败:', error)
         return []
+      }
+    },
+
+    // MCP 相关 actions
+    async refreshMcpServerStatus() {
+      try {
+        this.mcpServerStatus = await mcpApiService.getHealthStatus()
+      } catch (error) {
+        console.error('获取 MCP 服务器状态失败:', error)
+        this.mcpServerStatus = null
+      }
+    },
+
+    async getMcpTools() {
+      try {
+        this.mcpTools = await mcpApiService.getTools()
+        return this.mcpTools
+      } catch (error) {
+        console.error('获取 MCP 工具失败:', error)
+        this.mcpTools = []
+        return []
+      }
+    },
+
+    async stopMcpServer() {
+      this.loading = true
+      try {
+        await mcpApiService.stopServer()
+        await this.refreshMcpServerStatus()
+        this.mcpTools = []
+        return true
+      } catch (error) {
+        this.error = error instanceof Error ? error.message : '停止服务器失败'
+        return false
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async reloadMcpTools() {
+      if (!this.isValidInput) {
+        throw new Error('请提供有效的输入内容')
+      }
+
+      this.loading = true
+      this.error = null
+
+      try {
+        // 获取 OpenAPI 内容并重新加载工具
+        let openApiData: string | object = this.inputSource.content
+        
+        if (this.inputSource.type === 'url') {
+          // 如果是 URL，需要获取内容
+          const response = await fetch(this.inputSource.content)
+          const content = await response.text()
+          try {
+            openApiData = JSON.parse(content)
+          } catch {
+            openApiData = content
+          }
+        } else {
+          // 尝试解析为 JSON 对象
+          try {
+            openApiData = JSON.parse(this.inputSource.content)
+          } catch {
+            openApiData = this.inputSource.content
+          }
+        }
+
+        await mcpApiService.reloadTools(openApiData)
+        await this.refreshMcpServerStatus()
+        await this.getMcpTools()
+        return true
+      } catch (error) {
+        this.error = error instanceof Error ? error.message : '重新加载工具失败'
+        return false
+      } finally {
+        this.loading = false
       }
     }
   }

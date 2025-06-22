@@ -39,6 +39,11 @@ export interface ConvertConfig {
     includeExamples: boolean;
     optimizeNames: boolean;
   };
+  // MCP 服务器配置
+  name?: string;
+  version?: string;
+  description?: string;
+  port?: number;
 }
 
 // 输入源类型
