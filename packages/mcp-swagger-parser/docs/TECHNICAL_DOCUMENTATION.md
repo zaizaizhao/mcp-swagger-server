@@ -529,13 +529,13 @@ class PerformanceBenchmark {
 
 ```typescript
 // 基础使用
-import { parseFromUrl, transformToMCPTools } from '@mcp-swagger/parser';
+import { parseFromUrl, transformToMCPTools } from 'mcp-swagger-parser';
 
 const result = await parseFromUrl('https://api.example.com/swagger.json');
 const tools = transformToMCPTools(result.spec);
 
 // 高级配置
-import { OpenAPIParser, OpenAPIToMCPTransformer } from '@mcp-swagger/parser';
+import { OpenAPIParser, OpenAPIToMCPTransformer } from 'mcp-swagger-parser';
 
 const parser = new OpenAPIParser({
   strictMode: false,

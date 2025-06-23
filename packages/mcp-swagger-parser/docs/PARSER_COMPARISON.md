@@ -44,7 +44,7 @@ await SwaggerParser.validate('swagger.json');
 ### 使用我们的 MCP Swagger Parser
 
 ```typescript
-import { parseFromFile, transformToMCPTools } from '@mcp-swagger/parser';
+import { parseFromFile, transformToMCPTools } from 'mcp-swagger-parser';
 
 // 一站式解决方案
 const result = await parseFromFile('swagger.json', {
@@ -237,7 +237,7 @@ if (justNeedBasicParsing) {
 
 ```typescript
 // MCP 项目或需要高级功能
-import { parseFromFile, transformToMCPTools } from '@mcp-swagger/parser';
+import { parseFromFile, transformToMCPTools } from 'mcp-swagger-parser';
 
 if (needMCPIntegration || needCustomValidation || needDetailedErrors) {
   const result = await parseFromFile('swagger.json', config);

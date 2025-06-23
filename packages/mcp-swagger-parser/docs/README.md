@@ -75,7 +75,7 @@
 
 ```typescript
 // 基础使用
-import { parseFromUrl, transformToMCPTools } from '@mcp-swagger/parser';
+import { parseFromUrl, transformToMCPTools } from 'mcp-swagger-parser';
 
 const result = await parseFromUrl('https://api.example.com/swagger.json');
 const tools = transformToMCPTools(result.spec);
@@ -83,7 +83,7 @@ const tools = transformToMCPTools(result.spec);
 
 ```typescript
 // 高级配置
-import { OpenAPIParser } from '@mcp-swagger/parser';
+import { OpenAPIParser } from 'mcp-swagger-parser';
 
 const parser = new OpenAPIParser({
   strictMode: false,

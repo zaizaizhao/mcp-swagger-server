@@ -9,8 +9,8 @@ async function testParser() {
   
   try {
     // 测试导入
-    const parser = await import('@mcp-swagger/parser')
-    console.log('✅ @mcp-swagger/parser 导入成功')
+    const parser = await import('mcp-swagger-parser')
+    console.log('✅ mcp-swagger-parser 导入成功')
     console.log('📦 可用函数:', Object.keys(parser))
     
     // 测试解析器检查函数

@@ -68,7 +68,7 @@ mcp-swagger-server/
 │                                                                 │
 ├─────────────────────────────────────────────────────────────────┤
 │                     共享解析引擎                                │
-│              (@mcp-swagger/parser - TypeScript)                │
+│              (mcp-swagger-parser - TypeScript)                │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -232,7 +232,7 @@ DEBUG=mcp:* node packages/mcp-swagger-server/dist/index.js
 
 ```typescript
 // 直接使用解析器
-import { parseOpenAPI } from '@mcp-swagger/parser';
+import { parseOpenAPI } from 'mcp-swagger-parser';
 
 const mcpTools = await parseOpenAPI({
   source: 'https://api.example.com/openapi.json',

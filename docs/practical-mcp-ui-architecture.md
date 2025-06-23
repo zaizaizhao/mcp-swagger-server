@@ -29,7 +29,7 @@ mcp-swagger-server/
 ### 当前实现状态
 1. **✅ MCP服务器**: 已实现，支持多种传输协议(stdio、sse、stream)
 2. **✅ Web UI**: 已实现基础界面，支持OpenAPI输入和预览
-3. **✅ 解析库**: @mcp-swagger/parser已实现核心解析功能
+3. **✅ 解析库**: mcp-swagger-parser已实现核心解析功能
 4. **❌ 集成**: UI和MCP服务器之间缺少桥接
 5. **❌ 动态配置**: 目前使用静态swagger.json文件
 
@@ -125,8 +125,8 @@ mcp-swagger-server/
 ```typescript
 // packages/mcp-swagger-server/src/dynamicServer.ts
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
-import { transformToMCPTools, parseFromUrl, parseFromString } from '@mcp-swagger/parser';
-import type { MCPTool, OpenAPISpec, InputSource } from '@mcp-swagger/parser';
+import { transformToMCPTools, parseFromUrl, parseFromString } from 'mcp-swagger-parser';
+import type { MCPTool, OpenAPISpec, InputSource } from 'mcp-swagger-parser';
 
 export class DynamicMCPServer {
   private mcpServer: McpServer;

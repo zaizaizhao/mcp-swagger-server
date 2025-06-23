@@ -126,7 +126,7 @@
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │                     Parsing & Validation Stage                                  │
 │  ┌─────────────────────────────────────────────────────────────┐               │
-│  │            Multi-Format Parser (@mcp-swagger/parser)        │               │
+│  │            Multi-Format Parser (mcp-swagger-parser)        │               │
 │  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐          │               │
 │  │  │ OpenAPI 3.x │ │Swagger 2.0  │ │  Postman    │          │               │    
 │  │  │   Parser    │ │   Parser    │ │  Collection │          │               │

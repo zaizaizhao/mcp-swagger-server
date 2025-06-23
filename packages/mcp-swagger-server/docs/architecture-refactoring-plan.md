@@ -319,7 +319,7 @@ export class MCPToolRegistry {
 ```typescript
 // src/core/factory/openapi-tools-factory.ts
 export class OpenAPIToolsFactory {
-  private parser: typeof import('@mcp-swagger/parser');
+  private parser: typeof import('mcp-swagger-parser');
   private generator: ToolGenerator;
   private schemaMapper: SchemaMapper;
 

@@ -1,6 +1,6 @@
 import { join } from 'path';
-import { parseFromFile, parseFromString, transformToMCPTools } from '@mcp-swagger/parser';
-import type { MCPTool, ValidationError } from '@mcp-swagger/parser';
+import { parseFromFile, parseFromString, transformToMCPTools } from 'mcp-swagger-parser';
+import type { MCPTool, ValidationError } from 'mcp-swagger-parser';
 
 /**
  * 主转换函数 - 使用新的 mcp-swagger-parser

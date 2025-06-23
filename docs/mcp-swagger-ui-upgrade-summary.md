@@ -2,12 +2,12 @@
 
 ## 🎯 升级目标
 
-将 `mcp-swagger-ui` 前端应用升级为使用新的 `@mcp-swagger/parser` 包，实现更强大的 OpenAPI 解析和转换能力，同时保持良好的用户体验。
+将 `mcp-swagger-ui` 前端应用升级为使用新的 `mcp-swagger-parser` 包，实现更强大的 OpenAPI 解析和转换能力，同时保持良好的用户体验。
 
 ## 📋 完成的升级内容
 
 ### 1. 依赖更新
-- ✅ 在 `package.json` 中添加了 `@mcp-swagger/parser` 依赖
+- ✅ 在 `package.json` 中添加了 `mcp-swagger-parser` 依赖
 - ✅ 配置为使用 workspace 内部包链接
 
 ### 2. 新增解析器模块
@@ -42,7 +42,7 @@
 // 自动检测解析器可用性
 async function canUseRealParser(): Promise<boolean> {
   try {
-    await import('@mcp-swagger/parser')
+    await import('mcp-swagger-parser')
     return !shouldUseMockMode()
   } catch {
     return false
@@ -55,7 +55,7 @@ if (!(await canUseRealParser())) {
   return mockResult
 } else {
   // 使用真实解析器
-  const { parseFromUrl } = await import('@mcp-swagger/parser')
+  const { parseFromUrl } = await import('mcp-swagger-parser')
   return await parseFromUrl(url)
 }
 ```
@@ -112,7 +112,7 @@ export async function convertToMCP(source: InputSource, config: ConvertConfig): 
 ### 1. **按需加载**
 ```typescript
 // 动态导入，减少初始包大小
-const { parseFromUrl } = await import('@mcp-swagger/parser')
+const { parseFromUrl } = await import('mcp-swagger-parser')
 ```
 
 ### 2. **智能缓存**

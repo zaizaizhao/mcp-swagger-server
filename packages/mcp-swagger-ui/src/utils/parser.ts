@@ -51,8 +51,8 @@ export async function canUseRealParser(): Promise<boolean> {
     }
 
     try {
-        if (import.meta.env.VITE_FORCE_MOCK_MODE === 'false' || await import('@mcp-swagger/parser')) {
-            console.log('✅ 真实解析器可用，将使用 @mcp-swagger/parser')
+        if (import.meta.env.VITE_FORCE_MOCK_MODE === 'false' || await import('mcp-swagger-parser')) {
+            console.log('✅ 真实解析器可用，将使用 mcp-swagger-parser')
             return true
         }
         return false
@@ -79,7 +79,7 @@ export async function validateOpenAPISpec(source: InputSource): Promise<Validati
     console.log('🔄 使用真实解析器验证:', source.type, source.content)
 
     try {
-        const { parseFromUrl, parseFromFile, parseFromString } = await import('@mcp-swagger/parser')
+        const { parseFromUrl, parseFromFile, parseFromString } = await import('mcp-swagger-parser')
 
         let parseResult: any
 
@@ -150,7 +150,7 @@ export async function previewOpenAPISpec(source: InputSource): Promise<{
     console.log('🔄 使用真实解析器预览:', source.type, source.content)
 
     try {
-        const { parseFromUrl, parseFromFile, parseFromString } = await import('@mcp-swagger/parser')
+        const { parseFromUrl, parseFromFile, parseFromString } = await import('mcp-swagger-parser')
 
         let parseResult: any
 
@@ -243,7 +243,7 @@ export async function convertToMCP(
     const startTime = Date.now()
 
     try {
-        const { parseFromUrl, parseFromFile, parseFromString, transformToMCPTools } = await import('@mcp-swagger/parser')
+        const { parseFromUrl, parseFromFile, parseFromString, transformToMCPTools } = await import('mcp-swagger-parser')
         console.log('🔄 导入解析和转换函数');
         
         // 解析 OpenAPI 规范

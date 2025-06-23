@@ -54,7 +54,7 @@ NestJS 非常适合作为 MCP Swagger API 的后端技术栈，具有以下核�
   "包管理": "pnpm",  
   "构建工具": "Rollup",
   "开发工具": "ts-node, nodemon",
-  "核心库": "@mcp-swagger/parser"
+  "核心库": "mcp-swagger-parser"
 }
 
 // NestJS 技术栈
@@ -132,7 +132,7 @@ export class MCPController {
 
 | 项目需求 | NestJS 支持 | 匹配度 | 说明 |
 |---------|-------------|--------|------|
-| OpenAPI解析 | ✅ 完美支持 | ⭐⭐⭐⭐⭐ | 可直接使用现有@mcp-swagger/parser |
+| OpenAPI解析 | ✅ 完美支持 | ⭐⭐⭐⭐⭐ | 可直接使用现有mcp-swagger-parser |
 | MCP协议实现 | ✅ 灵活支持 | ⭐⭐⭐⭐⭐ | 装饰器模式非常适合MCP协议 |
 | 动态工具注册 | ✅ 原生支持 | ⭐⭐⭐⭐⭐ | 依赖注入和模块化完美契合 |
 | HTTP Stream | ✅ 完全支持 | ⭐⭐⭐⭐⭐ | 内置流处理和WebSocket支持 |
@@ -260,7 +260,7 @@ src/
 @Injectable()
 export class OpenAPIService {
   constructor(
-    @Inject('MCP_PARSER') private parser: typeof import('@mcp-swagger/parser')
+    @Inject('MCP_PARSER') private parser: typeof import('mcp-swagger-parser')
   ) {}
   
   async parseOpenAPI(source: InputSource): Promise<ParseResult> {

@@ -17,8 +17,8 @@
         "forceConsistentCasingInFileNames": true,
         "baseUrl": "./",
         "paths": {
-            "@mcp-swagger/parser": ["../mcp-swagger-parser/dist"],
-            "@mcp-swagger/parser/*": ["../mcp-swagger-parser/dist/*"]
+            "mcp-swagger-parser": ["../mcp-swagger-parser/dist"],
+            "mcp-swagger-parser/*": ["../mcp-swagger-parser/dist/*"]
         }
     },
     "include": [

@@ -629,9 +629,9 @@ export class MCPRegistry implements IMCPRegistry {
 ```typescript
 // src/core/Transformer.ts
 import { join } from 'path';
-import { parseFromFile, parseFromUrl, transformToMCPTools } from '@mcp-swagger/parser';
+import { parseFromFile, parseFromUrl, transformToMCPTools } from 'mcp-swagger-parser';
 import type { MCPTool, ValidationResult, TransformOptions } from '../types/core';
-import type { OpenAPISpec, ValidationError } from '@mcp-swagger/parser';
+import type { OpenAPISpec, ValidationError } from 'mcp-swagger-parser';
 
 export interface ITransformer {
   transformFromOpenAPI(spec: OpenAPISpec, options?: TransformOptions): Promise<MCPTool[]>;

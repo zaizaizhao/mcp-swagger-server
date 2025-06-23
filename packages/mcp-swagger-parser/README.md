@@ -1,4 +1,4 @@
-# @mcp-swagger/parser
+# mcp-swagger-parser
 
 > OpenAPI/Swagger specification parser for MCP projects
 
@@ -18,13 +18,13 @@ A TypeScript library for parsing, validating, and extracting information from Op
 ## 📦 Installation
 
 ```bash
-npm install @mcp-swagger/parser
+npm install mcp-swagger-parser
 ```
 
 ## 🚀 Quick Start
 
 ```typescript
-import { OpenApiParser } from '@mcp-swagger/parser';
+import { OpenApiParser } from 'mcp-swagger-parser';
 
 const parser = new OpenApiParser();
 

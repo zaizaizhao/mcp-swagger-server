@@ -45,7 +45,7 @@ interface ValidationResult {
  */
 async function canUseRealParser(): Promise<boolean> {
   try {
-    await import('@mcp-swagger/parser')
+    await import('mcp-swagger-parser')
     return !shouldUseMockMode()
   } catch {
     return false
@@ -66,7 +66,7 @@ export async function validateOpenAPISpec(source: InputSource): Promise<Validati
   }
 
   try {
-    const { parseFromUrl, parseFromFile, parseFromString } = await import('@mcp-swagger/parser')
+    const { parseFromUrl, parseFromFile, parseFromString } = await import('mcp-swagger-parser')
     
     let parseResult: any
 
@@ -134,7 +134,7 @@ export async function previewOpenAPISpec(source: InputSource): Promise<{
   }
 
   try {
-    const { parseFromUrl, parseFromFile, parseFromString } = await import('@mcp-swagger/parser')
+    const { parseFromUrl, parseFromFile, parseFromString } = await import('mcp-swagger-parser')
     
     let parseResult: any
 
@@ -223,7 +223,7 @@ export async function convertToMCP(
   const startTime = Date.now()
   
   try {
-    const { parseFromUrl, parseFromFile, parseFromString, transformToMCPTools } = await import('@mcp-swagger/parser')
+    const { parseFromUrl, parseFromFile, parseFromString, transformToMCPTools } = await import('mcp-swagger-parser')
     
     // 解析 OpenAPI 规范
     let parseResult: any

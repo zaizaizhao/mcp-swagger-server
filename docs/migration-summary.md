@@ -2,12 +2,12 @@
 
 ## 🎯 迁移目标
 
-将 `mcp-swagger-server` 从内置的 OpenAPI 解析逻辑迁移到使用新创建的 `@mcp-swagger/parser` 包，实现更好的模块化和代码复用。
+将 `mcp-swagger-server` 从内置的 OpenAPI 解析逻辑迁移到使用新创建的 `mcp-swagger-parser` 包，实现更好的模块化和代码复用。
 
 ## 📋 迁移完成的内容
 
 ### 1. 依赖更新
-- ✅ 在 `package.json` 中添加了 `@mcp-swagger/parser` 依赖
+- ✅ 在 `package.json` 中添加了 `mcp-swagger-parser` 依赖
 - ✅ 移除了对旧解析逻辑的直接依赖
 
 ### 2. 代码重构
@@ -45,8 +45,8 @@ export class OpenAPIToMCPTransformer {
 ### 迁移后
 ```typescript
 // 新的实现：使用专门的解析器包
-import { parseFromFile, transformToMCPTools } from '@mcp-swagger/parser';
-import type { MCPTool, ValidationError } from '@mcp-swagger/parser';
+import { parseFromFile, transformToMCPTools } from 'mcp-swagger-parser';
+import type { MCPTool, ValidationError } from 'mcp-swagger-parser';
 
 export async function transformOpenApiToMcpTools(
   swaggerFilePath?: string,
