@@ -1,8 +1,12 @@
-{
-  "name": "mcp-swagger-server",
+{  "name": "mcp-swagger-server",
   "version": "1.0.0",
   "description": "A Model Context Protocol (MCP) server for Swagger/OpenAPI documentation that transforms OpenAPI specifications into MCP format, enabling AI assistants to interact with REST APIs through standardized protocol.",
   "main": "dist/index.js",
+  "types": "dist/types/index.d.ts",
+  "bin": {
+    "mcp-swagger-server": "./dist/cli.js",
+    "mcp-swagger": "./dist/cli.js"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
@@ -49,7 +53,20 @@
   "bugs": {
     "url": "https://github.com/yourusername/mcp-swagger-server/issues"
   },
-  "homepage": "https://github.com/yourusername/mcp-swagger-server#readme",  "dependencies": {
+  "homepage": "https://github.com/yourusername/mcp-swagger-server#readme",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "files": [
+    "dist/**/*",
+    "!dist/**/*.map",
+    "README.md",
+    "ARCHITECTURE.md",
+    "IMPLEMENTATION_SUMMARY.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },  "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
     "@mcp-swagger/parser": "workspace:*",
     "axios": "^1.9.0",
