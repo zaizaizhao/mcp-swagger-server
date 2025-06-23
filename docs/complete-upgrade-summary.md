@@ -37,7 +37,7 @@ mcp-swagger-server/
 
 ## 📊 三大核心包升级详情
 
-### 1. 🆕 @mcp-swagger/parser - 专业解析器包
+### 1. 🆕 mcp-swagger-parser - 专业解析器包
 
 **创建目标**：提供业界最强的 OpenAPI 到 MCP 转换能力
 
@@ -73,7 +73,7 @@ src/
 **升级目标**：使用新解析器，提供更强大的 MCP 服务
 
 **主要改进**：
-- ✅ 完全使用新的 `@mcp-swagger/parser` 包
+- ✅ 完全使用新的 `mcp-swagger-parser` 包
 - ✅ 简化了 500+ 行解析逻辑为 50 行调用
 - ✅ 增强的错误处理和日志系统
 - ✅ 支持更多配置选项和自定义验证
@@ -121,7 +121,7 @@ export async function transformOpenApiToMcpTools(
 // 智能解析器切换
 async function canUseRealParser(): Promise<boolean> {
   try {
-    await import('@mcp-swagger/parser')
+    await import('mcp-swagger-parser')
     return !shouldUseMockMode()
   } catch {
     return false

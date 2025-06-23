@@ -20,7 +20,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
-    "@mcp-swagger/parser": "workspace:*",
+    "mcp-swagger-parser": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.12.0",
     "@nestjs/axios": "^3.0.0",
     "@nestjs/common": "^10.0.0",

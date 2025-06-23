@@ -32,7 +32,7 @@ pnpm add cors helmet compression
 pnpm add -D @types/cors @types/compression supertest
 
 # 安装现有项目依赖
-pnpm add @mcp-swagger/parser@workspace:*
+pnpm add mcp-swagger-parser@workspace:*
 ```
 
 ### 2. 项目结构创建 (3分钟)
@@ -544,7 +544,7 @@ curl http://localhost:3001/api/tools
 
 ### ✅ 集成验收
 - [ ] 与前端UI正常通信
-- [ ] 与@mcp-swagger/parser集成正常
+- [ ] 与mcp-swagger-parser集成正常
 - [ ] 与现有MCP服务器集成正常
 
 ### ✅ 错误处理验收

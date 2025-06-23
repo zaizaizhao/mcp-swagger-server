@@ -10,7 +10,7 @@
 
 **错误场景重现**：
 ```
-Error: Failed to resolve entry for package "@mcp-swagger/parser"
+Error: Failed to resolve entry for package "mcp-swagger-parser"
 ```
 
 **技术根因**：
@@ -39,7 +39,7 @@ class MonorepoBuildManager {
 ```
 
 **实现效果**：
-- ✅ 自动发现 3 个包：`@mcp-swagger/parser`、`mcp-swagger-server`、`mcp-swagger-ui`
+- ✅ 自动发现 3 个包：`mcp-swagger-parser`、`mcp-swagger-server`、`mcp-swagger-ui`
 - ✅ 正确构建顺序：`parser → server → ui`
 - ✅ 构建时间：总计 7.8 秒，并行优化
 
@@ -57,7 +57,7 @@ class DevEnvironmentManager {
 ```
 
 **实现效果**：
-- 🔨 构建依赖包：`@mcp-swagger/parser` (454ms) + `mcp-swagger-server` (561ms)
+- 🔨 构建依赖包：`mcp-swagger-parser` (454ms) + `mcp-swagger-server` (561ms)
 - 👀 启动 watch 模式：自动重编译
 - 🌐 前端服务器：http://localhost:3001
 - ⚙️ MCP 服务器：http://localhost:3322
@@ -168,7 +168,7 @@ packages:
 ```json
 // 依赖声明
 "dependencies": {
-  "@mcp-swagger/parser": "workspace:*"
+  "mcp-swagger-parser": "workspace:*"
 }
 ```
 
@@ -187,7 +187,7 @@ packages:
 
 ```
 📊 构建统计（实际测试）：
-├── @mcp-swagger/parser: 454ms
+├── mcp-swagger-parser: 454ms
 ├── mcp-swagger-server: 561ms
 └── mcp-swagger-ui: 5295ms
 总计：6.3 秒（包含并行优化）

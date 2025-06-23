@@ -5,8 +5,8 @@
         "moduleResolution": "node", 
         "baseUrl": "./",
         "paths": {
-            "@mcp-swagger/parser": ["./packages/mcp-swagger-parser/src"],
-            "@mcp-swagger/parser/*": ["./packages/mcp-swagger-parser/src/*"],
+            "mcp-swagger-parser": ["./packages/mcp-swagger-parser/src"],
+            "mcp-swagger-parser/*": ["./packages/mcp-swagger-parser/src/*"],
             "@/*": ["./packages/*"]
         },
         "esModuleInterop": true,

@@ -1,32 +1,45 @@
 {
-  "name": "@mcp-swagger/parser",
-  "version": "0.1.0",
-  "description": "OpenAPI/Swagger specification parser for MCP projects",
+  "name": "mcp-swagger-parser",
+  "version": "1.0.0",
+  "description": "Enterprise-grade OpenAPI/Swagger specification parser for Model Context Protocol (MCP) projects",
   "main": "dist/index.js",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "import": "./dist/index.js",
       "require": "./dist/index.js",
       "types": "./dist/index.d.ts"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
-    "dist",
+    "dist/**/*",
     "README.md",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "LICENSE"
   ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run build:cleanup",
+    "build:cleanup": "node -e \"const fs=require('fs'); const path=require('path'); const distPath='./dist'; if(fs.existsSync(distPath)) { const files=fs.readdirSync(distPath); files.forEach(file => { if(file.endsWith('.test.js') || file.endsWith('.test.d.ts') || file.endsWith('.spec.js') || file.endsWith('.spec.d.ts')) { fs.unlinkSync(path.join(distPath, file)); } }); }\"",
     "build:watch": "tsc --watch",
     "dev": "tsc --watch",
+    "prepack": "npm run build",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "type-check": "tsc --noEmit",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "docs": "typedoc src/index.ts --out docs --theme default"
   },
   "dependencies": {
     "@apidevtools/swagger-parser": "^10.1.0",
@@ -57,16 +70,39 @@
     "swagger",
     "parser",
     "mcp",
+    "model-context-protocol",
     "api",
     "specification",
     "rest",
-    "typescript"
+    "typescript",
+    "validator",
+    "yaml",
+    "json",
+    "api-parser",
+    "openapi-parser",
+    "swagger-parser",
+    "mcp-tools",
+    "ai-integration"
   ],
-  "author": "MCP Swagger Team",
+  "author": {
+    "name": "MCP Swagger Team",
+    "email": "17761978041@163.com",
+    "url": "https://github.com/zaizaizhao"
+  },
+  "contributors": [
+    {
+      "name": "ZhaoYaNan(ZTE)",
+      "email": "17761978041@163.com"
+    }
+  ],
   "license": "MIT",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/zaizaizhao"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/zaizaizhao/mcp-swagger-server.git",
+    "url": "git+https://github.com/zaizaizhao/mcp-swagger-server.git",
     "directory": "packages/mcp-swagger-parser"
   },
   "bugs": {

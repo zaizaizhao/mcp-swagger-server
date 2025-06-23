@@ -32,7 +32,7 @@ export class ParserService {
       this.logger.log(`Parsing OpenAPI spec from URL: ${url}`);
       
       // TODO: 使用mcp-swagger-parser
-      // const { parseFromUrl } = await import('@mcp-swagger/parser');
+      // const { parseFromUrl } = await import('mcp-swagger-parser');
       // return await parseFromUrl(url, options);
       
       // 临时模拟实现
@@ -66,7 +66,7 @@ export class ParserService {
       this.logger.log(`Parsing OpenAPI spec from file: ${filePath}`);
       
       // TODO: 使用mcp-swagger-parser
-      // const { parseFromFile } = await import('@mcp-swagger/parser');
+      // const { parseFromFile } = await import('mcp-swagger-parser');
       // return await parseFromFile(filePath, options);
       
       // 临时模拟实现
@@ -97,7 +97,7 @@ export class ParserService {
       this.logger.log('Parsing OpenAPI spec from string content');
       
       // TODO: 使用mcp-swagger-parser
-      // const { parseFromString } = await import('@mcp-swagger/parser');
+      // const { parseFromString } = await import('mcp-swagger-parser');
       // return await parseFromString(content, options);
       
       // 临时模拟实现
@@ -126,7 +126,7 @@ export class ParserService {
       this.logger.log('Validating OpenAPI specification');
       
       // TODO: 使用mcp-swagger-parser的验证功能
-      // const { validateSpec } = await import('@mcp-swagger/parser');
+      // const { validateSpec } = await import('mcp-swagger-parser');
       // return await validateSpec(spec);
       
       // 临时简单验证

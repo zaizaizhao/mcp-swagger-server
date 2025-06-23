@@ -5,13 +5,13 @@
 ### 安装
 
 ```bash
-npm install @mcp-swagger/parser
+npm install mcp-swagger-parser
 ```
 
 ### 基础使用
 
 ```typescript
-import { parseFromUrl, parseFromFile, parseFromString, transformToMCPTools } from '@mcp-swagger/parser';
+import { parseFromUrl, parseFromFile, parseFromString, transformToMCPTools } from 'mcp-swagger-parser';
 
 // 从 URL 解析
 const result = await parseFromUrl('https://api.example.com/swagger.json');
@@ -103,7 +103,7 @@ const tools = transformToMCPTools(result.spec, {
 主解析器类，提供更多控制选项。
 
 ```typescript
-import { OpenAPIParser } from '@mcp-swagger/parser';
+import { OpenAPIParser } from 'mcp-swagger-parser';
 
 const parser = new OpenAPIParser({
   validateSchema: true,
@@ -121,7 +121,7 @@ const result = await parser.parseFromUrl('https://api.example.com/swagger.json')
 OpenAPI 到 MCP 的转换器类。
 
 ```typescript
-import { OpenAPIToMCPTransformer } from '@mcp-swagger/parser';
+import { OpenAPIToMCPTransformer } from 'mcp-swagger-parser';
 
 const transformer = new OpenAPIToMCPTransformer(spec, {
   baseUrl: 'https://api.example.com',
@@ -255,7 +255,7 @@ try {
 ### 1. 基础 API 转换
 
 ```typescript
-import { parseFromUrl, transformToMCPTools } from '@mcp-swagger/parser';
+import { parseFromUrl, transformToMCPTools } from 'mcp-swagger-parser';
 
 async function convertPetstoreAPI() {
   try {
@@ -295,7 +295,7 @@ async function convertPetstoreAPI() {
 ### 2. 自定义验证规则
 
 ```typescript
-import { OpenAPIParser, ValidationRule } from '@mcp-swagger/parser';
+import { OpenAPIParser, ValidationRule } from 'mcp-swagger-parser';
 
 // 自定义验证规则：检查是否所有操作都有 operationId
 const requireOperationId: ValidationRule = {
@@ -337,7 +337,7 @@ const result = await parser.parseFromFile('./api.json');
 ### 3. 批量处理多个 API
 
 ```typescript
-import { parseFromUrl, transformToMCPTools } from '@mcp-swagger/parser';
+import { parseFromUrl, transformToMCPTools } from 'mcp-swagger-parser';
 
 async function processMultipleAPIs(apiUrls: string[]) {
   const results = [];
@@ -385,7 +385,7 @@ console.log(`成功处理 ${results.filter(r => r.success).length}/${results.len
 
 ```typescript
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp';
-import { parseFromFile, transformToMCPTools } from '@mcp-swagger/parser';
+import { parseFromFile, transformToMCPTools } from 'mcp-swagger-parser';
 
 async function setupMCPServer() {
   const server = new McpServer({

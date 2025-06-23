@@ -122,7 +122,7 @@ pnpm run diagnostic
 ```
 mcp-swagger-ui
     ↓ depends on
-@mcp-swagger/parser
+mcp-swagger-parser
     ↓ depends on
 External packages (axios, swagger-parser, etc.)
 ```
@@ -195,7 +195,7 @@ Error: EACCES: permission denied
 
 #### 2. 依赖解析失败
 ```
-Failed to resolve entry for package "@mcp-swagger/parser"
+Failed to resolve entry for package "mcp-swagger-parser"
 ```
 **解决方案**: 
 ```bash
@@ -204,7 +204,7 @@ pnpm run build:packages
 
 #### 3. 类型检查错误
 ```
-Cannot find module '@mcp-swagger/parser'
+Cannot find module 'mcp-swagger-parser'
 ```
 **解决方案**: 确保包已构建并生成类型定义文件
 

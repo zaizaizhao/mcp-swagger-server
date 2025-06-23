@@ -59,7 +59,7 @@
                           │ 核心库调用
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                核心库层 (@mcp-swagger/parser)               │
+│                核心库层 (mcp-swagger-parser)               │
 │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐           │
 │  │   解析器    │ │   验证器    │ │   转换器    │           │
 │  │  多格式解析 │ │  Schema校验 │ │  格式转换   │           │
@@ -223,7 +223,7 @@ export function createApp() {
 
 ```typescript
 // src/services/parser.service.ts
-import { parseFromUrl, parseFromFile, parseFromString } from '@mcp-swagger/parser';
+import { parseFromUrl, parseFromFile, parseFromString } from 'mcp-swagger-parser';
 import type { InputSource, ParseOptions, ParseResult } from '../types/api';
 
 export class ParserService {
@@ -664,7 +664,7 @@ wait
 ### 改造前 (当前架构)
 ```
 前端 (Vue 3)
-├── 直接引用 @mcp-swagger/parser
+├── 直接引用 mcp-swagger-parser
 ├── 浏览器中执行解析逻辑  ❌
 ├── 大量Node.js依赖打包  ❌ 
 └── 解析错误调试困难    ❌
@@ -698,4 +698,4 @@ wait
 3. **扩展能力**: 后端服务可独立扩展，支持更多客户端
 4. **用户体验**: 更快的加载速度和更稳定的解析性能
 
-这个方案充分利用了现有的 monorepo 架构和 @mcp-swagger/parser 核心库，是一个既务实又具有前瞻性的技术方案。
+这个方案充分利用了现有的 monorepo 架构和 mcp-swagger-parser 核心库，是一个既务实又具有前瞻性的技术方案。

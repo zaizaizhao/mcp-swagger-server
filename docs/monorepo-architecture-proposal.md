@@ -196,7 +196,7 @@ mcp-swagger-parser ← mcp-swagger-converter ← mcp-swagger-server
 ### 1. **生态系统扩展**
 ```typescript
 // 其他开发者可以轻松扩展
-import { BaseParser } from '@mcp-swagger/parser';
+import { BaseParser } from 'mcp-swagger-parser';
 
 class CustomApiParser extends BaseParser {
   // 自定义解析逻辑
@@ -215,13 +215,13 @@ const converter = new McpConverter()
 ### 3. **多环境支持**
 ```typescript
 // Node.js 环境
-import { OpenApiParser } from '@mcp-swagger/parser/node';
+import { OpenApiParser } from 'mcp-swagger-parser/node';
 
 // 浏览器环境
-import { OpenApiParser } from '@mcp-swagger/parser/browser';
+import { OpenApiParser } from 'mcp-swagger-parser/browser';
 
 // Deno 环境
-import { OpenApiParser } from '@mcp-swagger/parser/deno';
+import { OpenApiParser } from 'mcp-swagger-parser/deno';
 ```
 
 ## 🎯 结论

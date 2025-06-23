@@ -56,7 +56,7 @@
 
 ### ADR-002: 抽离 OpenAPI 解析库
 ```
-决策: 将解析逻辑抽离为独立的 @mcp-swagger/parser 包
+决策: 将解析逻辑抽离为独立的 mcp-swagger-parser 包
 原因: 关注点分离，提高可测试性和复用性
 影响: 短期增加重构工作量，长期降低维护成本
 状态: ✅ 批准
@@ -113,7 +113,7 @@
 @mcp-swagger/ui ────────┐
                         │
                         ▼
-@mcp-swagger/server ────► @mcp-swagger/parser
+@mcp-swagger/server ────► mcp-swagger-parser
                         │
                         ▼
 @mcp-swagger/cli ───────┘

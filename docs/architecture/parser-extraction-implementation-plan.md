@@ -272,7 +272,7 @@ touch packages/mcp-swagger-parser/{package.json,tsconfig.json,rollup.config.js,R
 ```json
 // packages/mcp-swagger-parser/package.json
 {
-  "name": "@mcp-swagger/parser",
+  "name": "mcp-swagger-parser",
   "version": "0.1.0",
   "description": "OpenAPI/Swagger specification parser for MCP projects",
   "main": "dist/index.js",
@@ -505,7 +505,7 @@ export interface ParseMetadata {
 // packages/mcp-swagger-server/package.json 添加依赖
 {
   "dependencies": {
-    "@mcp-swagger/parser": "workspace:^0.1.0",
+    "mcp-swagger-parser": "workspace:^0.1.0",
     // 移除原有的解析相关依赖
     // "@apidevtools/swagger-parser": "^10.1.0", // 删除
     // "js-yaml": "^4.1.0", // 删除
@@ -519,7 +519,7 @@ export interface ParseMetadata {
 ```typescript
 // packages/mcp-swagger-server/src/converters/mcp-converter.ts
 
-import { OpenApiParser, type ParsedApiSpec, type ApiEndpoint } from '@mcp-swagger/parser';
+import { OpenApiParser, type ParsedApiSpec, type ApiEndpoint } from 'mcp-swagger-parser';
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import type { ConvertConfig, McpConfig } from '../types';
 
@@ -589,7 +589,7 @@ export class McpConverter {
 // packages/mcp-swagger-server/src/server.ts
 
 import { McpConverter } from './converters/mcp-converter.js';
-import { OpenApiParser } from '@mcp-swagger/parser';
+import { OpenApiParser } from 'mcp-swagger-parser';
 
 export class McpSwaggerServer {
   private converter: McpConverter;
@@ -740,13 +740,13 @@ describe('MCP Conversion Integration', () => {
 ## Installation
 
 ```bash
-npm install @mcp-swagger/parser
+npm install mcp-swagger-parser
 ```
 
 ## Quick Start
 
 ```typescript
-import { OpenApiParser } from '@mcp-swagger/parser';
+import { OpenApiParser } from 'mcp-swagger-parser';
 
 const parser = new OpenApiParser();
 
@@ -797,7 +797,7 @@ new OpenApiParser(options?: ParserOptions)
 ```typescript
 // packages/mcp-swagger-parser/docs/examples/basic-usage.ts
 
-import { OpenApiParser } from '@mcp-swagger/parser';
+import { OpenApiParser } from 'mcp-swagger-parser';
 
 async function basicExample() {
   const parser = new OpenApiParser({

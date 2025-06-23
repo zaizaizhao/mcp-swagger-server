@@ -1,5 +1,6 @@
-{  "name": "mcp-swagger-server",
-  "version": "1.0.0",
+{
+  "name": "mcp-swagger-server",
+  "version": "1.0.2",
   "description": "A Model Context Protocol (MCP) server for Swagger/OpenAPI documentation that transforms OpenAPI specifications into MCP format, enabling AI assistants to interact with REST APIs through standardized protocol.",
   "main": "dist/index.js",
   "types": "dist/types/index.d.ts",
@@ -48,12 +49,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourusername/mcp-swagger-server.git"
+    "url": "git+https://github.com/zaizaizhao/mcp-swagger-server.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/mcp-swagger-server/issues"
+    "url": "https://github.com/zaizaizhao/mcp-swagger-server/issues"
   },
-  "homepage": "https://github.com/yourusername/mcp-swagger-server#readme",
+  "homepage": "https://github.com/zaizaizhao/mcp-swagger-server#readme",
   "engines": {
     "node": ">=16.0.0"
   },
@@ -66,13 +67,15 @@
   ],
   "publishConfig": {
     "access": "public"
-  },  "dependencies": {
+  },
+  "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
-    "@mcp-swagger/parser": "workspace:*",
     "axios": "^1.9.0",
+    "chalk": "^5.4.1",
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "js-yaml": "^4.1.0",
+    "mcp-swagger-parser": "1.0.0",
     "uuid": "^10.0.0",
     "zod": "^3.25.28",
     "zod-to-json-schema": "^3.24.5"

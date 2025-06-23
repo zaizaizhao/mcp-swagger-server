@@ -137,7 +137,7 @@ export interface ParsedApiSpec {
 **依赖关系**:
 ```typescript
 // 依赖解析库
-import { OpenApiParser } from '@mcp-swagger/parser';
+import { OpenApiParser } from 'mcp-swagger-parser';
 
 export class McpSwaggerServer {
   constructor(private parser: OpenApiParser) {}
@@ -228,7 +228,7 @@ Input → [mcp-swagger-parser] → ParsedSpec → [mcp-swagger-server] → McpCo
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
-    "dev:parser": "pnpm --filter @mcp-swagger/parser dev",
+    "dev:parser": "pnpm --filter mcp-swagger-parser dev",
     "dev:server": "pnpm --filter @mcp-swagger/server dev",
     "dev:ui": "pnpm --filter @mcp-swagger/ui dev"
   }
@@ -239,7 +239,7 @@ Input → [mcp-swagger-parser] → ParsedSpec → [mcp-swagger-server] → McpCo
 ```json
 // packages/mcp-swagger-parser/package.json
 {
-  "name": "@mcp-swagger/parser",
+  "name": "mcp-swagger-parser",
   "version": "1.0.0",
   "exports": {
     ".": {
@@ -255,7 +255,7 @@ Input → [mcp-swagger-parser] → ParsedSpec → [mcp-swagger-server] → McpCo
   "name": "@mcp-swagger/server",
   "version": "1.0.0",
   "dependencies": {
-    "@mcp-swagger/parser": "workspace:^1.0.0"
+    "mcp-swagger-parser": "workspace:^1.0.0"
   }
 }
 ```
@@ -409,10 +409,10 @@ describe('Complete Workflow', () => {
 // 在过渡期保留旧接口
 export class LegacyOpenApiParser {
   /**
-   * @deprecated Use @mcp-swagger/parser instead
+   * @deprecated Use mcp-swagger-parser instead
    */
   static async parseOpenApi(source: any): Promise<any> {
-    console.warn('This method is deprecated. Please use @mcp-swagger/parser');
+    console.warn('This method is deprecated. Please use mcp-swagger-parser');
     
     const parser = new OpenApiParser();
     return parser.parseFromUrl(source.url);

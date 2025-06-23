@@ -1,7 +1,7 @@
 import { join } from 'path';
-import { parseFromFile, parseFromUrl, transformToMCPTools } from '@mcp-swagger/parser';
-import type { MCPTool as ParserMCPTool, TransformerOptions } from '@mcp-swagger/parser';
-import type { OpenAPISpec, ValidationError as ParserValidationError } from '@mcp-swagger/parser';
+import { parseFromFile, parseFromUrl, transformToMCPTools } from 'mcp-swagger-parser';
+import type { MCPTool as ParserMCPTool, TransformerOptions } from 'mcp-swagger-parser';
+import type { OpenAPISpec, ValidationError as ParserValidationError } from 'mcp-swagger-parser';
 import type { MCPTool, ValidationResult, TransformOptions, ITransformer, ValidationError, ValidationWarning } from '../types/core';
 
 export class Transformer implements ITransformer {
