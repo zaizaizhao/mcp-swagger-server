@@ -1,5 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
-import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse";
 import { type RequestHandlers, createBaseHttpServer } from "../tools/httpServer";
 import { IncomingMessage, ServerResponse } from "http";
 
