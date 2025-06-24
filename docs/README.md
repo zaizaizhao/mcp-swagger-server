@@ -6,6 +6,32 @@
 
 ## 📖 文档列表
 
+### 0. [Node.js 模块系统详解](./nodejs-module-systems-guide.md) 🆕
+**主要内容**：
+- 📦 CommonJS vs ES Modules 详细对比
+- 🔧 chalk 等包的 ESM 迁移问题解决
+- 🚀 CLI 工具的模块系统最佳实践
+- 🛠️ 项目迁移策略和工具推荐
+
+**适合人员**：所有开发者，特别是遇到模块导入错误的开发者
+
+### 0.1 [ESM vs CommonJS 快速参考](./esm-commonjs-quick-reference.md) 🆕
+**主要内容**：
+- ⚡ 快速解决 `ERR_REQUIRE_ESM` 错误
+- 📋 常见解决方案对比
+- 🔍 包模块类型检查方法
+
+**适合人员**：需要快速解决问题的开发者
+
+### 0.2 [为什么项目没有设置 "type": "module"](./why-no-type-module.md) 🆕
+**主要内容**：
+- 🎯 项目模块系统设计决策分析
+- 🔧 CommonJS vs ESM 的选择理由
+- 📦 CLI 工具的特殊考虑
+- 🏗️ TypeScript 编译策略解释
+
+**适合人员**：对项目架构感兴趣的开发者，想了解模块系统选择的技术人员
+
 ### 1. [技术文档](./mcp-swagger-ui-technical-documentation.md)
 **主要内容**：
 - 🏗️ 项目架构和技术栈详解
