@@ -1,11 +1,11 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import {
     type EventStore,
     StreamableHTTPServerTransport,
-  } from "@modelcontextprotocol/sdk/server/streamableHttp";
+  } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { InMemoryEventStore } from "../tools/InMemoryEventStore";
 import { randomUUID } from "node:crypto";
-import { isInitializeRequest } from "@modelcontextprotocol/sdk/types";
+import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import type { IncomingMessage, ServerResponse, Server } from "node:http";
 import { createBaseHttpServer, RequestHandlers } from "../tools/httpServer";
 import { getBody } from "../tools/getBody";
