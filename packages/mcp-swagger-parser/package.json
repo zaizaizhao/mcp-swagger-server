@@ -1,6 +1,6 @@
 {
   "name": "mcp-swagger-parser",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Enterprise-grade OpenAPI/Swagger specification parser for Model Context Protocol (MCP) projects",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -52,6 +52,7 @@
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-typescript": "^11.1.6",
+    "@types/jest": "^29.5.14",
     "@types/js-yaml": "^4.0.5",
     "@types/node": "^20.9.0",
     "eslint": "^8.53.0",

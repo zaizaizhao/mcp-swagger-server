@@ -160,7 +160,7 @@ function showHelp() {
 
   console.log(CliDesign.section('📞 支持'));
   console.log('  ' + CliDesign.brand.muted('GitHub: ') + CliDesign.brand.info('https://github.com/zaizaizhao/mcp-swagger-server'));
-  console.log('  ' + CliDesign.brand.muted('文档: ') + CliDesign.brand.info('https://github.com/zaizaizhao/mcp-swagger-server'));
+  console.log('  ' + CliDesign.brand.muted('文档: ') + CliDesign.brand.info('https://github.com/zaizaizhao/mcp-swagger-server#readme'));
   
   console.log('\n' + CliDesign.separator('═', 60));
   console.log(CliDesign.brand.primary.bold('  感谢使用 MCP Swagger Server！'));

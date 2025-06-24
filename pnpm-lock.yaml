@@ -229,6 +229,9 @@ importers:
       '@rollup/plugin-typescript':
         specifier: ^11.1.6
         version: 11.1.6(rollup@4.44.0)(tslib@2.8.1)(typescript@5.8.3)
+      '@types/jest':
+        specifier: ^29.5.14
+        version: 29.5.14
       '@types/js-yaml':
         specifier: ^4.0.5
         version: 4.0.9
