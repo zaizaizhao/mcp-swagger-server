@@ -145,7 +145,7 @@ export class MCPRegistry implements IMCPRegistry {
     console.log(`📦 Tool binding completed for server ${serverId}:`);
     console.log(`  ✅ Success: ${successCount} tools`);
     console.log(`  ❌ Failed: ${errorCount} tools`);
-    console.log(`  � Total: ${tools.length} tools`);
+    console.log(`  📊 Total: ${tools.length} tools`);
   }
 
   async unbindToolsFromServer(serverId: string, toolIds: string[]): Promise<void> {
