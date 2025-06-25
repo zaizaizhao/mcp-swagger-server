@@ -55,9 +55,43 @@ export class OpenAPIToMCPTransformer {
    */
   private getDefaultBaseUrl(): string {
     if (this.spec.servers && this.spec.servers.length > 0) {
-      return this.spec.servers[0].url;
+      const serverUrl = this.spec.servers[0].url;
+      console.log(`Using default base URL from OpenAPI spec: ${serverUrl}`);
+      
+      // 处理相对路径和格式化 URL
+      return this.normalizeBaseUrl(serverUrl);
     }
+    console.log('No servers found in OpenAPI spec, using default: http://localhost');
     return 'http://localhost';
+  }
+
+  /**
+   * 标准化 Base URL
+   */
+  private normalizeBaseUrl(url: string): string {
+    if (!url) {
+      return 'http://localhost';
+    }
+
+    // 去除末尾的斜杠
+    url = url.replace(/\/+$/, '');
+    
+    // 如果是相对路径，添加默认协议
+    if (url.startsWith('/')) {
+      return `http://localhost${url}`;
+    }
+    
+    // 如果没有协议，添加 http://
+    if (!url.match(/^https?:\/\//)) {
+      // 检查是否可能是域名格式
+      if (url.includes('.') || url.includes('localhost') || url.includes('127.0.0.1')) {
+        return `http://${url}`;
+      }
+      // 否则当作路径处理
+      return `http://localhost/${url.replace(/^\/+/, '')}`;
+    }
+    
+    return url;
   }
 
   /**
@@ -284,15 +318,22 @@ export class OpenAPIToMCPTransformer {
    * 构建带参数的完整 URL
    */
   private buildUrlWithParams(path: string, args: any, operation: OperationObject): { url: string, queryParams: Record<string, any> } {
-    let url = this.options.baseUrl + this.options.pathPrefix + path;
+    // 构建基础 URL
+    let url = this.buildBaseUrl(path);
     const queryParams: Record<string, any> = {};
+    
+    console.log(`Building URL - Base: ${this.options.baseUrl}, Prefix: ${this.options.pathPrefix}, Path: ${path}`);
+    console.log(`Initial URL: ${url}`);
     
     // 处理路径参数
     url = url.replace(/{([^}]+)}/g, (match, paramName) => {
       const value = args[paramName];
       if (value !== undefined) {
-        return encodeURIComponent(String(value));
+        const encodedValue = encodeURIComponent(String(value));
+        console.log(`Replacing path parameter {${paramName}} with: ${encodedValue}`);
+        return encodedValue;
       }
+      console.warn(`Path parameter {${paramName}} not found in args:`, Object.keys(args));
       return match;
     });
 
@@ -303,12 +344,32 @@ export class OpenAPIToMCPTransformer {
           const value = args[param.name];
           if (value !== undefined) {
             queryParams[param.name] = value;
+            console.log(`Added query parameter: ${param.name} = ${value}`);
           }
         }
       }
     }
 
+    console.log(`Final URL: ${url}, Query params:`, queryParams);
     return { url, queryParams };
+  }
+
+  /**
+   * 构建基础 URL（处理 baseUrl + pathPrefix + path 的拼接）
+   */
+  private buildBaseUrl(path: string): string {
+    const baseUrl = this.options.baseUrl;
+    const pathPrefix = this.options.pathPrefix;
+    
+    // 标准化各个部分
+    const normalizedBase = baseUrl.replace(/\/+$/, ''); // 移除末尾斜杠
+    const normalizedPrefix = pathPrefix ? `/${pathPrefix.replace(/^\/+|\/+$/g, '')}` : ''; // 标准化前缀
+    const normalizedPath = `/${path.replace(/^\/+/, '')}`; // 确保路径以斜杠开头
+    
+    const fullUrl = normalizedBase + normalizedPrefix + normalizedPath;
+    
+    // 最后清理多余的斜杠（但保留协议后的 //）
+    return fullUrl.replace(/([^:]\/)\/+/g, '$1');
   }
 
   /**
