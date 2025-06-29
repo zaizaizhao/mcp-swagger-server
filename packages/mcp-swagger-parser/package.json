@@ -1,6 +1,6 @@
 {
   "name": "mcp-swagger-parser",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "description": "Enterprise-grade OpenAPI/Swagger specification parser for Model Context Protocol (MCP) projects",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -40,9 +40,9 @@
     "type-check": "tsc --noEmit",
     "clean": "rimraf dist",
     "docs": "typedoc src/index.ts --out docs --theme default"
-  },
+  },  
   "dependencies": {
-    "@apidevtools/swagger-parser": "^10.1.0",
+    "@apidevtools/swagger-parser": "=10.0.3",
     "axios": "^1.6.0",
     "js-yaml": "^4.1.0",
     "zod": "^3.25.28"
@@ -87,13 +87,13 @@
   ],
   "author": {
     "name": "MCP Swagger Team",
-    "email": "17761978041@163.com",
+    "email": "17761978041",
     "url": "https://github.com/zaizaizhao"
   },
   "contributors": [
     {
       "name": "ZhaoYaNan(ZTE)",
-      "email": "17761978041@163.com"
+      "email": "17761978041"
     }
   ],
   "license": "MIT",

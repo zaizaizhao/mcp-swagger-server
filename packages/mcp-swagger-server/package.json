@@ -1,6 +1,6 @@
 {
   "name": "mcp-swagger-server",
-  "version": "1.0.6",
+  "version": "1.0.8",
   "description": "A Model Context Protocol (MCP) server for Swagger/OpenAPI documentation that transforms OpenAPI specifications into MCP format, enabling AI assistants to interact with REST APIs through standardized protocol.",
   "main": "dist/index.js",
   "types": "dist/types/index.d.ts",
@@ -67,14 +67,16 @@
   ],
   "publishConfig": {
     "access": "public"
-  },  "dependencies": {
+  },    
+  "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
     "axios": "^1.9.0",
     "chalk": "^4.1.2",
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "js-yaml": "^4.1.0",
-    "mcp-swagger-parser": "1.0.2",
+    "mcp-swagger-parser": "1.0.4",
+    "tslib": "^2.8.1",
     "uuid": "^10.0.0",
     "zod": "^3.25.28",
     "zod-to-json-schema": "^3.24.5"

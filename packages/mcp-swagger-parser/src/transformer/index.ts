@@ -1,9 +1,68 @@
 import { OpenAPISpec, OperationObject, ParameterObject, RequestBodyObject, SchemaObject, ReferenceObject } from '../types/index';
-import { MCPTool, MCPToolResponse, TransformerOptions } from './types';
+import { MCPTool, MCPToolResponse, TransformerOptions, TextContent, ImageContent, AudioContent, ResourceLink, EmbeddedResource, ContentBlock } from './types';
 import axios, { AxiosResponse, AxiosError } from 'axios';
 
 // Re-export types
-export type { MCPTool, MCPToolResponse, TransformerOptions } from './types';
+export type { MCPTool, MCPToolResponse, TransformerOptions, ContentBlock, TextContent, ImageContent, AudioContent, ResourceLink, EmbeddedResource } from './types';
+
+/**
+ * 辅助函数：创建文本内容块
+ */
+function createTextContent(text: string, meta?: { [key: string]: unknown }): TextContent {
+  const content: TextContent = {
+    type: 'text',
+    text
+  };
+  if (meta) {
+    content._meta = meta;
+  }
+  return content;
+}
+
+/**
+ * 辅助函数：创建图像内容块
+ */
+function createImageContent(data: string, mimeType: string, meta?: { [key: string]: unknown }): ImageContent {
+  const content: ImageContent = {
+    type: 'image',
+    data,
+    mimeType
+  };
+  if (meta) {
+    content._meta = meta;
+  }
+  return content;
+}
+
+/**
+ * 辅助函数：创建音频内容块
+ */
+function createAudioContent(data: string, mimeType: string, meta?: { [key: string]: unknown }): AudioContent {
+  const content: AudioContent = {
+    type: 'audio',
+    data,
+    mimeType
+  };
+  if (meta) {
+    content._meta = meta;
+  }
+  return content;
+}
+
+/**
+ * 辅助函数：创建资源链接内容块
+ */
+function createResourceLink(uri: string, name?: string, description?: string, mimeType?: string, meta?: { [key: string]: unknown }): ResourceLink {
+  const content: ResourceLink = {
+    type: 'resource_link',
+    uri
+  };
+  if (name) content.name = name;
+  if (description) content.description = description;
+  if (mimeType) content.mimeType = mimeType;
+  if (meta) content._meta = meta;
+  return content;
+}
 
 /**
  * OpenAPI to MCP Tools Transformer
@@ -260,13 +319,17 @@ export class OpenAPIToMCPTransformer {
 
         // Default HTTP request handler
         return await this.executeHttpRequest(method, path, args, operation);
-      } catch (error) {
-        console.error(`Error executing ${method.toUpperCase()} ${path}:`, error);
+      } catch (error) {        console.error(`Error executing ${method.toUpperCase()} ${path}:`, error);
         return {
-          content: [{
-            type: 'text',
-            text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
-          }],
+          content: [createTextContent(
+            `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            {
+              errorType: 'execution_error',
+              method: method.toUpperCase(),
+              path,
+              timestamp: new Date().toISOString()
+            }
+          )],
           isError: true
         };
       }
@@ -463,13 +526,13 @@ export class OpenAPIToMCPTransformer {
       '',
       'Response:',
       responseText
-    ].join('\n');
-
-    const mcpResponse: MCPToolResponse = {
-      content: [{
-        type: 'text',
-        text: fullResponseText
-      }],
+    ].join('\n');    const mcpResponse: MCPToolResponse = {
+      content: [createTextContent(fullResponseText, { 
+        httpStatus: statusCode,
+        method: method.toUpperCase(),
+        url,
+        timestamp: new Date().toISOString()
+      })],
       isError: !isSuccess
     };
 
@@ -540,13 +603,13 @@ export class OpenAPIToMCPTransformer {
         'Details:',
         String(error)
       ].join('\n');
-    }
-
-    return {
-      content: [{
-        type: 'text',
-        text: errorMessage
-      }],
+    }    return {
+      content: [createTextContent(errorMessage, {
+        errorType: 'request_error',
+        method: method.toUpperCase(),
+        path,
+        timestamp: new Date().toISOString()
+      })],
       isError: true
     };
   }
