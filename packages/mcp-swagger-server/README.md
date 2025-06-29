@@ -1,69 +1,67 @@
-# MCP Swagger Server
+# MCP Swagger Server 🚀
 
-> 🚀 Transform any OpenAPI/Swagger specification into MCP (Model Context Protocol) format, enabling AI assistants to seamlessly interact with REST APIs.
+<div align="center">
 
 [![NPM Version](https://img.shields.io/npm/v/mcp-swagger-server.svg)](https://www.npmjs.com/package/mcp-swagger-server)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5+-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-16+-green.svg)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## 🎯 What is MCP Swagger Server?
+**将任意 OpenAPI/Swagger 规范转换为 Model Context Protocol (MCP) 工具的强大服务器**
 
-MCP Swagger Server is a powerful CLI tool and library that converts OpenAPI/Swagger specifications into Model Context Protocol (MCP) format. This enables AI assistants like Claude, ChatGPT, and others to understand and interact with REST APIs through a standardized protocol.
+零配置，一键将您的 REST API 转换为 AI 助手可调用的 MCP 工具
 
-## ⚡ Quick Start
+[📖 English Documentation](README_EN.md) • [🔗 GitHub 项目地址](https://github.com/zaizaizhao/mcp-swagger-server)
 
-### Global Installation
+</div>
+
+---
+
+## 🎯 什么是 MCP Swagger Server？
+
+MCP Swagger Server 是一个专为 AI 时代设计的工具，它能够将任何符合 OpenAPI/Swagger 规范的 REST API 自动转换为 Model Context Protocol (MCP) 格式，让 AI 助手能够理解和调用您的 API。
+
+### 🌟 核心优势
+
+- **🔄 零配置转换**: 提供 OpenAPI 规范 URL 或文件，立即获得可用的 MCP 工具
+- **🎯 AI 原生设计**: 专为 Claude、ChatGPT 等大语言模型优化
+- **🚀 开箱即用**: 支持命令行、编程接口和 MCP 客户端集成
+- **🔌 多传输协议**: 支持 HTTP、WebSocket、SSE 和 Stdio 多种传输方式
+- **⚡ 高性能**: 基于 TypeScript 构建，提供完整的类型安全
+
+## 🚀 快速开始
+
+### 📦 安装
 
 ```bash
+# 使用 npm
 npm install -g mcp-swagger-server
+
+# 使用 yarn
+yarn global add mcp-swagger-server
+
+# 使用 pnpm
+pnpm add -g mcp-swagger-server
 ```
 
-### Basic Usage
+### ⚡ 立即使用
+
+#### 1. 命令行启动
 
 ```bash
-# Start a streamable MCP server from GitHub API
-mcp-swagger-server --transport streamable --port 3322 --openapi https://api.github.com/openapi.json
+# 使用 Swagger Petstore API (推荐用于测试，OpenAPI 3.0)
+mcp-swagger-server --openapi https://petstore3.swagger.io/api/v3/openapi.json --transport streamable --port 3322
 
-# Start in STDIO mode (perfect for AI clients)
-mcp-swagger-server --transport stdio --openapi https://petstore.swagger.io/v2/swagger.json
+# 使用 GitHub API (如果可用)
+mcp-swagger-server --openapi https://api.github.com/openapi.json --transport sse --port 3323
 
-# Monitor local OpenAPI file changes
-mcp-swagger-server --transport http --openapi ./my-api.yaml --watch
+# 使用本地 OpenAPI 文件
+mcp-swagger-server --openapi ./api-spec.json --transport stdio
 ```
 
-## 🔧 Command Line Options
+#### 2. MCP 客户端配置
 
-```bash
-Usage: mcp-swagger-server [options]
-
-Options:
-  -t, --transport <type>     Transport protocol (stdio|http|sse|streamable) [default: stdio]
-  -p, --port <port>          Server port [default: 3322]
-  -e, --endpoint <url>       Custom endpoint URL
-  -o, --openapi <source>     OpenAPI specification source (URL or file path)
-  -w, --watch               Watch OpenAPI file changes and auto-reload
-  -m, --managed             Managed mode (process management)
-      --auto-restart        Auto-restart on failure
-      --max-retries <num>   Max retry attempts [default: 5]
-      --retry-delay <ms>    Retry delay in milliseconds [default: 5000]
-  -h, --help                Show help information
-```
-
-## 🌟 Key Features
-
-- **🔄 Zero Configuration**: Paste your OpenAPI spec URL and get MCP tools instantly
-- **🚀 Multiple Transport Protocols**: HTTP, WebSocket, SSE, and STDIO support
-- **👁️ File Watching**: Automatic reload when OpenAPI specifications change
-- **🔧 Process Management**: Built-in auto-restart and error recovery
-- **🎯 AI-Native**: Designed specifically for AI assistant integration
-- **📡 Remote & Local**: Supports both URL and local file OpenAPI sources
-
-## 🔌 Integration Examples
-
-### Claude Desktop Integration
-
-Add to your Claude Desktop configuration:
+在您的 MCP 客户端配置文件中添加：
 
 ```json
 {
@@ -71,129 +69,220 @@ Add to your Claude Desktop configuration:
     "swagger-api": {
       "command": "mcp-swagger-server",
       "args": [
-        "--transport", "stdio",
-        "--openapi", "https://api.github.com/openapi.json"
+        "--openapi",
+        "https://petstore3.swagger.io/api/v3/openapi.json",
+        "--transport",
+        "stdio"
       ]
     }
   }
 }
 ```
 
-### Programmatic Usage
+#### 3. 编程式调用
 
 ```javascript
-const { createMcpServer, runStreamableServer } = require('mcp-swagger-server');
+import { createMcpServer } from 'mcp-swagger-server';
 
-async function startServer() {
-  const server = await createMcpServer('https://api.github.com/openapi.json');
-  await runStreamableServer(server, { port: 3322 });
-  console.log('🚀 MCP Server running on port 3322');
-}
+const server = await createMcpServer({
+  openapi: 'https://petstore3.swagger.io/api/v3/openapi.json',
+  transport: 'streamable',
+  port: 3322
+});
 
-startServer();
+await server.start();
 ```
 
-## 🎯 Use Cases
+## 🛠️ 主要功能
 
-### AI Assistant API Integration
-Enable your AI assistant to interact with internal APIs:
-```bash
-mcp-swagger-server --transport stdio --openapi https://internal-api.company.com/openapi.json
-```
+### 📋 支持的 OpenAPI 格式
 
-### API Development & Testing
-Quick API testing and validation:
-```bash
-mcp-swagger-server --transport http --openapi ./dev-api.yaml --watch
-```
+- **OpenAPI 3.x**: 完整支持最新规范 ✅
+- **Swagger 2.0**: 需要先转换为 OpenAPI 3.x 格式 ⚠️
+- **多种输入**: JSON、YAML、URL、本地文件
+- **实时更新**: 支持 `--watch` 模式自动重载
 
-### Microservices Integration
-Connect multiple services through MCP:
-```bash
-# Service A
-mcp-swagger-server --transport streamable --port 3001 --openapi https://service-a.com/openapi.json
+> **⚠️ 重要提示**: 本工具目前主要支持 OpenAPI 3.x 规范。如果您的 API 使用 Swagger 2.0 格式，建议先使用 [Swagger Editor](https://editor.swagger.io/) 或 [swagger2openapi](https://www.npmjs.com/package/swagger2openapi) 工具将其转换为 OpenAPI 3.x 格式。
 
-# Service B
-mcp-swagger-server --transport streamable --port 3002 --openapi https://service-b.com/openapi.json
-```
+### 🔌 传输协议支持
 
-## 📊 Supported Transport Protocols
+| 协议 | 说明 | 使用场景 |
+|------|------|----------|
+| `stdio` | 标准输入输出 | MCP 客户端集成 |
+| `streamable` | WebSocket 流式传输 | 实时交互应用 |
+| `sse` | Server-Sent Events | Web 应用集成 |
+| `http` | HTTP REST API | 传统 Web 服务 |
 
-| Protocol | Description | Best For |
-|----------|-------------|----------|
-| `stdio` | Standard Input/Output | AI clients (Claude, ChatGPT) |
-| `streamable` | WebSocket-like streaming | Real-time applications |
-| `http` | HTTP REST endpoints | Web applications |
-| `sse` | Server-Sent Events | Web frontends |
-
-## 🌍 Environment Variables
+### 🎛️ 命令行选项
 
 ```bash
-# Set default configuration
-export MCP_PORT=3322
-export MCP_TRANSPORT=streamable
-export MCP_OPENAPI_URL=https://api.github.com/openapi.json
-export MCP_AUTO_RELOAD=true
+mcp-swagger-server [选项]
 
-# Run with defaults
-mcp-swagger-server
+选项:
+  --openapi <url|file>    OpenAPI 规范 URL 或文件路径 (必需)
+  --transport <type>      传输类型: stdio|streamable|sse|http (默认: stdio)
+  --port <number>         服务器端口 (默认: 3322)
+  --host <string>         服务器主机 (默认: localhost)
+  --watch                 监听文件变化并自动重载
+  --verbose               显示详细日志
+  --help                  显示帮助信息
 ```
 
-## 🔧 Development
+## 📚 使用示例
+
+### 🐙 Swagger Petstore API 集成
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/mcp-swagger-server.git
-
-# Install dependencies
-cd mcp-swagger-server
-pnpm install
-
-# Build the project
-pnpm run build
-
-# Run development server
-pnpm run dev
+# 启动 Swagger Petstore API MCP 服务器
+mcp-swagger-server \
+  --openapi https://petstore3.swagger.io/api/v3/openapi.json \
+  --transport streamable \
+  --port 3322 \
+  --verbose
 ```
 
-## 🚨 Troubleshooting
+转换后，AI 助手将能够调用 Petstore API 的各种功能，如：
+- 管理宠物信息（添加、更新、删除）
+- 查询宠物状态和标签
+- 处理宠物商店订单
+- 管理用户账户
 
-### Common Issues
+### 🏪 电商 API 集成
 
-**Port already in use:**
 ```bash
-# Check port usage
-netstat -an | grep :3322
-
-# Use different port
-mcp-swagger-server --port 3323
+# 启动电商 API MCP 服务器
+mcp-swagger-server \
+  --openapi https://your-ecommerce-api.com/openapi.json \
+  --transport sse \
+  --port 3323
 ```
 
-**OpenAPI parsing errors:**
+### 📊 数据分析 API
+
 ```bash
-# Validate OpenAPI spec
-curl -I https://api.github.com/openapi.json
+# 启动数据分析 API MCP 服务器
+mcp-swagger-server \
+  --openapi ./analytics-api-spec.yaml \
+  --transport stdio \
+  --watch
+```
+## 🏗️ 架构设计
 
-# Check verbose output
-mcp-swagger-server --openapi ./api.yaml --verbose
+```
+MCP Swagger Server
+├── 📥 输入层
+│   ├── OpenAPI/Swagger 规范解析
+│   ├── 格式验证与标准化
+│   └── 实时文件监听
+├── 🔄 转换层
+│   ├── OpenAPI → MCP 工具映射
+│   ├── 参数类型转换
+│   └── 响应格式适配
+├── 🚀 MCP 协议层
+│   ├── 工具注册与发现
+│   ├── 请求路由与执行
+│   └── 错误处理与日志
+└── 🔌 传输层
+    ├── Stdio (MCP 标准)
+    ├── WebSocket (实时通信)
+    ├── SSE (服务器推送)
+    └── HTTP (REST API)
 ```
 
-## 📄 License
+## 🔍 故障排除
 
-MIT License - see [LICENSE](LICENSE) file for details.
+### 常见问题
 
-## 🤝 Contributing
+#### ❌ "Missing required field: openapi" 错误
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+**问题**: 当尝试使用 Swagger 2.0 规范时出现此错误。
 
-## 🔗 Links
+```bash
+# ❌ 错误示例 - Swagger 2.0 格式
+npx mcp-swagger-server --openapi https://petstore.swagger.io/v2/swagger.json
 
-- [Model Context Protocol](https://modelcontextprotocol.io/)
-- [OpenAPI Specification](https://swagger.io/specification/)
-- [GitHub Issues](https://github.com/yourusername/mcp-swagger-server/issues)
+# 错误信息: OpenAPIParseError: Missing required field: openapi
+```
+
+**解决方案**:
+
+1. **使用 OpenAPI 3.x 规范**:
+   ```bash
+   # ✅ 正确示例 - OpenAPI 3.x 格式
+   npx mcp-swagger-server --openapi https://petstore3.swagger.io/api/v3/openapi.json
+   ```
+
+2. **转换 Swagger 2.0 到 OpenAPI 3.x**:
+   ```bash
+   # 安装转换工具
+   npm install -g swagger2openapi
+   
+   # 转换 Swagger 2.0 到 OpenAPI 3.x
+   swagger2openapi https://petstore.swagger.io/v2/swagger.json -o petstore-openapi3.json
+   
+   # 使用转换后的文件
+   npx mcp-swagger-server --openapi ./petstore-openapi3.json
+   ```
+
+3. **在线转换**:
+   - 访问 [Swagger Editor](https://editor.swagger.io/)
+   - 导入您的 Swagger 2.0 规范
+   - 使用 "Edit" > "Convert to OpenAPI 3" 功能
+   - 导出转换后的 OpenAPI 3.x 文件
+
+#### 🔗 验证 API 规范版本
+
+```bash
+# 检查 API 规范版本
+curl -s https://your-api.com/swagger.json | jq '.swagger // .openapi'
+
+# Swagger 2.0 返回: "2.0"
+# OpenAPI 3.x 返回: "3.0.0" 或 "3.1.0"
+```
+
+#### 🌐 网络连接问题
+
+```bash
+# 测试 API 可访问性
+curl -I https://your-api.com/openapi.json
+
+# 使用详细日志模式
+npx mcp-swagger-server --openapi https://your-api.com/openapi.json --verbose
+```
+
+### 📋 OpenAPI 规范要求
+
+- **必需字段**: `openapi` (版本号，如 "3.0.0")
+- **推荐版本**: OpenAPI 3.0.x 或 3.1.x
+- **文件格式**: JSON 或 YAML
+- **编码格式**: UTF-8
+
+## 🤝 社区与支持
+
+- **🐛 问题反馈**: [GitHub Issues](https://github.com/zaizaizhao/mcp-swagger-server/issues)
+- **💡 功能建议**: [GitHub Discussions](https://github.com/zaizaizhao/mcp-swagger-server/discussions)
+- **🔗 项目主页**: [GitHub Repository](https://github.com/zaizaizhao/mcp-swagger-server)
+
+## 📝 许可证
+
+本项目基于 [MIT 许可证](LICENSE) 开源，欢迎自由使用和贡献。
+
+## 🚀 快速体验
+
+想要立即体验 MCP Swagger Server？试试这个一键启动命令：
+
+```bash
+npx mcp-swagger-server --openapi https://petstore3.swagger.io/api/v3/openapi.json --transport streamable --port 3322 --verbose
+```
+
+然后访问 `http://localhost:3322` 查看生成的 MCP 工具！
 
 ---
 
 <div align="center">
-Made with ❤️ for the AI and API community
+
+**Made with ❤️ by the MCP Community**
+
+[⭐ Star on GitHub](https://github.com/zaizaizhao/mcp-swagger-server) • [📦 NPM Package](https://www.npmjs.com/package/mcp-swagger-server)
+
 </div>
