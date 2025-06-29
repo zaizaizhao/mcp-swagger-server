@@ -205,8 +205,8 @@ importers:
   packages/mcp-swagger-parser:
     dependencies:
       '@apidevtools/swagger-parser':
-        specifier: ^10.1.0
-        version: 10.1.1(openapi-types@12.1.3)
+        specifier: '=10.0.3'
+        version: 10.0.3(openapi-types@12.1.3)
       axios:
         specifier: ^1.6.0
         version: 1.10.0
@@ -281,8 +281,11 @@ importers:
         specifier: ^4.1.0
         version: 4.1.0
       mcp-swagger-parser:
-        specifier: 1.0.1
-        version: 1.0.1(openapi-types@12.1.3)(typescript@5.8.3)
+        specifier: 1.0.3
+        version: 1.0.3(openapi-types@12.1.3)(typescript@5.8.3)
+      tslib:
+        specifier: ^2.8.1
+        version: 2.8.1
       uuid:
         specifier: ^10.0.0
         version: 10.0.0
@@ -425,12 +428,20 @@ packages:
     resolution: {integrity: sha512-4gY54eEGEstClvEkGnwVkTkrx0sqwemEFG5OSRRn3tD91XH0+Q8XIkYIfo7IwEWPpJZwILb9GUXeShtplRc/eA==}
     engines: {node: '>= 16'}
 
+  '@apidevtools/json-schema-ref-parser@9.1.2':
+    resolution: {integrity: sha512-r1w81DpR+KyRWd3f+rk6TNqMgedmAxZP5v5KWlXQWlgMUUtyEJch0DKEci1SorPMiSeM8XPl7MZ3miJ60JIpQg==}
+
   '@apidevtools/openapi-schemas@2.1.0':
     resolution: {integrity: sha512-Zc1AlqrJlX3SlpupFGpiLi2EbteyP7fXmUOGup6/DnkRgjP9bgMM/ag+n91rsv0U1Gpz0H3VILA/o3bW7Ua6BQ==}
     engines: {node: '>=10'}
 
   '@apidevtools/swagger-methods@3.0.2':
     resolution: {integrity: sha512-QAkD5kK2b1WfjDS/UQn/qQkbwF31uqRjPTrsCs5ZG9BQGAkjwvqGFjjPqAuzac/IYzpPtRzjCP1WrTuAIjMrXg==}
+
+  '@apidevtools/swagger-parser@10.0.3':
+    resolution: {integrity: sha512-sNiLY51vZOmSPFZA5TF35KZ2HbgYklQnTSDnkghamzLb3EkNtcQnrBQEj5AOCxHpTtXpqMCRM1CrmV2rG6nw4g==}
+    peerDependencies:
+      openapi-types: '>=7'
 
   '@apidevtools/swagger-parser@10.1.1':
     resolution: {integrity: sha512-u/kozRnsPO/x8QtKYJOqoGtC4kH6yg1lfYkB9Au0WhYB0FNLpyFusttQtvhlwjtG3rOwiRz4D8DnnXa8iEpIKA==}
@@ -2422,6 +2433,10 @@ packages:
     resolution: {integrity: sha512-NOKm8xhkzAjzFx8B2v5OAHT+u5pRQc2UCa2Vq9jYL/31o2wi9mxBA7LIFs3sV5VSC49z6pEhfbMULvShKj26WA==}
     engines: {node: '>= 6'}
 
+  commander@9.5.0:
+    resolution: {integrity: sha512-KRs7WVDKg86PWiuAqhDrAQnTXZKraVcCc6vFdL14qrZ/DcWwuRo7VoiYXalXO7S5GKpqYiVEwCbgFDfxNHKJBQ==}
+    engines: {node: ^12.20.0 || >=14}
+
   comment-json@4.2.5:
     resolution: {integrity: sha512-bKw/r35jR3HGt5PEPm1ljsQQGyCrR8sFGNiN5L+ykDHdpO8Smxkrkla9Yi6NkQyUrb8V54PGhfMs6NrIwtxtdw==}
     engines: {node: '>= 6'}
@@ -3536,6 +3551,14 @@ packages:
       lodash: '*'
       lodash-es: '*'
 
+  lodash.get@4.4.2:
+    resolution: {integrity: sha512-z+Uw/vLuy6gQe8cfaFWD7p0wVv8fJl3mbzXh33RS+0oW2wvUqiRXiQ69gLWSLpgB5/6sU+r6BlQR0MBILadqTQ==}
+    deprecated: This package is deprecated. Use the optional chaining (?.) operator instead.
+
+  lodash.isequal@4.5.0:
+    resolution: {integrity: sha512-pDo3lu8Jhfjqls6GkMgpahsF9kCyayhgykjyLMNFTKWrpVdAQtYyB4muAMWozBB4ig/dtWAmsMxLEI8wuz+DYQ==}
+    deprecated: This package is deprecated. Use require('node:util').isDeepStrictEqual instead.
+
   lodash.memoize@4.1.2:
     resolution: {integrity: sha512-t7j+NzmgnQzTAYXcsHYLgimltOV1MXHtlOWf6GjL9Kj8GK5FInw5JotxvbOs+IvV1/Dzo04/fCGfLVs7aXb4Ag==}
 
@@ -3589,8 +3612,8 @@ packages:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
     engines: {node: '>= 0.4'}
 
-  mcp-swagger-parser@1.0.1:
-    resolution: {integrity: sha512-B4K6KnokSIitUOxbBv1WlisCAw2LRN7/nbdxr+npnDdSAO+far7YxPtE305PeRHRSU/O97Llc31BnBQIi1xDBQ==}
+  mcp-swagger-parser@1.0.3:
+    resolution: {integrity: sha512-KzcBw4TrVKs8xSNNFvqgdvZppjwDSPWv6outc3ji0pnuq2i4HbQgWRJ4W1uZ4e6Dnd4XzQFsZsIZgEZXgFjLRA==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       typescript: '>=4.5.0'
@@ -4895,6 +4918,11 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
 
+  z-schema@5.0.5:
+    resolution: {integrity: sha512-D7eujBWkLa3p2sIpJA0d1pr7es+a7m0vFAnZLlCEKq/Ij2k0MLi9Br2UPxoxdYystm5K1yeBGzub0FlYUEWj2Q==}
+    engines: {node: '>=8.0.0'}
+    hasBin: true
+
   zod-to-json-schema@3.24.5:
     resolution: {integrity: sha512-/AuWwMP+YqiPbsJx5D6TfgRTc4kTLjsh5SOcd4bLsfUg2RcEXrFMJl1DGgdHy2aCfsIA/cr/1JM0xcB2GZji8g==}
     peerDependencies:
@@ -4950,9 +4978,26 @@ snapshots:
       '@types/json-schema': 7.0.15
       js-yaml: 4.1.0
 
+  '@apidevtools/json-schema-ref-parser@9.1.2':
+    dependencies:
+      '@jsdevtools/ono': 7.1.3
+      '@types/json-schema': 7.0.15
+      call-me-maybe: 1.0.2
+      js-yaml: 4.1.0
+
   '@apidevtools/openapi-schemas@2.1.0': {}
 
   '@apidevtools/swagger-methods@3.0.2': {}
+
+  '@apidevtools/swagger-parser@10.0.3(openapi-types@12.1.3)':
+    dependencies:
+      '@apidevtools/json-schema-ref-parser': 9.1.2
+      '@apidevtools/openapi-schemas': 2.1.0
+      '@apidevtools/swagger-methods': 3.0.2
+      '@jsdevtools/ono': 7.1.3
+      call-me-maybe: 1.0.2
+      openapi-types: 12.1.3
+      z-schema: 5.0.5
 
   '@apidevtools/swagger-parser@10.1.1(openapi-types@12.1.3)':
     dependencies:
@@ -7224,6 +7269,9 @@ snapshots:
 
   commander@4.1.1: {}
 
+  commander@9.5.0:
+    optional: true
+
   comment-json@4.2.5:
     dependencies:
       array-timsort: 1.0.3
@@ -8718,6 +8766,10 @@ snapshots:
       lodash: 4.17.21
       lodash-es: 4.17.21
 
+  lodash.get@4.4.2: {}
+
+  lodash.isequal@4.5.0: {}
+
   lodash.memoize@4.1.2: {}
 
   lodash.merge@4.6.2: {}
@@ -8765,7 +8817,7 @@ snapshots:
 
   math-intrinsics@1.1.0: {}
 
-  mcp-swagger-parser@1.0.1(openapi-types@12.1.3)(typescript@5.8.3):
+  mcp-swagger-parser@1.0.3(openapi-types@12.1.3)(typescript@5.8.3):
     dependencies:
       '@apidevtools/swagger-parser': 10.1.1(openapi-types@12.1.3)
       axios: 1.10.0
@@ -10067,6 +10119,14 @@ snapshots:
   yn@3.1.1: {}
 
   yocto-queue@0.1.0: {}
+
+  z-schema@5.0.5:
+    dependencies:
+      lodash.get: 4.4.2
+      lodash.isequal: 4.5.0
+      validator: 13.15.15
+    optionalDependencies:
+      commander: 9.5.0
 
   zod-to-json-schema@3.24.5(zod@3.25.67):
     dependencies:
