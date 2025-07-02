@@ -129,6 +129,11 @@ export interface MCPToolResponse {
    * 响应级别的元数据
    */
   _meta?: { [key: string]: unknown };
+  
+  /**
+   * 响应架构注释信息（用于帮助 AI 理解字段含义）
+   */
+  schemaAnnotations?: ResponseSchemaAnnotation;
 }
 
 /**
@@ -166,4 +171,104 @@ export interface TransformerOptions {
   customHandlers?: Record<string, (extra: any) => Promise<MCPToolResponse>>;
   pathPrefix?: string;
   stripBasePath?: boolean;
+  
+  /**
+   * 是否在响应中包含字段注释（默认: true）
+   */
+  includeFieldAnnotations?: boolean;
+  
+  /**
+   * 字段注释显示选项
+   */
+  annotationOptions?: {
+    /**
+     * 是否显示字段类型（默认: true）
+     */
+    showFieldTypes?: boolean;
+    
+    /**
+     * 是否显示是否必需标记（默认: true）
+     */
+    showRequiredMarkers?: boolean;
+    
+    /**
+     * 是否显示当前值（默认: true）
+     */
+    showCurrentValues?: boolean;
+    
+    /**
+     * 是否显示示例值（默认: true）
+     */
+    showExampleValues?: boolean;
+    
+    /**
+     * 是否显示枚举说明（默认: true）
+     */
+    showEnumDescriptions?: boolean;
+    
+    /**
+     * 最大显示字段数量（防止输出过长，默认: 50）
+     */
+    maxFieldsToShow?: number;
+    
+    /**
+     * 字段路径的最大深度（默认: 5）
+     */
+    maxDepth?: number;
+  };
+}
+
+/**
+ * 字段注释信息
+ */
+export interface FieldAnnotation {
+  /**
+   * 字段名称
+   */
+  fieldName: string;
+  /**
+   * 字段描述（通常为中文注释）
+   */
+  description?: string;
+  /**
+   * 字段类型
+   */
+  type?: string;
+  /**
+   * 示例值
+   */
+  example?: any;
+  /**
+   * 是否必需
+   */
+  required?: boolean;
+  /**
+   * 枚举值及其描述
+   */
+  enum?: Array<{
+    value: any;
+    description?: string;
+  }>;
+}
+
+/**
+ * 响应架构注释
+ */
+export interface ResponseSchemaAnnotation {
+  /**
+   * 字段注释映射 (字段路径 -> 注释信息)
+   */
+  fieldAnnotations: Record<string, FieldAnnotation>;
+  /**
+   * 响应模型名称
+   */
+  modelName?: string;
+  /**
+   * 响应描述
+   */
+  description?: string;
+  /**
+   * 原始 Swagger 响应 Schema
+   */
+  originalSchema?: any;
 }

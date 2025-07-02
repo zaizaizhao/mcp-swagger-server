@@ -1,5 +1,6 @@
 import { OpenAPISpec, OperationObject, ParameterObject, RequestBodyObject, SchemaObject, ReferenceObject } from '../types/index';
-import { MCPTool, MCPToolResponse, TransformerOptions, TextContent, ImageContent, AudioContent, ResourceLink, EmbeddedResource, ContentBlock } from './types';
+import { MCPTool, MCPToolResponse, TransformerOptions, TextContent, ImageContent, AudioContent, ResourceLink, EmbeddedResource, ContentBlock, ResponseSchemaAnnotation, FieldAnnotation } from './types';
+import { SchemaAnnotationExtractor } from '../extractors/schema-annotation-extractor';
 import axios, { AxiosResponse, AxiosError } from 'axios';
 
 // Re-export types
@@ -70,6 +71,7 @@ function createResourceLink(uri: string, name?: string, description?: string, mi
 export class OpenAPIToMCPTransformer {
   private spec: OpenAPISpec;
   private options: Required<TransformerOptions>;
+  private annotationExtractor: SchemaAnnotationExtractor;
 
   constructor(spec: OpenAPISpec, options: TransformerOptions = {}) {
     this.spec = spec;
@@ -82,8 +84,22 @@ export class OpenAPIToMCPTransformer {
       defaultHeaders: options.defaultHeaders ?? { 'Content-Type': 'application/json' },
       customHandlers: options.customHandlers ?? {},
       pathPrefix: options.pathPrefix ?? '',
-      stripBasePath: options.stripBasePath ?? false
+      stripBasePath: options.stripBasePath ?? false,
+      includeFieldAnnotations: options.includeFieldAnnotations ?? true,
+      annotationOptions: {
+        showFieldTypes: options.annotationOptions?.showFieldTypes ?? true,
+        showRequiredMarkers: options.annotationOptions?.showRequiredMarkers ?? true,
+        showCurrentValues: options.annotationOptions?.showCurrentValues ?? true,
+        showExampleValues: options.annotationOptions?.showExampleValues ?? true,
+        showEnumDescriptions: options.annotationOptions?.showEnumDescriptions ?? true,
+        maxFieldsToShow: options.annotationOptions?.maxFieldsToShow ?? 50,
+        maxDepth: options.annotationOptions?.maxDepth ?? 5,
+        ...options.annotationOptions
+      }
     };
+    
+    // 初始化注释提取器
+    this.annotationExtractor = new SchemaAnnotationExtractor(spec);
   }
 
   /**
@@ -369,7 +385,7 @@ export class OpenAPIToMCPTransformer {
       });
 
       // 5. 处理响应
-      return this.formatHttpResponse(response, method, url);
+      return this.formatHttpResponse(response, method, path, operation);
       
     } catch (error) {
       // 6. 错误处理
@@ -484,9 +500,10 @@ export class OpenAPIToMCPTransformer {
   /**
    * 格式化 HTTP 响应为 MCP 格式
    */
-  private formatHttpResponse(response: AxiosResponse, method: string, url: string): MCPToolResponse {
+  private formatHttpResponse(response: AxiosResponse, method: string, path: string, operation: OperationObject): MCPToolResponse {
     const statusCode = response.status;
     const isSuccess = statusCode >= 200 && statusCode < 300;
+    const url = response.config?.url || `${this.options.baseUrl}${path}`;
     
     // 构建基本响应信息
     const responseInfo = {
@@ -513,21 +530,37 @@ export class OpenAPIToMCPTransformer {
           };
         }
       } else {
-        responseText = `${method.toUpperCase()} ${url} completed with status ${statusCode}`;
+        responseText = `${method.toUpperCase()} ${path} completed with status ${statusCode}`;
       }
     } catch (error) {
       responseText = `Response received but could not be parsed: ${error}`;
     }
 
-    // 构建完整的响应文本
-    const fullResponseText = [
-      `HTTP ${statusCode} ${response.statusText}`,
-      `${method.toUpperCase()} ${url}`,
-      '',
-      'Response:',
-      responseText
-    ].join('\n');    const mcpResponse: MCPToolResponse = {
-      content: [createTextContent(fullResponseText, { 
+    // 提取响应注释（关键新增功能）
+    let schemaAnnotations;
+    if (isSuccess && operation.responses && this.options.includeFieldAnnotations) {
+      const operationId = operation.operationId || `${method}_${path.replace(/[^a-zA-Z0-9]/g, '_')}`;
+      schemaAnnotations = this.annotationExtractor.extractResponseAnnotations(
+        operationId,
+        method,
+        path,
+        operation.responses
+      );
+    }
+
+    // 构建包含字段解释的响应文本
+    const enhancedResponseText = this.buildEnhancedResponseText(
+      method,
+      path,
+      statusCode,
+      response.statusText,
+      responseText,
+      response.data,
+      schemaAnnotations
+    );
+
+    const mcpResponse: MCPToolResponse = {
+      content: [createTextContent(enhancedResponseText, { 
         httpStatus: statusCode,
         method: method.toUpperCase(),
         url,
@@ -539,6 +572,11 @@ export class OpenAPIToMCPTransformer {
     // 添加结构化内容
     if (structuredContent) {
       mcpResponse.structuredContent = structuredContent;
+    }
+
+    // 添加架构注释
+    if (schemaAnnotations) {
+      mcpResponse.schemaAnnotations = schemaAnnotations;
     }
 
     return mcpResponse;
@@ -676,6 +714,174 @@ export class OpenAPIToMCPTransformer {
     }
 
     return jsonSchema;
+  }
+
+  /**
+   * 构建增强的响应文本，包含字段注释
+   */
+  private buildEnhancedResponseText(
+    method: string,
+    path: string,
+    statusCode: number,
+    statusText: string,
+    responseText: string,
+    responseData: any,
+    schemaAnnotations?: ResponseSchemaAnnotation
+  ): string {
+    const sections: string[] = [];
+    
+    // 基本信息
+    sections.push(`HTTP ${statusCode} ${statusText}`);
+    sections.push(`${method.toUpperCase()} ${path}`);
+    sections.push('');
+    
+    // 添加字段注释（如果有）
+    if (schemaAnnotations && Object.keys(schemaAnnotations.fieldAnnotations).length > 0) {
+      sections.push('📋 字段说明 (Field Descriptions):');
+      sections.push('');
+      
+      const annotatedFields = this.formatFieldAnnotations(schemaAnnotations.fieldAnnotations, responseData);
+      if (annotatedFields.length > 0) {
+        sections.push(...annotatedFields);
+        sections.push('');
+      }
+    }
+    
+    // 响应数据
+    sections.push('📄 响应数据 (Response Data):');
+    sections.push(responseText);
+    
+    return sections.join('\n');
+  }
+
+  /**
+   * 格式化字段注释为易读的文本
+   */
+  private formatFieldAnnotations(
+    fieldAnnotations: Record<string, FieldAnnotation>,
+    responseData: any
+  ): string[] {
+    const lines: string[] = [];
+    
+    // 对字段进行排序，优先显示顶级字段
+    const sortedFields = Object.entries(fieldAnnotations).sort(([a], [b]) => {
+      const aDepth = a.split('.').length;
+      const bDepth = b.split('.').length;
+      if (aDepth !== bDepth) {
+        return aDepth - bDepth;
+      }
+      return a.localeCompare(b);
+    });
+    
+    for (const [fieldPath, annotation] of sortedFields) {
+      // 获取字段的实际值
+      const fieldValue = this.getFieldValue(responseData, fieldPath);
+      const hasValue = fieldValue !== undefined;
+      
+      // 构建字段说明行
+      const parts: string[] = [];
+      
+      // 字段名和类型
+      if (annotation.type) {
+        parts.push(`${fieldPath} (${annotation.type})`);
+      } else {
+        parts.push(fieldPath);
+      }
+      
+      // 是否必需
+      if (annotation.required) {
+        parts.push('[必需]');
+      }
+      
+      // 描述
+      if (annotation.description) {
+        parts.push(`- ${annotation.description}`);
+      }
+      
+      // 当前值（如果存在）
+      if (hasValue) {
+        const valueStr = this.formatFieldValue(fieldValue);
+        parts.push(`= ${valueStr}`);
+      }
+      
+      lines.push(`  • ${parts.join(' ')}`);
+      
+      // 枚举值说明
+      if (annotation.enum && annotation.enum.length > 0) {
+        const enumLines = annotation.enum.map((enumItem: { value: any; description?: string }) => {
+          let enumText = `    - ${enumItem.value}`;
+          if (enumItem.description) {
+            enumText += `: ${enumItem.description}`;
+          }
+          return enumText;
+        });
+        lines.push(...enumLines);
+      }
+      
+      // 示例值
+      if (!hasValue && annotation.example !== undefined) {
+        const exampleStr = this.formatFieldValue(annotation.example);
+        lines.push(`    示例: ${exampleStr}`);
+      }
+    }
+    
+    return lines;
+  }
+
+  /**
+   * 从响应数据中获取字段值
+   */
+  private getFieldValue(data: any, fieldPath: string): any {
+    if (!data || typeof data !== 'object') {
+      return undefined;
+    }
+    
+    const parts = fieldPath.split('.');
+    let current = data;
+    
+    for (const part of parts) {
+      if (part.endsWith('[]')) {
+        // 处理数组字段
+        const arrayFieldName = part.slice(0, -2);
+        current = current[arrayFieldName];
+        if (Array.isArray(current)) {
+          // 返回数组的第一个元素作为示例
+          current = current.length > 0 ? current[0] : undefined;
+        } else {
+          return undefined;
+        }
+      } else {
+        current = current[part];
+      }
+      
+      if (current === undefined) {
+        break;
+      }
+    }
+    
+    return current;
+  }
+
+  /**
+   * 格式化字段值为可读的字符串
+   */
+  private formatFieldValue(value: any): string {
+    if (value === null) {
+      return 'null';
+    }
+    if (value === undefined) {
+      return 'undefined';
+    }
+    if (typeof value === 'string') {
+      return `"${value}"`;
+    }
+    if (typeof value === 'object') {
+      if (Array.isArray(value)) {
+        return `[${value.length} items]`;
+      }
+      return JSON.stringify(value);
+    }
+    return String(value);
   }
 }
 
