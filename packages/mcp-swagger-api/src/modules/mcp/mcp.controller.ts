@@ -180,7 +180,7 @@ export class MCPController {
         data: {
           type: 'object',
           properties: {
-            isRunning: { type: 'boolean' },
+            isRunning: { type: 'boolean',description: '服务器是否正在运行' },
             toolsCount: { type: 'number' },
             endpoint: { type: 'string' },
             transport: { type: 'string' },
