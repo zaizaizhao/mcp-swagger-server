@@ -7,11 +7,14 @@ import type {
   ParsedApiSpec, 
   ParseResult,
   ParserConfig, 
-  ValidationResult 
+  ValidationResult,
+  Swagger2ConversionOptions
 } from '../types/index';
 import { 
   OpenAPIParseError, 
   OpenAPIValidationError, 
+  Swagger2OpenAPIConversionError,
+  UnsupportedVersionError,
   ERROR_CODES 
 } from '../errors/index';
 import { UrlParser } from '../parsers/url-parser';
@@ -19,6 +22,8 @@ import { FileParser } from '../parsers/file-parser';
 import { TextParser } from '../parsers/text-parser';
 import { Validator } from './validator';
 import { Normalizer } from './normalizer';
+import { VersionDetector } from './version-detector';
+import { Swagger2OpenAPIConverter } from './swagger2openapi-converter';
 
 /**
  * Default parser configuration
@@ -28,7 +33,18 @@ const DEFAULT_CONFIG: Required<ParserConfig> = {
   resolveReferences: true,
   allowEmptyPaths: false,
   strictMode: false,
-  customValidators: []
+  customValidators: [],
+  autoConvert: true,
+  autoFix: true,
+  swagger2Options: {
+    patch: true,
+    warnOnly: false,
+    resolveInternal: false,
+    targetVersion: '3.0.0',
+    preserveRefs: true,
+    warnProperty: 'x-s2o-warning',
+    debug: false
+  }
 };
 
 /**
@@ -41,6 +57,7 @@ export class OpenAPIParser {
   private textParser: TextParser;
   private validator: Validator;
   private normalizer: Normalizer;
+  private swagger2Converter: Swagger2OpenAPIConverter;
 
   constructor(config: ParserConfig = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -51,6 +68,17 @@ export class OpenAPIParser {
     this.textParser = new TextParser();
     this.validator = new Validator(this.config);
     this.normalizer = new Normalizer(this.config);
+    
+    // Initialize Swagger 2.0 converter
+    this.swagger2Converter = new Swagger2OpenAPIConverter({
+      patch: this.config.swagger2Options.patch,
+      warnOnly: this.config.swagger2Options.warnOnly,
+      resolveInternal: this.config.swagger2Options.resolveInternal,
+      targetVersion: this.config.swagger2Options.targetVersion,
+      preserveRefs: this.config.swagger2Options.preserveRefs,
+      warnProperty: this.config.swagger2Options.warnProperty,
+      debug: this.config.swagger2Options.debug
+    });
   }
 
   /**
@@ -131,16 +159,65 @@ export class OpenAPIParser {
    * Process and validate the parsed specification
    */
   private async processSpec(
-    spec: OpenAPISpec,
+    spec: any,
     metadata: Partial<ParseResult['metadata']>
   ): Promise<ParseResult> {
+    let processedSpec: OpenAPISpec = spec;
+    let conversionResult: any = null;
+    
+    // Detect API specification version
+    if (this.config.autoConvert) {
+      const version = VersionDetector.detect(spec);
+      
+      if (version === 'swagger2') {
+        console.log('检测到 Swagger 2.0 规范，正在转换为 OpenAPI 3.0...');
+        try {
+          conversionResult = await this.swagger2Converter.convert(spec);
+          processedSpec = conversionResult.openapi;
+          
+          // Update metadata with conversion info
+          metadata.conversionPerformed = true;
+          metadata.originalVersion = conversionResult.originalVersion;
+          metadata.targetVersion = conversionResult.targetVersion;
+          metadata.conversionDuration = conversionResult.duration;
+          metadata.patchesApplied = conversionResult.patches;
+          metadata.conversionWarnings = conversionResult.warnings;
+          
+          console.log(`✓ 转换完成: ${metadata.originalVersion} -> ${metadata.targetVersion} (${metadata.conversionDuration}ms)`);
+          
+          if (conversionResult.patches && conversionResult.patches > 0) {
+            console.log(`✓ 应用了 ${conversionResult.patches} 个补丁修复`);
+          }
+          
+          if (conversionResult.warnings && conversionResult.warnings.length > 0) {
+            console.log(`⚠ 转换过程中产生了 ${conversionResult.warnings.length} 个警告`);
+          }
+          
+        } catch (error) {
+          if (error instanceof Swagger2OpenAPIConversionError || error instanceof UnsupportedVersionError) {
+            throw error;
+          }
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          throw new Swagger2OpenAPIConversionError(
+            `Failed to convert Swagger 2.0 specification: ${errorMessage}`,
+            error instanceof Error ? error : new Error(String(error))
+          );
+        }
+      } else if (version === 'unknown') {
+        throw new UnsupportedVersionError(
+          spec.swagger || spec.openapi || 'unknown'
+        );
+      }
+      // If version is 'openapi3', no conversion needed
+    }
+
     // Normalize the specification
     if (this.config.resolveReferences) {
-      spec = await this.normalizer.normalize(spec);
+      processedSpec = await this.normalizer.normalize(processedSpec);
     }
 
     // Validate the specification
-    const validation = await this.validate(spec);
+    const validation = await this.validate(processedSpec);
 
     if (!validation.valid && this.config.strictMode) {
       throw new OpenAPIValidationError(
@@ -151,11 +228,11 @@ export class OpenAPIParser {
     }
 
     // Generate complete metadata
-    const completeMetadata = this.generateMetadata(spec, metadata);
+    const completeMetadata = this.generateMetadata(processedSpec, metadata);
 
     // Create parsed spec
     const parsedSpec: ParsedApiSpec = {
-      ...spec,
+      ...processedSpec,
       metadata: completeMetadata
     };
 
@@ -196,7 +273,14 @@ export class OpenAPIParser {
       schemaCount,
       securitySchemeCount,
       openApiVersion: spec.openapi,
-      parserVersion: '1.0.0' // TODO: Get from package.json
+      parserVersion: '1.0.0', // TODO: Get from package.json
+      // Enhanced metadata
+      conversionPerformed: partial.conversionPerformed || false,
+      originalVersion: partial.originalVersion,
+      targetVersion: partial.targetVersion,
+      conversionDuration: partial.conversionDuration,
+      patchesApplied: partial.patchesApplied,
+      conversionWarnings: partial.conversionWarnings
     };
   }
 

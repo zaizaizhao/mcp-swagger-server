@@ -12,6 +12,8 @@ export * from './types/index';
 export * from './core/parser';
 export * from './core/validator';
 export * from './core/normalizer';
+export * from './core/version-detector';
+export * from './core/swagger2openapi-converter';
 
 // Export parsers
 export * from './parsers/base-parser';
@@ -114,7 +116,18 @@ export const DEFAULT_PARSER_CONFIG: ParserConfig = {
   resolveReferences: true,
   allowEmptyPaths: false,
   strictMode: false,
-  customValidators: []
+  customValidators: [],
+  autoConvert: true,
+  autoFix: true,
+  swagger2Options: {
+    patch: true,
+    warnOnly: false,
+    resolveInternal: false,
+    targetVersion: '3.0.0',
+    preserveRefs: true,
+    warnProperty: 'x-s2o-warning',
+    debug: false
+  }
 };
 
 export const DEFAULT_TRANSFORMER_OPTIONS: TransformerOptions = {

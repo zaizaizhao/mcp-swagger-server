@@ -45,6 +45,7 @@
     "@apidevtools/swagger-parser": "=10.0.3",
     "axios": "^1.6.0",
     "js-yaml": "^4.1.0",
+    "swagger2openapi": "^7.0.8",
     "zod": "^3.25.28"
   },
   "devDependencies": {
@@ -55,6 +56,7 @@
     "@types/jest": "^29.5.14",
     "@types/js-yaml": "^4.0.5",
     "@types/node": "^20.9.0",
+    "@types/swagger2openapi": "^7.0.4",
     "eslint": "^8.53.0",
     "jest": "^29.7.0",
     "rimraf": "^5.0.5",
