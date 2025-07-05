@@ -142,7 +142,7 @@ export async function startStreamableMcpServer(server: McpServer, endpoint: stri
       if (lastEventId) {
         console.log(`Client reconnecting with Last-Event-ID: ${lastEventId}`);
       } else {
-        console.log(`Establishing new SSE stream for session ${sessionId}`);
+        console.log(`Establishing new connection for session ${sessionId}`);
       }
       //* 重连机制由SDK实现
       await activeTransport.transport.handleRequest(req, res);

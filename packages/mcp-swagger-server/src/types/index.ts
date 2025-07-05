@@ -13,8 +13,7 @@ export type {
 } from './core';
 
 export type {
-  CLIOptions,
-  HTTPAdapterConfig
+  CLIOptions
 } from './adapters';
 
 export type {

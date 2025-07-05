@@ -19,21 +19,7 @@ export interface AdapterConfig {
   afterStart?: (options: CLIOptions) => Promise<void>;
 }
 
-export interface HTTPAdapterConfig {
-  defaultTimeout?: number;
-  maxConcurrentServers?: number;
-  enableMetrics?: boolean;
-  enableHealthCheck?: boolean;
-  corsOptions?: {
-    origin?: string | string[];
-    credentials?: boolean;
-    methods?: string[];
-  };
-  rateLimiting?: {
-    windowMs: number;
-    maxRequests: number;
-  };
-}
+
 
 export interface TransportConfig {
   type: 'stdio' | 'sse' | 'streamable';

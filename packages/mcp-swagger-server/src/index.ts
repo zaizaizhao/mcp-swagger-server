@@ -15,7 +15,6 @@ export { transformOpenApiToMcpTools } from './transform/transformOpenApiToMcpToo
 
 // 导出适配器层
 export * from './adapters/CLIAdapter';
-export * from './adapters/HTTPAdapter';
 export * from './adapters/ProgrammaticAdapter';
 
 // 导出兼容层
