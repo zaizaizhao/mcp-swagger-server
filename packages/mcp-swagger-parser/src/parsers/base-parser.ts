@@ -61,7 +61,7 @@ export abstract class BaseParser {
   }
 
   /**
-   * Validate basic OpenAPI structure
+   * Validate basic OpenAPI structure (supports both OpenAPI 3.x and Swagger 2.0)
    */
   protected validateBasicStructure(spec: any): void {
     if (!spec || typeof spec !== 'object') {
@@ -71,11 +71,15 @@ export abstract class BaseParser {
       );
     }
 
-    if (!spec.openapi) {
+    // Check for OpenAPI 3.x or Swagger 2.0
+    const hasOpenAPI = spec.openapi && typeof spec.openapi === 'string';
+    const hasSwagger = spec.swagger && typeof spec.swagger === 'string';
+    
+    if (!hasOpenAPI && !hasSwagger) {
       throw new OpenAPIParseError(
-        'Missing required field: openapi',
+        'Missing required field: openapi or swagger',
         ERROR_CODES.VALIDATION_ERROR,
-        'openapi'
+        'openapi/swagger'
       );
     }
 

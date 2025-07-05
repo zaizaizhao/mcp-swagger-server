@@ -28,6 +28,13 @@ export interface ParseMetadata {
   securitySchemeCount: number;
   openApiVersion: string;
   parserVersion: string;
+  // Enhanced metadata for Swagger 2.0 support
+  conversionPerformed?: boolean;
+  originalVersion?: string;
+  targetVersion?: string;
+  conversionDuration?: number;
+  patchesApplied?: number;
+  conversionWarnings?: string[];
 }
 
 export interface ApiEndpoint {

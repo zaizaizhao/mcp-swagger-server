@@ -29,7 +29,7 @@ export class UrlParser extends BaseParser {
 
     try {
       const response = await axios.get(url, {
-        timeout: options.timeout || 30000,
+        timeout: options.timeout || 120000,
         headers: {
           'Accept': 'application/json, application/yaml, text/yaml, text/plain',
           ...options.headers
