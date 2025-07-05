@@ -1,10 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CLIAdapter } from '../adapters/CLIAdapter';
-import { HTTPAdapter } from '../adapters/HTTPAdapter';
 import { ProgrammaticAdapter } from '../adapters/ProgrammaticAdapter';
 import { ToolManager, Transformer, MCPRegistry } from '../core';
 import type { 
-  HTTPAdapterConfig, 
   ProgrammaticConfig, 
   AdapterConfig,
   TransformOptions 
@@ -105,13 +103,6 @@ export async function createSwaggerMCPServer(config: {
 }
 
 /**
- * 创建HTTP多服务器管理器
- */
-export function createHTTPServerManager(config?: HTTPAdapterConfig): HTTPAdapter {
-  return new HTTPAdapter(config);
-}
-
-/**
  * 创建编程式API管理器
  */
 export function createProgrammaticAPI(config?: ProgrammaticConfig): ProgrammaticAdapter {
@@ -170,65 +161,4 @@ export async function quickStart(options: {
 
   console.log(`🚀 Starting ${options.name} with ${options.transport || 'stdio'} transport...`);
   await serverFactory.start();
-}
-
-/**
- * 批量服务器启动器
- */
-export async function startMultipleServers(configs: Array<{
-  name: string;
-  version?: string;
-  swaggerFile?: string;
-  transport: {
-    type: 'sse' | 'streamable';
-    port: number;
-    endpoint?: string;
-  };
-}>): Promise<HTTPAdapter> {
-  const httpAdapter = new HTTPAdapter({
-    maxConcurrentServers: configs.length + 5,
-    enableMetrics: true,
-    enableHealthCheck: true,
-  });
-
-  for (const config of configs) {
-    const server = new McpServer(
-      {
-        name: config.name,
-        version: config.version || '1.0.0',
-        description: `Multi Server for ${config.name}`,
-      },
-      {
-        capabilities: {
-          tools: {},
-        },
-      }
-    );
-
-    if (config.swaggerFile) {
-      const transformer = new Transformer();
-      const tools = await transformer.transformFromFile(config.swaggerFile);
-      
-      for (const tool of tools) {
-        server.registerTool(
-          tool.name,
-          {
-            description: tool.description,
-            inputSchema: tool.inputSchema,
-          },
-          tool.handler
-        );
-      }
-    }
-
-    await httpAdapter.startServer(server, {
-      type: config.transport.type,
-      options: {
-        port: config.transport.port,
-        endpoint: config.transport.endpoint || (config.transport.type === 'sse' ? '/sse' : '/mcp'),
-      },
-    });
-  }
-
-  return httpAdapter;
 }

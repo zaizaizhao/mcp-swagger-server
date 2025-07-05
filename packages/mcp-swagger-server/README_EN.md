@@ -26,7 +26,7 @@ MCP Swagger Server is a tool designed for the AI era that automatically converts
 - **🔄 Zero Configuration**: Provide an OpenAPI spec URL or file and get usable MCP tools instantly
 - **🎯 AI-Native Design**: Optimized for large language models like Claude and ChatGPT
 - **🚀 Ready to Use**: Supports command line, programmatic interface, and MCP client integration
-- **🔌 Multi-Transport**: Supports HTTP, WebSocket, SSE, and Stdio transport protocols
+- **🔌 Multi-Transport**: Supports SSE, Streamable, and Stdio transport protocols
 - **⚡ High Performance**: Built with TypeScript for complete type safety
 
 ## 🚀 Quick Start

@@ -1,6 +1,5 @@
 import { quickStart, createSwaggerMCPServer, createProgrammaticAPI } from './lib/factory';
 import { CLIAdapter } from './adapters/CLIAdapter';
-import { HTTPAdapter } from './adapters/HTTPAdapter';
 import { ProgrammaticAdapter } from './adapters/ProgrammaticAdapter';
 import { ToolManager, Transformer, MCPRegistry } from './core';
 

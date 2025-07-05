@@ -26,7 +26,7 @@ MCP Swagger Server 是一个专为 AI 时代设计的工具，它能够将任何
 - **🔄 零配置转换**: 提供 OpenAPI 规范 URL 或文件，立即获得可用的 MCP 工具
 - **🎯 AI 原生设计**: 专为 Claude、ChatGPT 等大语言模型优化
 - **🚀 开箱即用**: 支持命令行、编程接口和 MCP 客户端集成
-- **🔌 多传输协议**: 支持 HTTP、WebSocket、SSE 和 Stdio 多种传输方式
+- **🔌 多传输协议**: 支持 SSE、Streamable 和 Stdio 多种传输方式
 - **⚡ 高性能**: 基于 TypeScript 构建，提供完整的类型安全
 
 ## 🚀 快速开始
@@ -111,7 +111,6 @@ await server.start();
 | `stdio` | 标准输入输出 | MCP 客户端集成 |
 | `streamable` | WebSocket 流式传输 | 实时交互应用 |
 | `sse` | Server-Sent Events | Web 应用集成 |
-| `http` | HTTP REST API | 传统 Web 服务 |
 
 ### 🎛️ 命令行选项
 
@@ -120,7 +119,7 @@ mcp-swagger-server [选项]
 
 选项:
   --openapi <url|file>    OpenAPI 规范 URL 或文件路径 (必需)
-  --transport <type>      传输类型: stdio|streamable|sse|http (默认: stdio)
+  --transport <type>      传输类型: stdio|streamable|sse (默认: stdio)
   --port <number>         服务器端口 (默认: 3322)
   --host <string>         服务器主机 (默认: localhost)
   --watch                 监听文件变化并自动重载
@@ -185,8 +184,7 @@ MCP Swagger Server
 └── 🔌 传输层
     ├── Stdio (MCP 标准)
     ├── WebSocket (实时通信)
-    ├── SSE (服务器推送)
-    └── HTTP (REST API)
+    └── SSE (服务器推送)
 ```
 
 ## 🔍 故障排除

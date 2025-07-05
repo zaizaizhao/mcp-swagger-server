@@ -1,9 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CLIAdapter } from '../adapters/CLIAdapter';
-import { HTTPAdapter } from '../adapters/HTTPAdapter';
 import { ProgrammaticAdapter } from '../adapters/ProgrammaticAdapter';
 import { Transformer } from '../core';
-import type { CLIOptions, HTTPAdapterConfig, ProgrammaticConfig, TransformOptions } from '../types';
+import type { CLIOptions, ProgrammaticConfig, TransformOptions } from '../types';
 
 /**
  * 兼容层服务器创建器 - 向下兼容原有API
@@ -110,13 +109,6 @@ export async function runStreamableServer(
     '--port', port.toString(),
     '--endpoint', endpoint
   ]);
-}
-
-/**
- * 创建HTTP适配器 - 新API
- */
-export function createHTTPAdapter(config?: HTTPAdapterConfig): HTTPAdapter {
-  return new HTTPAdapter(config);
 }
 
 /**
