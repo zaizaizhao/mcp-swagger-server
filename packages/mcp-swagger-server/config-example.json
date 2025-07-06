@@ -1,0 +1,18 @@
+{
+  "transport": "sse",
+  "port": 3325,
+  "endpoint": "/api/mcp",
+  "openapi": "https://petstore.swagger.io/v2/swagger.json",
+  "watch": false,
+  "auth": {
+    "type": "bearer",
+    "bearer": {
+      "source": "env",
+      "envName": "API_TOKEN"
+    }
+  },
+  "managed": false,
+  "autoRestart": true,
+  "maxRetries": 3,
+  "retryDelay": 2000
+}

@@ -1,6 +1,6 @@
 import { join } from 'path';
 import { parseFromFile, parseFromString, transformToMCPTools } from 'mcp-swagger-parser';
-import type { MCPTool, ValidationError } from 'mcp-swagger-parser';
+import type { MCPTool, ValidationError, AuthConfig } from 'mcp-swagger-parser';
 
 /**
  * 主转换函数 - 使用新的 mcp-swagger-parser
@@ -8,7 +8,8 @@ import type { MCPTool, ValidationError } from 'mcp-swagger-parser';
 export async function transformOpenApiToMcpTools(
   swaggerFilePath?: string,
   baseUrl?: string,
-  openApiData?: any
+  openApiData?: any,
+  authConfig?: AuthConfig
 ): Promise<MCPTool[]> {
   try {
     let parseResult: any;
@@ -52,7 +53,8 @@ export async function transformOpenApiToMcpTools(
       baseUrl,
       includeDeprecated: false,
       requestTimeout: 30000,
-      pathPrefix: ''
+      pathPrefix: '',
+      authConfig // 传递认证配置
     });
     
     console.log(`🎉 Generated ${tools.length} MCP tools`);

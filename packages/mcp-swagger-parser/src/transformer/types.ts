@@ -2,6 +2,8 @@
  * Transformer type definitions
  */
 
+import { AuthConfig } from '../auth/types';
+
 /**
  * MCP Annotations - 用于提供内容的元数据和展示提示
  */
@@ -171,6 +173,11 @@ export interface TransformerOptions {
   customHandlers?: Record<string, (extra: any) => Promise<MCPToolResponse>>;
   pathPrefix?: string;
   stripBasePath?: boolean;
+  
+  /**
+   * 认证配置
+   */
+  authConfig?: AuthConfig;
   
   /**
    * 是否在响应中包含字段注释（默认: true）

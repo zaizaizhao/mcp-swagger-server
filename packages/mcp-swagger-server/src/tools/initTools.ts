@@ -1,8 +1,9 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { transformOpenApiToMcpTools, MCPTool } from "../transform";
+import { AuthConfig } from 'mcp-swagger-parser';
 
-export async function initTools(server: McpServer, openApiData?: any) {
+export async function initTools(server: McpServer, openApiData?: any, authConfig?: AuthConfig) {
     console.log("🔧 初始化 MCP 工具...");
     
     try {
@@ -12,7 +13,7 @@ export async function initTools(server: McpServer, openApiData?: any) {
         }
         
         // 从 OpenAPI 规范生成工具
-        const tools = await transformOpenApiToMcpTools(undefined, undefined, openApiData);
+        const tools = await transformOpenApiToMcpTools(undefined, undefined, openApiData, authConfig);
         
         console.log(`📦 成功生成 ${tools.length} 个工具`);
           // 打印工具摘要

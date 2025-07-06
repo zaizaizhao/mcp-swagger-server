@@ -99,7 +99,7 @@ export class MCPService implements OnModuleDestroy {
       this.currentOpenApiData = openApiData;
       
       // 创建服务器实例，使用我们验证的 openApiData
-      this.currentServer = await createMcpServer(openApiData);
+      this.currentServer = await createMcpServer({ openApiData });
       
       // 启动服务器
       this.serverEndpoint = await this.startServer();
