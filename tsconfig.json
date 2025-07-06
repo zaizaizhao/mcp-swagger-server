@@ -1,27 +1,20 @@
 {
-    "compilerOptions": {
-        "target": "es2018",
-        "module": "commonjs",
-        "moduleResolution": "node", 
-        "baseUrl": "./",
-        "paths": {
-            "mcp-swagger-parser": ["./packages/mcp-swagger-parser/src"],
-            "mcp-swagger-parser/*": ["./packages/mcp-swagger-parser/src/*"],
-            "@/*": ["./packages/*"]
-        },
-        "esModuleInterop": true,
-        "forceConsistentCasingInFileNames": true,
-        "strict": true,
-        "skipLibCheck": true,
-        "composite": true,
-        "declaration": true,
-        "sourceMap": true,
-        "resolveJsonModule": true,
-        "downlevelIteration": true
+  "compilerOptions": {
+    "target": "es2018",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "baseUrl": "./",
+    "paths": {
+      "mcp-swagger-parser": ["./packages/mcp-swagger-parser/src"],
+      "mcp-swagger-parser/*": ["./packages/mcp-swagger-parser/src/*"],
+      "@/*": ["./packages/*"]
     },
-    "references": [
-        { "path": "./packages/mcp-swagger-parser" },
-        { "path": "./packages/mcp-swagger-server" },
-        { "path": "./packages/mcp-swagger-api" }
-    ]
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "downlevelIteration": true
+  },
+  "exclude": ["node_modules", "packages", "dist"]
 }
