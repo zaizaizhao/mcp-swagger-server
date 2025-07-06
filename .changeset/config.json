@@ -7,9 +7,9 @@
   "fixed": [],
   "linked": [],
   "access": "public",
-  "baseBranch": "main",
+  "baseBranch": "dev",
   "updateInternalDependencies": "patch",
-  "ignore": ["@mcp-swagger/api","mcp-swagger-ui"],
+  "ignore": ["@mcp-swagger/api"],
   "privatePackages": {
     "version": false,
     "tag": false

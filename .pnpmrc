@@ -3,6 +3,9 @@
 # Workspace 配置
 prefer-workspace-packages=true
 
+# 发布配置 - 确保 workspace 依赖被正确解析
+publish-workspace-packages=true
+
 # 依赖提升控制 - 避免工具链冲突
 hoist-pattern[]=*eslint*
 hoist-pattern[]=*prettier*
