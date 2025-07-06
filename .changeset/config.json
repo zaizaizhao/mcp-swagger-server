@@ -1,0 +1,17 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+    "changelog": ["@changesets/changelog-github", {
+    "repo": "zaizaizhao/mcp-swagger-server"
+  }],
+  "commit": false,
+  "fixed": [],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": ["@mcp-swagger/api","mcp-swagger-ui"],
+  "privatePackages": {
+    "version": false,
+    "tag": false
+  }
+}

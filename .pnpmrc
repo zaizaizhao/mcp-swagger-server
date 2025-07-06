@@ -1,0 +1,32 @@
+# pnpm 配置文件
+
+# Workspace 配置
+prefer-workspace-packages=true
+
+# 依赖提升控制 - 避免工具链冲突
+hoist-pattern[]=*eslint*
+hoist-pattern[]=*prettier*
+hoist-pattern[]=*typescript*
+hoist-pattern[]=*rollup*
+hoist-pattern[]=*@types*
+
+# 发布配置
+publish-branch=main
+access=public
+
+# 性能优化
+store-dir=~/.pnpm-store
+verify-store-integrity=true
+
+# 依赖管理
+strict-peer-dependencies=false
+auto-install-peers=true
+
+# 脚本配置
+enable-pre-post-scripts=true
+
+# 安全配置
+audit-level=moderate
+
+# 锁文件配置
+lockfile-include-tarball-url=true
