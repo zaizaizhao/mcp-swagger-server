@@ -1,5 +1,14 @@
 # mcp-swagger-server
 
+## 1.1.1
+
+### Patch Changes
+
+- workspace error
+
+- Updated dependencies []:
+  - mcp-swagger-parser@1.1.1
+
 ## 1.1.0
 
 ### Minor Changes
