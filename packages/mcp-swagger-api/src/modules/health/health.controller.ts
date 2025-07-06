@@ -57,7 +57,7 @@ export class HealthController {
         // Disk check
         () => this.disk.checkStorage('disk', { 
           thresholdPercent: 0.9, // 90% disk usage threshold
-          path: '/' 
+          path: process.platform === 'win32' ? 'C:\\' : '/'
         }),
 
         // MCP Server health check

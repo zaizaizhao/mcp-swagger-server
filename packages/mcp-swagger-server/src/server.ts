@@ -1,10 +1,15 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { AuthConfig } from 'mcp-swagger-parser';
 
 import { initTools } from "./tools/initTools";
 import { startStdioMcpServer, startSseMcpServer, startStreamableMcpServer } from "./transportUtils";
 
+export interface ServerOptions {
+  openApiData?: any;
+  authConfig?: AuthConfig;
+}
 
-export async function createMcpServer(openApiData?: any) {
+export async function createMcpServer(options: ServerOptions = {}) {
   const server = new McpServer(
     {
       name: "mcp-swagger-server",
@@ -19,7 +24,7 @@ export async function createMcpServer(openApiData?: any) {
   );
 
   // 先初始化工具，确保在连接传输层前完成
-  await initTools(server, openApiData);
+  await initTools(server, options.openApiData, options.authConfig);
 
   process.on("SIGINT", async () => {
     await server.close();
@@ -29,25 +34,27 @@ export async function createMcpServer(openApiData?: any) {
   return server;
 }
 
-export async function runStdioServer(openApiData?: any): Promise<void> {
-  const server = await createMcpServer(openApiData);
+export async function runStdioServer(openApiData?: any, authConfig?: AuthConfig): Promise<void> {
+  const server = await createMcpServer({ openApiData, authConfig });
   await startStdioMcpServer(server);
 }
 
 export async function runSseServer(
   endpoint = "/sse",
   port = 3322,
-  openApiData?: any
+  openApiData?: any,
+  authConfig?: AuthConfig
 ): Promise<void> {
-  const server = await createMcpServer(openApiData);
+  const server = await createMcpServer({ openApiData, authConfig });
   await startSseMcpServer(server, endpoint, port);
 }
 
 export async function runStreamableServer(
   endpoint = "/mcp",
   port = 3322,
-  openApiData?: any
+  openApiData?: any,
+  authConfig?: AuthConfig
 ): Promise<void> {
-  const server = await createMcpServer(openApiData);
+  const server = await createMcpServer({ openApiData, authConfig });
   await startStreamableMcpServer(server, endpoint, port);
 }

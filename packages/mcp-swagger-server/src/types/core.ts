@@ -1,4 +1,6 @@
 // 核心类型定义
+import { AuthConfig } from 'mcp-swagger-parser';
+
 export interface MCPTool {
   id: string;
   name: string;
@@ -25,6 +27,10 @@ export interface McpServerConfig {
     resources?: any;
     prompts?: any;
   };
+  /**
+   * 认证配置
+   */
+  auth?: AuthConfig;
 }
 
 export interface TransformOptions {
@@ -36,6 +42,10 @@ export interface TransformOptions {
   operationIdPrefix?: string;
   enableAuth?: boolean;
   authHeaders?: Record<string, string>;
+  /**
+   * 认证配置
+   */
+  authConfig?: AuthConfig;
 }
 
 export interface ValidationResult {

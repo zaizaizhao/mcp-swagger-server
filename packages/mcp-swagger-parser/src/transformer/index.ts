@@ -1,6 +1,8 @@
 import { OpenAPISpec, OperationObject, ParameterObject, RequestBodyObject, SchemaObject, ReferenceObject } from '../types/index';
 import { MCPTool, MCPToolResponse, TransformerOptions, TextContent, ImageContent, AudioContent, ResourceLink, EmbeddedResource, ContentBlock, ResponseSchemaAnnotation, FieldAnnotation } from './types';
 import { SchemaAnnotationExtractor } from '../extractors/schema-annotation-extractor';
+import { AuthManager, AuthConfig } from '../auth/types';
+import { BearerAuthManager } from '../auth/bearer-auth';
 import axios, { AxiosResponse, AxiosError } from 'axios';
 
 // Re-export types
@@ -70,8 +72,9 @@ function createResourceLink(uri: string, name?: string, description?: string, mi
  */
 export class OpenAPIToMCPTransformer {
   private spec: OpenAPISpec;
-  private options: Required<TransformerOptions>;
+  private options: Required<Omit<TransformerOptions, 'authConfig'>> & { authConfig?: AuthConfig };
   private annotationExtractor: SchemaAnnotationExtractor;
+  private authManager?: AuthManager;
 
   constructor(spec: OpenAPISpec, options: TransformerOptions = {}) {
     this.spec = spec;
@@ -85,6 +88,7 @@ export class OpenAPIToMCPTransformer {
       customHandlers: options.customHandlers ?? {},
       pathPrefix: options.pathPrefix ?? '',
       stripBasePath: options.stripBasePath ?? false,
+      authConfig: options.authConfig ?? undefined,
       includeFieldAnnotations: options.includeFieldAnnotations ?? true,
       annotationOptions: {
         showFieldTypes: options.annotationOptions?.showFieldTypes ?? true,
@@ -97,9 +101,34 @@ export class OpenAPIToMCPTransformer {
         ...options.annotationOptions
       }
     };
-    
+
     // 初始化注释提取器
     this.annotationExtractor = new SchemaAnnotationExtractor(spec);
+    
+    // 初始化认证管理器
+    this.initializeAuthManager();
+  }
+
+  /**
+   * 初始化认证管理器
+   */
+  private initializeAuthManager(): void {
+    const authConfig = this.options.authConfig;
+    
+    if (!authConfig || authConfig.type === 'none') {
+      this.authManager = undefined;
+      return;
+    }
+
+    switch (authConfig.type) {
+      case 'bearer':
+        this.authManager = new BearerAuthManager(authConfig);
+        break;
+      // 后续可以添加其他认证方式
+      default:
+        console.warn(`Unsupported auth type: ${authConfig.type}`);
+        this.authManager = undefined;
+    }
   }
 
   /**
@@ -110,7 +139,7 @@ export class OpenAPIToMCPTransformer {
 
     for (const [path, pathItem] of Object.entries(this.spec.paths)) {
       const methods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options', 'trace'] as const;
-      
+
       for (const method of methods) {
         const operation = pathItem[method];
         if (operation && this.shouldIncludeOperation(operation)) {
@@ -132,7 +161,7 @@ export class OpenAPIToMCPTransformer {
     if (this.spec.servers && this.spec.servers.length > 0) {
       const serverUrl = this.spec.servers[0].url;
       console.log(`Using default base URL from OpenAPI spec: ${serverUrl}`);
-      
+
       // 处理相对路径和格式化 URL
       return this.normalizeBaseUrl(serverUrl);
     }
@@ -150,12 +179,12 @@ export class OpenAPIToMCPTransformer {
 
     // 去除末尾的斜杠
     url = url.replace(/\/+$/, '');
-    
+
     // 如果是相对路径，添加默认协议
     if (url.startsWith('/')) {
       return `http://localhost${url}`;
     }
-    
+
     // 如果没有协议，添加 http://
     if (!url.match(/^https?:\/\//)) {
       // 检查是否可能是域名格式
@@ -165,7 +194,7 @@ export class OpenAPIToMCPTransformer {
       // 否则当作路径处理
       return `http://localhost/${url.replace(/^\/+/, '')}`;
     }
-    
+
     return url;
   }
 
@@ -335,7 +364,8 @@ export class OpenAPIToMCPTransformer {
 
         // Default HTTP request handler
         return await this.executeHttpRequest(method, path, args, operation);
-      } catch (error) {        console.error(`Error executing ${method.toUpperCase()} ${path}:`, error);
+      } catch (error) {
+        console.error(`Error executing ${method.toUpperCase()} ${path}:`, error);
         return {
           content: [createTextContent(
             `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -356,22 +386,33 @@ export class OpenAPIToMCPTransformer {
    * Execute HTTP request
    */
   private async executeHttpRequest(
-    method: string, 
-    path: string, 
-    args: any, 
+    method: string,
+    path: string,
+    args: any,
     operation: OperationObject
   ): Promise<MCPToolResponse> {
     try {
       // 1. 构建请求 URL
       const { url, queryParams } = this.buildUrlWithParams(path, args, operation);
-      
+
       // 2. 准备请求头
       const headers = { ...this.options.defaultHeaders };
-      
-      // 3. 准备请求体
+
+      // 3. 添加认证头
+      if (this.authManager) {
+        const authHeaders = await this.authManager.getAuthHeaders({
+          method,
+          path,
+          args
+        });
+        Object.assign(headers, authHeaders);
+      }
+
+      // 4. 准备请求体
       const requestBody = this.buildRequestBody(args, operation);
+      console.log(JSON.stringify(requestBody, null, 2));
       
-      // 4. 执行 HTTP 请求
+      // 5. 执行 HTTP 请求
       const response = await axios({
         method: method.toLowerCase() as any,
         url,
@@ -384,11 +425,11 @@ export class OpenAPIToMCPTransformer {
         responseType: 'json'
       });
 
-      // 5. 处理响应
+      // 6. 处理响应
       return this.formatHttpResponse(response, method, path, operation);
-      
+
     } catch (error) {
-      // 6. 错误处理
+      // 7. 错误处理
       return this.handleRequestError(error, method, path);
     }
   }
@@ -400,10 +441,10 @@ export class OpenAPIToMCPTransformer {
     // 构建基础 URL
     let url = this.buildBaseUrl(path);
     const queryParams: Record<string, any> = {};
-    
+
     console.log(`Building URL - Base: ${this.options.baseUrl}, Prefix: ${this.options.pathPrefix}, Path: ${path}`);
     console.log(`Initial URL: ${url}`);
-    
+
     // 处理路径参数
     url = url.replace(/{([^}]+)}/g, (match, paramName) => {
       const value = args[paramName];
@@ -439,14 +480,14 @@ export class OpenAPIToMCPTransformer {
   private buildBaseUrl(path: string): string {
     const baseUrl = this.options.baseUrl;
     const pathPrefix = this.options.pathPrefix;
-    
+
     // 标准化各个部分
     const normalizedBase = baseUrl.replace(/\/+$/, ''); // 移除末尾斜杠
     const normalizedPrefix = pathPrefix ? `/${pathPrefix.replace(/^\/+|\/+$/g, '')}` : ''; // 标准化前缀
     const normalizedPath = `/${path.replace(/^\/+/, '')}`; // 确保路径以斜杠开头
-    
+
     const fullUrl = normalizedBase + normalizedPrefix + normalizedPath;
-    
+
     // 最后清理多余的斜杠（但保留协议后的 //）
     return fullUrl.replace(/([^:]\/)\/+/g, '$1');
   }
@@ -460,7 +501,7 @@ export class OpenAPIToMCPTransformer {
     }
 
     const requestBody = operation.requestBody;
-    
+
     // 如果有 body 参数，直接使用
     if (args.body !== undefined) {
       return args.body;
@@ -474,7 +515,7 @@ export class OpenAPIToMCPTransformer {
     if (operation.parameters) {
       const pathParams = new Set();
       const queryParams = new Set();
-      
+
       for (const param of operation.parameters) {
         if (!this.isReferenceObject(param)) {
           if (param.in === 'path') pathParams.add(param.name);
@@ -504,7 +545,7 @@ export class OpenAPIToMCPTransformer {
     const statusCode = response.status;
     const isSuccess = statusCode >= 200 && statusCode < 300;
     const url = response.config?.url || `${this.options.baseUrl}${path}`;
-    
+
     // 构建基本响应信息
     const responseInfo = {
       status: statusCode,
@@ -560,7 +601,7 @@ export class OpenAPIToMCPTransformer {
     );
 
     const mcpResponse: MCPToolResponse = {
-      content: [createTextContent(enhancedResponseText, { 
+      content: [createTextContent(enhancedResponseText, {
         httpStatus: statusCode,
         method: method.toUpperCase(),
         url,
@@ -591,12 +632,12 @@ export class OpenAPIToMCPTransformer {
 
     if (axios.isAxiosError(error)) {
       const axiosError = error as AxiosError;
-      
+
       if (axiosError.response) {
         // 服务器响应了错误状态码
         statusCode = axiosError.response.status;
         const responseData = axiosError.response.data;
-        
+
         errorMessage = [
           `HTTP ${statusCode} ${axiosError.response.statusText}`,
           `${method.toUpperCase()} ${path}`,
@@ -641,7 +682,7 @@ export class OpenAPIToMCPTransformer {
         'Details:',
         String(error)
       ].join('\n');
-    }    return {
+    } return {
       content: [createTextContent(errorMessage, {
         errorType: 'request_error',
         method: method.toUpperCase(),
@@ -657,7 +698,7 @@ export class OpenAPIToMCPTransformer {
    */
   private buildUrl(path: string, args: any): string {
     let url = this.options.baseUrl + this.options.pathPrefix + path;
-    
+
     // Replace path parameters
     url = url.replace(/{([^}]+)}/g, (match, paramName) => {
       return args[paramName] || match;
@@ -685,30 +726,30 @@ export class OpenAPIToMCPTransformer {
 
     // Basic schema conversion
     const jsonSchema: any = {};
-    
+
     if (schema.type) {
       jsonSchema.type = schema.type;
     }
-    
+
     if (schema.properties) {
       jsonSchema.properties = {};
       for (const [key, prop] of Object.entries(schema.properties)) {
         jsonSchema.properties[key] = this.convertSchemaToJsonSchema(prop);
       }
     }
-    
+
     if (schema.items) {
       jsonSchema.items = this.convertSchemaToJsonSchema(schema.items);
     }
-    
+
     if (schema.required) {
       jsonSchema.required = schema.required;
     }
-    
+
     if (schema.description) {
       jsonSchema.description = schema.description;
     }
-    
+
     if (schema.example !== undefined) {
       jsonSchema.examples = [schema.example];
     }
@@ -729,28 +770,28 @@ export class OpenAPIToMCPTransformer {
     schemaAnnotations?: ResponseSchemaAnnotation
   ): string {
     const sections: string[] = [];
-    
+
     // 基本信息
     sections.push(`HTTP ${statusCode} ${statusText}`);
     sections.push(`${method.toUpperCase()} ${path}`);
     sections.push('');
-    
+
     // 添加字段注释（如果有）
     if (schemaAnnotations && Object.keys(schemaAnnotations.fieldAnnotations).length > 0) {
-      sections.push('📋 字段说明 (Field Descriptions):');
+      sections.push('字段说明 (Field Descriptions):');
       sections.push('');
-      
+
       const annotatedFields = this.formatFieldAnnotations(schemaAnnotations.fieldAnnotations, responseData);
       if (annotatedFields.length > 0) {
         sections.push(...annotatedFields);
         sections.push('');
       }
     }
-    
+
     // 响应数据
-    sections.push('📄 响应数据 (Response Data):');
+    sections.push('响应数据 (Response Data):');
     sections.push(responseText);
-    
+
     return sections.join('\n');
   }
 
@@ -762,7 +803,7 @@ export class OpenAPIToMCPTransformer {
     responseData: any
   ): string[] {
     const lines: string[] = [];
-    
+
     // 对字段进行排序，优先显示顶级字段
     const sortedFields = Object.entries(fieldAnnotations).sort(([a], [b]) => {
       const aDepth = a.split('.').length;
@@ -772,40 +813,40 @@ export class OpenAPIToMCPTransformer {
       }
       return a.localeCompare(b);
     });
-    
+
     for (const [fieldPath, annotation] of sortedFields) {
       // 获取字段的实际值
       const fieldValue = this.getFieldValue(responseData, fieldPath);
       const hasValue = fieldValue !== undefined;
-      
+
       // 构建字段说明行
       const parts: string[] = [];
-      
+
       // 字段名和类型
       if (annotation.type) {
         parts.push(`${fieldPath} (${annotation.type})`);
       } else {
         parts.push(fieldPath);
       }
-      
+
       // 是否必需
       if (annotation.required) {
         parts.push('[必需]');
       }
-      
+
       // 描述
       if (annotation.description) {
         parts.push(`- ${annotation.description}`);
       }
-      
+
       // 当前值（如果存在）
       if (hasValue) {
         const valueStr = this.formatFieldValue(fieldValue);
         parts.push(`= ${valueStr}`);
       }
-      
+
       lines.push(`  • ${parts.join(' ')}`);
-      
+
       // 枚举值说明
       if (annotation.enum && annotation.enum.length > 0) {
         const enumLines = annotation.enum.map((enumItem: { value: any; description?: string }) => {
@@ -817,14 +858,14 @@ export class OpenAPIToMCPTransformer {
         });
         lines.push(...enumLines);
       }
-      
+
       // 示例值
       if (!hasValue && annotation.example !== undefined) {
         const exampleStr = this.formatFieldValue(annotation.example);
         lines.push(`    示例: ${exampleStr}`);
       }
     }
-    
+
     return lines;
   }
 
@@ -835,10 +876,10 @@ export class OpenAPIToMCPTransformer {
     if (!data || typeof data !== 'object') {
       return undefined;
     }
-    
+
     const parts = fieldPath.split('.');
     let current = data;
-    
+
     for (const part of parts) {
       if (part.endsWith('[]')) {
         // 处理数组字段
@@ -853,12 +894,12 @@ export class OpenAPIToMCPTransformer {
       } else {
         current = current[part];
       }
-      
+
       if (current === undefined) {
         break;
       }
     }
-    
+
     return current;
   }
 
@@ -889,7 +930,7 @@ export class OpenAPIToMCPTransformer {
  * Convenience function to transform OpenAPI spec to MCP tools
  */
 export function transformToMCPTools(
-  spec: OpenAPISpec, 
+  spec: OpenAPISpec,
   options: TransformerOptions = {}
 ): MCPTool[] {
   const transformer = new OpenAPIToMCPTransformer(spec, options);

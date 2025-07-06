@@ -6,6 +6,7 @@ import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
 import chalk from 'chalk';
+import { AuthConfig } from 'mcp-swagger-parser';
 
 // 导出主要API和类型
 export { createMcpServer, runSseServer, runStdioServer, runStreamableServer } from './server';
@@ -36,25 +37,28 @@ interface ServerOptions {
   retryDelay?: string;
   openapi?: string; // 新增：OpenAPI URL 或文件路径
   watch?: boolean;  // 新增：监控文件变化
+  // Bearer Token 认证选项
+  authType?: string;
+  bearerToken?: string;
+  bearerEnv?: string;
+  config?: string; // 配置文件路径
+  env?: string; // .env 文件路径
 }
 
 // 解析命令行参数
-const { values } = parseArgs({
+const { values, positionals } = parseArgs({
   options: {
     transport: {
       type: "string",
       short: "t",
-      default: "stdio",
     },
     port: {
       type: "string",
       short: "p",
-      default: "3322",
     },
     endpoint: {
       type: "string",
       short: "e",
-      default: "",
     },
     managed: {
       type: "boolean",
@@ -67,21 +71,35 @@ const { values } = parseArgs({
     },
     "max-retries": {
       type: "string",
-      default: "5",
     },
     "retry-delay": {
       type: "string",
-      default: "5000",
     },
     openapi: {
       type: "string",
       short: "o",
-      default: "",
     },
     watch: {
       type: "boolean",
       short: "w",
       default: false,
+    },
+    // Bearer Token 认证参数
+    "auth-type": {
+      type: "string",
+    },
+    "bearer-token": {
+      type: "string",
+    },
+    "bearer-env": {
+      type: "string",
+    },
+    config: {
+      type: "string",
+      short: "c",
+    },
+    env: {
+      type: "string",
     },
     help: {
       type: "boolean",
@@ -89,7 +107,7 @@ const { values } = parseArgs({
       default: false,
     }
   },
-}) as { values: ServerOptions & { help?: boolean } };
+}) as { values: ServerOptions & { help?: boolean; 'auth-type'?: string; 'bearer-token'?: string; 'bearer-env'?: string; 'auto-restart'?: boolean; 'max-retries'?: string; 'retry-delay'?: string }; positionals: string[] };
 
 // 显示帮助信息 - 重新设计的专业版本
 function showHelp() {
@@ -105,6 +123,13 @@ function showHelp() {
   console.log(CliDesign.option('-p, --port <port>', '服务器端口号', '3322'));
   console.log(CliDesign.option('-e, --endpoint <path>', '自定义端点路径'));
   console.log(CliDesign.option('-o, --openapi <source>', 'OpenAPI 数据源 (URL 或文件路径)'));
+  console.log(CliDesign.option('-c, --config <file>', '配置文件路径 (JSON 格式)'));
+  console.log(CliDesign.option('--env <file>', '环境变量文件路径 (.env 格式)'));
+  
+  console.log(CliDesign.section(`${CliDesign.icons.key} 认证选项`));
+  console.log(CliDesign.option('--auth-type <type>', '认证类型 (none|bearer)', 'none'));
+  console.log(CliDesign.option('--bearer-token <token>', 'Bearer Token 静态值'));
+  console.log(CliDesign.option('--bearer-env <varname>', 'Bearer Token 环境变量名', 'API_TOKEN'));
   
   console.log(CliDesign.section(`${CliDesign.icons.gear} 高级选项`));
   console.log(CliDesign.option('-w, --watch', '监控文件变化并自动重载', 'false'));
@@ -126,9 +151,22 @@ function showHelp() {
     'SSE 模式 + 文件监控 - 适合开发环境'
   ));
   console.log();
+
   console.log(CliDesign.example(
-    'mcp-swagger-server -t streamable -o ./api.json --auto-restart',
-    'Streamable 模式 + 自动重启 - 生产环境'
+    'mcp-swagger-server -o ./api.json --auth-type bearer --bearer-token "your-token"',
+    'Bearer Token 静态认证'
+  ));
+  console.log();
+
+  console.log(CliDesign.example(
+    'mcp-swagger-server -o ./api.json --auth-type bearer --bearer-env API_TOKEN',
+    'Bearer Token 环境变量认证'
+  ));
+  console.log();
+  
+  console.log(CliDesign.example(
+    'mcp-swagger-server -c ./config.json',
+    '使用配置文件 - 支持完整配置'
   ));
 
   console.log(CliDesign.section(`${CliDesign.icons.world} 环境变量`));
@@ -152,6 +190,16 @@ function showHelp() {
     CliDesign.brand.white('启用自动重载'),
     CliDesign.brand.muted('false')
   ]));
+  console.log(CliDesign.tableRow([
+    CliDesign.brand.secondary('API_TOKEN'),
+    CliDesign.brand.white('Bearer Token'),
+    CliDesign.brand.muted('用于 API 认证')
+  ]));
+  console.log(CliDesign.tableRow([
+    CliDesign.brand.secondary('MCP_AUTH_TYPE'),
+    CliDesign.brand.white('认证类型'),
+    CliDesign.brand.muted('none|bearer')
+  ]));
 
   console.log(CliDesign.section(`${CliDesign.icons.phone} 支持`));
   console.log('  ' + CliDesign.brand.muted('GitHub: ') + CliDesign.brand.info('https://github.com/zaizaizhao/mcp-swagger-server'));
@@ -165,6 +213,139 @@ function showHelp() {
 function isUrl(str: string): boolean {
   const urlPattern = /^(http|https):\/\/[^ "]+$/;
   return urlPattern.test(str);
+}
+
+// 配置文件接口
+interface ConfigFile {
+  transport?: string;
+  port?: number;
+  endpoint?: string;
+  openapi?: string;
+  watch?: boolean;
+  auth?: AuthConfig;
+  managed?: boolean;
+  autoRestart?: boolean;
+  maxRetries?: number;
+  retryDelay?: number;
+}
+
+// 加载配置文件
+function loadConfigFile(configPath: string): ConfigFile {
+  try {
+    console.log(CliDesign.loading(`正在加载配置文件...`));
+    console.log(CliDesign.brand.muted(`  ${CliDesign.icons.file} ${path.resolve(configPath)}`));
+    
+    const content = fs.readFileSync(configPath, 'utf-8');
+    const config = JSON.parse(content);
+    
+    console.log(CliDesign.success('配置文件加载成功'));
+    return config;
+  } catch (error: any) {
+    console.log(CliDesign.error(`加载配置文件失败: ${error.message}`));
+    throw error;
+  }
+}
+
+// 加载 .env 文件
+function loadEnvFile(envPath: string): Record<string, string> {
+  try {
+    console.log(CliDesign.loading(`正在加载 .env 文件...`));
+    console.log(CliDesign.brand.muted(`  ${CliDesign.icons.file} ${path.resolve(envPath)}`));
+    
+    const content = fs.readFileSync(envPath, 'utf-8');
+    const envVars: Record<string, string> = {};
+    
+    content.split('\n').forEach(line => {
+      line = line.trim();
+      if (line && !line.startsWith('#') && line.includes('=')) {
+        const [key, ...valueParts] = line.split('=');
+        const value = valueParts.join('=').trim();
+        envVars[key.trim()] = value.replace(/^["']|["']$/g, ''); // 移除引号
+      }
+    });
+    
+    console.log(CliDesign.success(`.env 文件加载成功，加载了 ${Object.keys(envVars).length} 个环境变量`));
+    return envVars;
+  } catch (error: any) {
+    console.log(CliDesign.error(`加载 .env 文件失败: ${error.message}`));
+    throw error;
+  }
+}
+
+// 解析认证配置
+function parseAuthConfig(
+  options: ServerOptions & { 'auth-type'?: string; 'bearer-token'?: string; 'bearer-env'?: string }, 
+  config?: ConfigFile,
+  envVars?: Record<string, string>
+): AuthConfig {
+  // 合并环境变量（.env 文件 + 系统环境变量）
+  const mergedEnv = { ...envVars, ...process.env };
+  
+  // 优先级：命令行参数 > 配置文件 > .env 文件 > 系统环境变量 > 默认值
+  const authType = options['auth-type'] || options.authType || config?.auth?.type || mergedEnv.MCP_AUTH_TYPE || 'none';
+  
+  if (authType === 'none') {
+    return { type: 'none' };
+  }
+  
+  if (authType === 'bearer') {
+    let token = '';
+    let source: 'static' | 'env' = 'static';
+    let envName = '';
+    
+    if (options['bearer-token'] || options.bearerToken) {
+      // 命令行直接指定token
+      token = options['bearer-token'] || options.bearerToken || '';
+      source = 'static';
+    } else if (options['bearer-env'] || options.bearerEnv) {
+      // 命令行指定环境变量
+      envName = options['bearer-env'] || options.bearerEnv || '';
+      source = 'env';
+    } else if (config?.auth?.bearer) {
+      // 配置文件
+      const bearerConfig = config.auth.bearer;
+      token = bearerConfig.token || '';
+      source = bearerConfig.source === 'function' ? 'static' : bearerConfig.source || 'static';
+      envName = bearerConfig.envName || '';
+    } else {
+      // 默认使用 API_TOKEN 环境变量
+      envName = 'API_TOKEN';
+      source = 'env';
+    }
+    
+    return {
+      type: 'bearer',
+      bearer: {
+        token,
+        source,
+        envName: envName || 'API_TOKEN'
+      }
+    };
+  }
+  
+  throw new Error(`不支持的认证类型: ${authType}，支持的类型: none, bearer`);
+}
+
+// 验证认证配置
+function validateAuthConfig(authConfig: AuthConfig, envVars?: Record<string, string>): void {
+  if (authConfig.type === 'bearer' && authConfig.bearer) {
+    const { source, token, envName } = authConfig.bearer;
+    
+    if (source === 'static') {
+      if (!token) {
+        throw new Error('Bearer Token 静态模式需要提供 token 值');
+      }
+    } else if (source === 'env') {
+      const envVar = envName || 'API_TOKEN';
+      // 合并环境变量：.env 文件 + 系统环境变量
+      const mergedEnv = { ...envVars, ...process.env };
+      const envValue = mergedEnv[envVar];
+      if (!envValue) {
+        console.log(CliDesign.warning(`环境变量 ${envVar} 未设置，Bearer Token 将在运行时无效`));
+        // 不降级认证类型，只是给出警告
+      }
+    }
+  }
 }
 
 // 设置 Windows CMD 编码支持
@@ -299,6 +480,7 @@ class CliDesign {
     get gear() { return this.isWindows ? 'G' : '🔧'; },
     get process() { return this.isWindows ? 'P' : '🔄'; },
     get up() { return this.isWindows ? '^' : '🛑'; },
+    get key() { return this.isWindows ? 'K' : '🔐'; },
   };
 
   // 渐变色效果 (手动实现)
@@ -420,11 +602,48 @@ async function main() {
     process.exit(0);
   }
 
-  // 从环境变量获取默认值
-  const transport = options.transport || process.env.MCP_TRANSPORT || 'stdio';
-  const port = parseInt(options.port || process.env.MCP_PORT || '3322');
-  const openApiSource = options.openapi || process.env.MCP_OPENAPI_URL;
-  const autoReload = options.watch || process.env.MCP_AUTO_RELOAD === 'true';
+  // 加载 .env 文件
+  let envVars: Record<string, string> = {};
+  if (options.env) {
+    try {
+      envVars = loadEnvFile(options.env);
+    } catch (error) {
+      console.log(CliDesign.error('环境变量文件加载失败，使用系统环境变量'));
+    }
+  }
+
+  // 加载配置文件
+  let config: ConfigFile | undefined;
+  if (options.config) {
+    try {
+      config = loadConfigFile(options.config);
+    } catch (error) {
+      console.log(CliDesign.error('配置文件加载失败，使用命令行参数和环境变量'));
+    }
+  }
+
+  // 从配置文件、命令行参数和环境变量获取配置
+  // 合并环境变量：.env 文件 + 系统环境变量
+  const mergedEnv = { ...envVars, ...process.env };
+  
+  // 优先级：命令行参数 > 配置文件 > .env 文件 > 系统环境变量 > 默认值
+  const transport = options.transport || config?.transport || mergedEnv.MCP_TRANSPORT || 'stdio';
+  const port = parseInt(options.port || config?.port?.toString() || mergedEnv.MCP_PORT || '3322');
+  const openApiSource = options.openapi || config?.openapi || mergedEnv.MCP_OPENAPI_URL || '';
+  const autoReload = options.watch || config?.watch || mergedEnv.MCP_AUTO_RELOAD === 'true';
+  const autoRestart = options['auto-restart'] || config?.autoRestart || false;
+  const maxRetries = parseInt(options['max-retries'] || config?.maxRetries?.toString() || '5');
+  const retryDelay = parseInt(options['retry-delay'] || config?.retryDelay?.toString() || '5000');
+  
+  // 解析认证配置
+  let authConfig: AuthConfig;
+  try {
+    authConfig = parseAuthConfig(options, config, envVars);
+    validateAuthConfig(authConfig, envVars);
+  } catch (error: any) {
+    console.log(CliDesign.error(`认证配置错误: ${error.message}`));
+    process.exit(1);
+  }
 
   // 显示启动横幅
   CliDesign.showHeader('MCP SWAGGER SERVER');
@@ -454,6 +673,32 @@ async function main() {
     CliDesign.brand.muted(autoReload && openApiSource && !isUrl(openApiSource) ? '将监控文件变化' : '')
   ]));
   
+  // 显示认证配置
+  console.log(CliDesign.tableRow([
+    CliDesign.brand.secondary('认证类型:'),
+    CliDesign.brand.white(authConfig.type.toUpperCase()),
+    CliDesign.brand.muted(getAuthDescription(authConfig))
+  ]));
+  
+  if (authConfig.type === 'bearer' && authConfig.bearer) {
+    const { source, envName, token } = authConfig.bearer;
+    if (source === 'env') {
+      // 合并环境变量检查
+      const mergedEnv = { ...envVars, ...process.env };
+      console.log(CliDesign.tableRow([
+        CliDesign.brand.secondary('Token 来源:'),
+        CliDesign.brand.white(`环境变量 ${envName}`),
+        CliDesign.brand.muted(mergedEnv[envName || 'API_TOKEN'] ? '✓ 已设置' : '✗ 未设置')
+      ]));
+    } else {
+      console.log(CliDesign.tableRow([
+        CliDesign.brand.secondary('Token 来源:'),
+        CliDesign.brand.white('静态配置'),
+        CliDesign.brand.muted(token ? '✓ 已配置' : '✗ 未配置')
+      ]));
+    }
+  }
+  
   console.log();
 
   // 获取传输协议描述
@@ -462,6 +707,20 @@ async function main() {
       case 'stdio': return 'AI 客户端集成';
       case 'streamable': return 'Web 应用集成';
       case 'sse': return '实时 Web 应用';
+      default: return '';
+    }
+  }
+
+  // 获取认证类型描述
+  function getAuthDescription(authConfig: AuthConfig): string {
+    switch (authConfig.type) {
+      case 'none': return '无认证';
+      case 'bearer': 
+        if (authConfig.bearer?.source === 'env') {
+          return '环境变量 Token';
+        } else {
+          return '静态 Token';
+        }
       default: return '';
     }
   }
@@ -502,7 +761,7 @@ async function main() {
         case 'stdio':
           console.log(CliDesign.loading('正在启动 STDIO 服务器...'));
           console.log(CliDesign.brand.muted(`  ${CliDesign.icons.chat} 适用于 AI 客户端集成（如 Claude Desktop）`));
-          await runStdioServer(openApiData);
+          await runStdioServer(openApiData, authConfig);
           break;
 
         case 'streamable':
@@ -511,7 +770,7 @@ async function main() {
           const streamUrl = `http://localhost:${port}${streamEndpoint}`;
           console.log(CliDesign.brand.muted(`  ${CliDesign.icons.web} 服务器地址: ${streamUrl}`));
           console.log(CliDesign.brand.muted(`  ${CliDesign.icons.link} 适用于 Web 应用集成`));
-          await runStreamableServer(streamEndpoint, port, openApiData);
+          await runStreamableServer(streamEndpoint, port, openApiData, authConfig);
           break;
 
         case 'sse':
@@ -520,7 +779,7 @@ async function main() {
           const sseUrl = `http://localhost:${port}${sseEndpoint}`;
           console.log(CliDesign.brand.muted(`  ${CliDesign.icons.signal} SSE 端点: ${sseUrl}`));
           console.log(CliDesign.brand.muted(`  ${CliDesign.icons.bolt} 适用于实时 Web 应用`));
-          await runSseServer(sseEndpoint, port, openApiData);
+          await runSseServer(sseEndpoint, port, openApiData, authConfig);
           break;
 
         default:
@@ -553,10 +812,7 @@ async function main() {
       console.log();
       console.log(CliDesign.error(`服务器启动失败: ${error.message}`));
       
-      if (options.autoRestart) {
-        const retryDelay = parseInt(options.retryDelay || '5000');
-        const maxRetries = parseInt(options.maxRetries || '5');
-        
+      if (autoRestart) {
         console.log(CliDesign.warning(`自动重启已启用，${retryDelay}ms 后重试...`));
         console.log(CliDesign.brand.muted(`  ${CliDesign.icons.process} 最大重试次数: ${maxRetries}`));
         setTimeout(startServer, retryDelay);

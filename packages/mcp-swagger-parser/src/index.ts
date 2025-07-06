@@ -52,8 +52,12 @@ export const parseFromString = async (content: string, config?: ParserConfig) =>
 };
 
 // Export transformer functions
-export { transformToMCPTools } from './transformer/index';
+export { transformToMCPTools, OpenAPIToMCPTransformer } from './transformer/index';
 export type { MCPTool, MCPToolResponse, TransformerOptions } from './transformer/types';
+
+// Export auth types
+export type { AuthConfig, AuthManager, BearerConfig, ApiKeyConfig, BasicConfig, OAuth2Config, CustomConfig } from './auth/types';
+export { BearerAuthManager } from './auth/bearer-auth';
 
 /**
  * High-level convenience function to parse and transform OpenAPI spec in one step
