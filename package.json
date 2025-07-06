@@ -8,6 +8,7 @@
     "build:packages": "node scripts/build.js --non-ui",
     "prepack": "node scripts/build.js",
     "pack": "pnpm pack --filter mcp-swagger-server && pnpm pack --filter mcp-swagger-parser",
+    "publish":"pnpm publish --filter mcp-swagger-server && pnpm publish --filter mcp-swagger-parser",
     "dev": "node scripts/dev.js",
     "dev:ui": "pnpm --filter=mcp-swagger-ui run dev",
     "clean": "node scripts/clean.js",

@@ -1,5 +1,23 @@
 # mcp-swagger-parser
 
+## 1.2.2
+
+### Patch Changes
+
+- "Workspace error"
+
+## 1.2.1
+
+### Patch Changes
+
+- "workspace"
+
+## 1.2.0
+
+### Minor Changes
+
+- "workspace"
+
 ## 1.1.1
 
 ### Patch Changes
