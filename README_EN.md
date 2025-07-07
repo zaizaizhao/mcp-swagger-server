@@ -3,392 +3,325 @@
 <div align="center">
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5+-blue.svg)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
-[![Vue.js](https://img.shields.io/badge/Vue.js-3+-4FC08D.svg)](https://vuejs.org/)
-[![NestJS](https://img.shields.io/badge/NestJS-10+-E0234E.svg)](https://nestjs.com/)
+[![Node.js](https://img.shields.io/badge/Node.js-16+-green.svg)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**A comprehensive monorepo solution for converting OpenAPI/Swagger specifications to Model Context Protocol (MCP) format**
+**Convert OpenAPI/Swagger specifications to Model Context Protocol (MCP) format server**
 
-Transform your REST APIs into AI-native tools with zero configuration
+Transform your REST APIs into AI-callable tools with zero configuration
 
-[🚀 Quick Start](#quick-start) • [🏗️ Architecture](#architecture) • [📚 Documentation](#documentation) • [🛠️ Development](#development)
-
-**Languages**: English | [中文](README_ZH.md)
+[🚀 Quick Start](#quick-start) • [📖 Usage Guide](#usage-guide) • [🛠️ Development](#development)
 
 </div>
 
 ---
 
-## 🎯 Overview
+## 🎯 Project Overview
 
-MCP Swagger Server is a **production-ready monorepo** that bridges the gap between traditional REST APIs and AI assistants through the Model Context Protocol (MCP). It provides a complete solution with modern web interface, enterprise-grade backend services, and intelligent build systems.
+MCP Swagger Server is a **Monorepo** project that converts any OpenAPI/Swagger-compliant REST API into Model Context Protocol (MCP) format, enabling AI assistants to understand and call your APIs.
 
-### 🌟 Key Highlights
-
-- **🏗️ Monorepo Architecture**: Advanced dependency management with automated build orchestration
-- **🔄 Zero Configuration**: Paste your OpenAPI spec and get MCP tools instantly
-- **🎯 AI-Native**: Purpose-built for LLM and AI assistant integration
-- **🚀 Production Ready**: Enterprise-grade architecture with comprehensive monitoring
-- **🔌 Multi-Protocol**: Support for HTTP, WebSocket, and Stdio transports
-
-## 🏗️ Architecture
-
-### 📦 Core Packages
+### 📦 Project Structure
 
 ```
 mcp-swagger-server/
 ├── packages/
-│   ├── mcp-swagger-parser/     # 🔧 Core OpenAPI parser engine
-│   ├── mcp-swagger-server/     # ⚙️ MCP protocol server
-│   ├── mcp-swagger-ui/         # 🎨 Modern Vue.js web interface
-│   └── mcp-swagger-api/        # 🔗 NestJS REST API backend
-├── scripts/                    # 🔨 Build automation & tooling
-├── docs/                       # 📚 Comprehensive documentation
-└── shared configurations       # ⚙️ TypeScript, ESLint, etc.
+│   ├── mcp-swagger-server/     # 🔧 Core MCP Server (Available)
+│   ├── mcp-swagger-parser/     # 📝 OpenAPI Parser (In Development)
+│   ├── mcp-swagger-ui/         # � Web Interface (In Development)
+│   └── mcp-swagger-api/        # 🔗 REST API Backend (In Development)
+└── scripts/                    # 🔨 Build Tools
 ```
 
-### 🔄 Data Flow Architecture
+### ✨ Core Features
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        MCP Swagger Server                       │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────────┐    │
-│  │   Web UI    │    │  REST API   │    │  MCP Protocol   │    │
-│  │  (Vue.js)   │───▶│  (NestJS)   │───▶│    Server       │    │
-│  └─────────────┘    └─────────────┘    └─────────────────┘    │
-│         │                   │                     │            │
-│         ▼                   ▼                     ▼            │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────────┐    │
-│  │  UI State   │    │ Validation  │    │  Tool Registry  │    │
-│  │ Management  │    │  & Parsing  │    │   & Execution   │    │
-│  └─────────────┘    └─────────────┘    └─────────────────┘    │
-│                                                                 │
-├─────────────────────────────────────────────────────────────────┤
-│                     Shared Parser Engine                       │
-│              (mcp-swagger-parser - TypeScript)                │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### 🧩 Package Dependencies
-
-```mermaid
-graph TD
-    A[mcp-swagger-ui] --> B[mcp-swagger-api]
-    B --> C[mcp-swagger-parser]
-    D[mcp-swagger-server] --> C
-    E[Build Scripts] --> A
-    E --> B
-    E --> C
-    E --> D
-```
-
-## ✨ Features
-
-### 🎨 Modern Web Interface
-- **Elegant Design**: Clean, intuitive user interface
-- **Responsive Layout**: Desktop and mobile optimized
-- **Real-time Preview**: Live OpenAPI visualization
-- **Drag & Drop**: File upload with URL input support
-- **Advanced Configuration**: Flexible conversion parameters
-
-### ⚡ Intelligent Parser Engine
-- **Multi-format Support**: JSON, YAML, URL, and raw objects
-- **Smart Detection**: Auto-recognition of OpenAPI 2.0/3.x specifications
-- **Flexible Filtering**: Filter by HTTP methods, tags, and paths
-- **Type Safety**: Full TypeScript support with automatic inference
-- **Error Handling**: Comprehensive validation and error reporting
-
-### 🔌 Multi-Protocol Transport
-- **Stdio Transport**: Command-line integration for desktop apps
-- **SSE (Server-Sent Events)**: Real-time web communication
-- **HTTP Streaming**: Bidirectional streaming communication
-- **Health Monitoring**: Built-in status checks and diagnostics
-
-### 🏗️ Enterprise Architecture
-- **Monorepo Management**: Automated dependency resolution
-- **Build Orchestration**: Intelligent build order with parallel processing
-- **Type Sharing**: Seamless TypeScript types across packages
-- **Development Tools**: Hot reload, diagnostic tools, and automation
+- **🔄 Zero Configuration**: Input OpenAPI spec, get MCP tools instantly
+- **🎯 AI-Native Design**: Optimized for Claude, ChatGPT, and other AI assistants
+- **🔌 Multi-Transport**: Support for SSE, Streamable, and Stdio transports
+- **� Secure Authentication**: Bearer Token authentication to protect API access
+- **⚡ High Performance**: Built with TypeScript for complete type safety
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js ≥ 18.0.0
+
+- Node.js ≥ 16.0.0
 - pnpm ≥ 8.0.0 (recommended)
-- TypeScript ≥ 5.0.0
 
 ### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/mcp-swagger-server.git
+# Clone the project
+git clone https://github.com/zaizaizhao/mcp-swagger-server.git
 cd mcp-swagger-server
 
 # Install dependencies
 pnpm install
 
-# Build all packages
+# Build the project
 pnpm build
 ```
 
-### 🎨 Launch Web Interface
-
-```bash
-# Start the development server
-pnpm dev:ui
-
-# Open in browser
-open http://localhost:3000
-```
-
-### ⚙️ Start MCP Server
+### Quick Launch
 
 ```bash
 # Navigate to MCP server package
 cd packages/mcp-swagger-server
 
-# Start with different transports
-pnpm start:stdio      # CLI integration
-pnpm start:sse         # Web real-time communication
-pnpm start:streamable  # HTTP streaming
+# Start with Petstore API example
+pnpm cli:petstore
 
-# Development mode with hot reload
-pnpm dev
+# Or start with GitHub API example
+pnpm cli:github
 ```
 
-### 🔗 Launch REST API Backend
+## � Usage Guide
+
+### 🔧 `mcp-swagger-server` Package
+
+This is the core package of the project, providing complete MCP server functionality.
+
+#### Installation and Usage
 
 ```bash
-# Navigate to API package
-cd packages/mcp-swagger-api
+# Global installation
+npm install -g mcp-swagger-server
 
-# Start development server
-pnpm start:dev
-
-# API available at http://localhost:3000
-# Swagger docs at http://localhost:3000/api
+# Command line usage
+mcp-swagger-server --openapi https://petstore.swagger.io/v2/swagger.json --transport streamable --port 3322
 ```
 
-## 🛠️ Development
+#### Supported Transport Protocols
 
-### 🔨 Build System
+- **stdio**: For command-line integration
+- **sse**: Server-Sent Events, suitable for web applications
+- **streamable**: HTTP streaming transport, suitable for modern web applications
 
-Our intelligent build system handles complex dependency relationships:
+#### Command Line Options
 
 ```bash
-# Build all packages in correct order
-pnpm build
+# Basic usage
+mcp-swagger-server [options]
 
-# Build only backend packages (skip UI)
-pnpm build:packages
+# Options:
+--openapi, -o       OpenAPI specification URL or file path
+--transport, -t     Transport protocol (stdio|sse|streamable)
+--port, -p          Port number
+--watch, -w         Monitor file changes
+--verbose           Verbose logging
 
-# Development mode with watch
-pnpm dev
-
-# Clean build artifacts
-pnpm clean
+# Bearer Token authentication options:
+--auth-type         Authentication type (bearer)
+--bearer-token      Directly specify Bearer Token
+--bearer-env        Read token from environment variable
+--config, -c        Configuration file path
 ```
 
-### 📊 Project Health
+#### Examples
 
 ```bash
-# Run comprehensive diagnostics
-pnpm diagnostic
+# Use local OpenAPI file
+mcp-swagger-server --openapi ./swagger.json --transport sse --port 3322
 
-# Check all package health
-pnpm lint
-pnpm type-check
+# Use remote OpenAPI URL
+mcp-swagger-server --openapi https://api.example.com/openapi.json --transport streamable --port 3323
 
-# Run tests across all packages
-pnpm test
+# Monitor file changes
+mcp-swagger-server --openapi ./api.yaml --transport stdio --watch
+
+# Use Bearer Token authentication
+mcp-swagger-server --openapi https://api.example.com/openapi.json --auth-type bearer --bearer-token "your-token-here" --transport sse --port 3322
+
+# Read token from environment variable
+export API_TOKEN="your-token-here"
+mcp-swagger-server --openapi https://api.example.com/openapi.json --auth-type bearer --bearer-env API_TOKEN --transport stdio
 ```
 
-### 🧪 Testing & Debugging
+### 🔐 Bearer Token Authentication
 
+`mcp-swagger-server` supports Bearer Token authentication to protect API access that requires authentication.
+
+#### Authentication Methods
+
+**1. Direct Token Specification**
 ```bash
-# Health check for MCP server
-curl http://localhost:3322/health
-
-# Debug with MCP Inspector
-npx @modelcontextprotocol/inspector node packages/mcp-swagger-server/dist/index.js
-
-# Enable debug logging
-DEBUG=mcp:* node packages/mcp-swagger-server/dist/index.js
+mcp-swagger-server --auth-type bearer --bearer-token "your-token-here" --openapi https://api.example.com/openapi.json
 ```
 
-## 🔧 Usage Examples
+**2. Environment Variable Method**
+```bash
+# Set environment variable
+export API_TOKEN="your-token-here"
 
-### 🌐 Web Interface
+# Use environment variable
+mcp-swagger-server --auth-type bearer --bearer-env API_TOKEN --openapi https://api.example.com/openapi.json
+```
 
-1. **Open the web interface** at `http://localhost:3000`
-2. **Input your API**: Upload file, paste URL, or input text
-3. **Configure options**: Select transport, filters, and optimization
-4. **Convert & Download**: Get your MCP configuration
-
-### 💻 Programmatic Usage
-
-```typescript
-// Using the parser directly
-import { parseOpenAPI } from 'mcp-swagger-parser';
-
-const mcpTools = await parseOpenAPI({
-  source: 'https://api.example.com/openapi.json',
-  options: {
-    transport: 'http',
-    includeDeprecated: false,
-    methods: ['GET', 'POST']
+**3. Configuration File Method**
+```json
+{
+  "transport": "sse",
+  "port": 3322,
+  "openapi": "https://api.example.com/openapi.json",
+  "auth": {
+    "type": "bearer",
+    "bearer": {
+      "token": "your-token-here",
+      "source": "static"
+    }
   }
-});
-
-// Using the MCP server
-import { createMcpServer } from 'mcp-swagger-server';
-
-const server = await createMcpServer({
-  transport: 'sse',
-  port: 3322
-});
-
-await server.start();
+}
 ```
 
-### 🔌 Integration with AI Assistants
+```bash
+# Use configuration file
+mcp-swagger-server --config config.json
+```
+
+#### Environment Variable Configuration
+
+Create a `.env` file:
+```env
+# Basic configuration
+MCP_PORT=3322
+MCP_TRANSPORT=stdio
+MCP_OPENAPI_URL=https://api.example.com/openapi.json
+
+# Authentication configuration
+MCP_AUTH_TYPE=bearer
+API_TOKEN=your-bearer-token-here
+```
+
+### 🤖 AI Assistant Integration
+
+#### Claude Desktop Configuration
 
 ```json
-// Claude Desktop configuration
 {
   "mcpServers": {
     "swagger-converter": {
-      "command": "node",
-      "args": ["packages/mcp-swagger-server/dist/index.js"],
+      "command": "mcp-swagger-server",
+      "args": [
+        "--openapi", "https://petstore.swagger.io/v2/swagger.json",
+        "--transport", "stdio"
+      ]
+    },
+    "secured-api": {
+      "command": "mcp-swagger-server",
+      "args": [
+        "--openapi", "https://api.example.com/openapi.json",
+        "--transport", "stdio",
+        "--auth-type", "bearer",
+        "--bearer-env", "API_TOKEN"
+      ],
       "env": {
-        "NODE_ENV": "production"
+        "API_TOKEN": "your-bearer-token-here"
       }
     }
   }
 }
 ```
 
-## 📚 Documentation
+#### Programmatic Usage
 
-### 📖 Core Documentation
-- [🏗️ Architecture Overview](docs/technical-architecture.md)
-- [🎨 Frontend Guide](docs/mcp-swagger-ui-technical-documentation.md)
-- [🔧 Backend Implementation](docs/nestjs-implementation-guide.md)
-- [🚀 Development Guide](docs/mcp-swagger-ui-development-guide.md)
+```typescript
+import { createMcpServer } from 'mcp-swagger-server';
 
-### 🗺️ Planning & Roadmap
-- [📋 Project Roadmap](docs/project-roadmap-and-planning.md)
-- [⚡ Weekly Tasks](docs/immediate-tasks-week1.md)
-- [🔄 Migration Guide](docs/migration-summary.md)
+// Basic usage
+const server = await createMcpServer({
+  openapi: 'https://api.example.com/openapi.json',
+  transport: 'streamable',
+  port: 3322
+});
 
-## 🛠️ Technology Stack
+// With Bearer Token authentication
+const securedServer = await createMcpServer({
+  openapi: 'https://api.example.com/openapi.json',
+  transport: 'streamable',
+  port: 3322,
+  auth: {
+    type: 'bearer',
+    bearer: {
+      token: 'your-token-here',
+      source: 'static'
+    }
+  }
+});
 
-### Frontend (mcp-swagger-ui)
-- **Framework**: Vue 3 + Composition API
-- **UI Library**: Element Plus + Custom Components
-- **State Management**: Pinia
-- **Build Tool**: Vite
-- **Languages**: TypeScript + SCSS
+await server.start();
+```
 
-### Backend (mcp-swagger-api)
-- **Framework**: NestJS 10+
-- **Protocol**: Model Context Protocol (MCP)
-- **Validation**: class-validator + class-transformer
-- **Documentation**: Swagger/OpenAPI
-- **Security**: Helmet, CORS, Rate limiting
+## �️ Development
 
-### Core Engine (mcp-swagger-parser)
-- **Parser**: Custom OpenAPI 3.x parser
-- **Validation**: Zod schema validation
-- **Transform**: Advanced AST transformation
-- **Types**: Comprehensive TypeScript definitions
+### Build System
 
-### Infrastructure
-- **Package Manager**: pnpm with workspace support
-- **Build System**: Custom orchestration with Rollup/Vite
-- **Linting**: ESLint + Prettier
-- **Testing**: Jest + Vue Test Utils
+```bash
+# Build all packages
+pnpm build
 
-## 🌟 Use Cases
+# Build only backend packages
+pnpm build:packages
 
-### 🤖 AI Assistant Integration
-Connect Claude, ChatGPT, or custom AI assistants to your REST APIs through standardized MCP protocol.
+# Development mode
+pnpm dev
 
-### 🔄 API Modernization
-Transform legacy REST APIs into AI-friendly tools without changing existing infrastructure.
+# Clean build artifacts
+pnpm clean
+```
 
-### 🎯 Rapid Prototyping
-Quickly convert API specifications into interactive tools for testing and development.
+### Testing and Debugging
 
-### 📊 Enterprise Scale
-Scale MCP tool generation across multiple APIs and services in enterprise environments.
+```bash
+# Run tests
+pnpm test
+
+# Code linting
+pnpm lint
+
+# Type checking
+pnpm type-check
+
+# Project health check
+pnpm diagnostic
+```
+
+### MCP Server Development
+
+```bash
+cd packages/mcp-swagger-server
+
+# Development mode startup
+pnpm dev
+
+# Run CLI tools
+pnpm cli --help
+
+# Debug with MCP Inspector
+npx @modelcontextprotocol/inspector node dist/index.js
+```
+
+## � Project Status
+
+| Package | Status | Description |
+|---------|--------|-------------|
+| `mcp-swagger-server` | ✅ Available | Core MCP server with multi-transport support |
+| `mcp-swagger-parser` | � In Development | OpenAPI parser and conversion tools |
+| `mcp-swagger-ui` | � In Development | Vue.js web interface |
+| `mcp-swagger-api` | 🚧 In Development | NestJS REST API backend |
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-### Development Workflow
-
-1. Fork and clone the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes and add tests
-4. Ensure all checks pass (`pnpm lint && pnpm type-check`)
-5. Commit your changes (`git commit -m 'feat: add amazing feature'`)
-6. Push and create a Pull Request
-
-### Code Standards
-
-- **TypeScript**: Strict mode with comprehensive type annotations
-- **ESLint**: Follow project ESLint configuration
-- **Prettier**: Consistent code formatting
-- **Conventional Commits**: Use conventional commit message format
-
-## 📊 Project Status
-
-### ✅ Completed Components
-
-| Component | Status | Description |
-|-----------|--------|-------------|
-| **Parser Engine** | 🟢 100% | Core OpenAPI parser with full type support |
-| **Build System** | 🟢 100% | Intelligent build orchestration |
-| **Web Interface** | 🟢 90% | Modern Vue.js UI with responsive design |
-| **MCP Server** | 🟢 90% | Multi-transport protocol server |
-| **REST API** | 🟢 95% | NestJS backend with comprehensive endpoints |
-| **Documentation** | 🟢 100% | Complete technical documentation |
-
-### 🚧 In Progress
-
-- **Testing Suite**: Comprehensive test coverage
-- **Performance Optimization**: Large file handling
-- **Advanced Features**: Custom transformation rules
-
-### 🎯 Roadmap
-
-- **Enterprise Features**: Authentication, rate limiting, analytics
-- **Plugin System**: Custom parsers and transformers
-- **Cloud Deployment**: Docker containers and CI/CD
-- **Performance**: Caching and optimization
+Contributions are welcome! Please read the [Contributing Guide](CONTRIBUTING.md) first.
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- [Model Context Protocol](https://modelcontextprotocol.io/) for the protocol specification
-- [OpenAPI Initiative](https://www.openapis.org/) for API standardization
-- [Vue.js](https://vuejs.org/) and [NestJS](https://nestjs.com/) communities
-- All contributors and supporters of this project
+MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
 <div align="center">
 
-**Built with ❤️ by ZhaoYaNan(ZTE) 17761978041**
+**Built with ❤️ by ZhaoYaNan(ZTE)**
 
-[⭐ Star this repo](../../stargazers) • [🐛 Report issues](../../issues) • [💬 Discussions](../../discussions)
+[⭐ Star](../../stargazers) • [🐛 Issues](../../issues) • [💬 Discussions](../../discussions)
 
 </div>
