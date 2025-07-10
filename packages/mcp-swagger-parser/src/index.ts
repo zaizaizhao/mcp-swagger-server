@@ -53,11 +53,14 @@ export const parseFromString = async (content: string, config?: ParserConfig) =>
 
 // Export transformer functions
 export { transformToMCPTools, OpenAPIToMCPTransformer } from './transformer/index';
-export type { MCPTool, MCPToolResponse, TransformerOptions } from './transformer/types';
+export type { MCPTool, MCPToolResponse, TransformerOptions, CustomHeaders, RequestContext } from './transformer/types';
 
 // Export auth types
 export type { AuthConfig, AuthManager, BearerConfig, ApiKeyConfig, BasicConfig, OAuth2Config, CustomConfig } from './auth/types';
 export { BearerAuthManager } from './auth/bearer-auth';
+
+// Export custom headers
+export { CustomHeadersManager, predefinedGenerators } from './headers/index';
 
 /**
  * High-level convenience function to parse and transform OpenAPI spec in one step
@@ -139,5 +142,7 @@ export const DEFAULT_TRANSFORMER_OPTIONS: TransformerOptions = {
   includeTags: [],
   excludeTags: [],
   requestTimeout: 30000,
-  defaultHeaders: { 'Content-Type': 'application/json' }
+  defaultHeaders: { 'Content-Type': 'application/json' },
+  debugHeaders: false,
+  protectedHeaders: ['content-type', 'content-length', 'host', 'connection', 'transfer-encoding', 'upgrade']
 };

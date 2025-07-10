@@ -1,5 +1,11 @@
 # mcp-swagger-parser
 
+## 1.3.0
+
+### Minor Changes
+
+- "add custom http headers"
+
 ## 1.2.2
 
 ### Patch Changes

@@ -43,6 +43,11 @@ interface ServerOptions {
   bearerEnv?: string;
   config?: string; // 配置文件路径
   env?: string; // .env 文件路径
+  // 自定义请求头选项
+  customHeaders?: string[];        // --custom-header "Key=Value"
+  customHeadersConfig?: string;    // --custom-headers-config headers.json
+  customHeadersEnv?: string[];     // --custom-header-env "X-Client-ID=CLIENT_ID"
+  debugHeaders?: boolean;          // --debug-headers
 }
 
 // 解析命令行参数
@@ -101,13 +106,29 @@ const { values, positionals } = parseArgs({
     env: {
       type: "string",
     },
+    // 自定义请求头选项
+    "custom-header": {
+      type: "string",
+      multiple: true,
+    },
+    "custom-headers-config": {
+      type: "string",
+    },
+    "custom-header-env": {
+      type: "string",
+      multiple: true,
+    },
+    "debug-headers": {
+      type: "boolean",
+      default: false,
+    },
     help: {
       type: "boolean",
       short: "h",
       default: false,
     }
   },
-}) as { values: ServerOptions & { help?: boolean; 'auth-type'?: string; 'bearer-token'?: string; 'bearer-env'?: string; 'auto-restart'?: boolean; 'max-retries'?: string; 'retry-delay'?: string }; positionals: string[] };
+}) as { values: ServerOptions & { help?: boolean; 'auth-type'?: string; 'bearer-token'?: string; 'bearer-env'?: string; 'auto-restart'?: boolean; 'max-retries'?: string; 'retry-delay'?: string; 'custom-header'?: string[]; 'custom-headers-config'?: string; 'custom-header-env'?: string[]; 'debug-headers'?: boolean }; positionals: string[] };
 
 // 显示帮助信息 - 重新设计的专业版本
 function showHelp() {
@@ -130,6 +151,12 @@ function showHelp() {
   console.log(CliDesign.option('--auth-type <type>', '认证类型 (none|bearer)', 'none'));
   console.log(CliDesign.option('--bearer-token <token>', 'Bearer Token 静态值'));
   console.log(CliDesign.option('--bearer-env <varname>', 'Bearer Token 环境变量名', 'API_TOKEN'));
+  
+  console.log(CliDesign.section(`${CliDesign.icons.gear} 自定义请求头选项`));
+  console.log(CliDesign.option('--custom-header <header>', '自定义请求头 "Key=Value" (可重复)'));
+  console.log(CliDesign.option('--custom-headers-config <file>', '自定义请求头配置文件 (JSON)'));
+  console.log(CliDesign.option('--custom-header-env <header>', '环境变量请求头 "Key=VAR_NAME" (可重复)'));
+  console.log(CliDesign.option('--debug-headers', '启用请求头调试模式', 'false'));
   
   console.log(CliDesign.section(`${CliDesign.icons.gear} 高级选项`));
   console.log(CliDesign.option('-w, --watch', '监控文件变化并自动重载', 'false'));
@@ -167,6 +194,17 @@ function showHelp() {
   console.log(CliDesign.example(
     'mcp-swagger-server -c ./config.json',
     '使用配置文件 - 支持完整配置'
+  ));
+
+  console.log(CliDesign.example(
+    'mcp-swagger-server -o ./api.json --custom-header "X-Client-ID=my-client" --custom-header-env "X-API-Key=API_KEY"',
+    '自定义请求头 - 静态值与环境变量'
+  ));
+  console.log();
+
+  console.log(CliDesign.example(
+    'mcp-swagger-server -o ./api.json --custom-headers-config ./headers.json --debug-headers',
+    '自定义请求头 - 配置文件与调试模式'
   ));
 
   console.log(CliDesign.section(`${CliDesign.icons.world} 环境变量`));
@@ -227,6 +265,17 @@ interface ConfigFile {
   autoRestart?: boolean;
   maxRetries?: number;
   retryDelay?: number;
+  // 新增：自定义请求头配置
+  customHeaders?: {
+    static?: Record<string, string>;
+    env?: Record<string, string>;
+    conditional?: Array<{
+      condition: string;
+      headers: Record<string, string>;
+    }>;
+  };
+  // 新增：调试选项
+  debugHeaders?: boolean;
 }
 
 // 加载配置文件
@@ -589,6 +638,92 @@ class CliDesign {
   }
 }
 
+/**
+ * 解析自定义请求头配置
+ */
+function parseCustomHeaders(
+  options: ServerOptions & { 'custom-header'?: string[], 'custom-headers-config'?: string, 'custom-header-env'?: string[] },
+  config?: ConfigFile,
+  envVars?: Record<string, string>
+): any | undefined {
+  const customHeaders: any = {};
+  let hasConfig = false;
+
+  // 1. 从配置文件读取
+  if (config?.customHeaders) {
+    Object.assign(customHeaders, config.customHeaders);
+    hasConfig = true;
+  }
+
+  // 2. 从专用配置文件读取
+  if (options['custom-headers-config']) {
+    try {
+      const configFile = JSON.parse(fs.readFileSync(options['custom-headers-config'], 'utf8'));
+      Object.assign(customHeaders, configFile);
+      hasConfig = true;
+    } catch (error: any) {
+      console.error(`Error loading custom headers config: ${error.message}`);
+    }
+  }
+
+  // 3. 从命令行参数读取静态头
+  if (options['custom-header']) {
+    if (!customHeaders.static) customHeaders.static = {};
+    
+    for (const header of options['custom-header']) {
+      const [key, value] = header.split('=', 2);
+      if (key && value) {
+        customHeaders.static[key] = value;
+        hasConfig = true;
+      }
+    }
+  }
+
+  // 4. 从命令行参数读取环境变量头
+  if (options['custom-header-env']) {
+    if (!customHeaders.env) customHeaders.env = {};
+    
+    for (const header of options['custom-header-env']) {
+      const [key, envName] = header.split('=', 2);
+      if (key && envName) {
+        customHeaders.env[key] = envName;
+        hasConfig = true;
+      }
+    }
+  }
+
+  // 5. 从环境变量读取（MCP_CUSTOM_HEADERS_* 格式）
+  const customHeadersFromEnv = extractCustomHeadersFromEnv(envVars);
+  if (Object.keys(customHeadersFromEnv).length > 0) {
+    if (!customHeaders.static) customHeaders.static = {};
+    Object.assign(customHeaders.static, customHeadersFromEnv);
+    hasConfig = true;
+  }
+
+  return hasConfig ? customHeaders : undefined;
+}
+
+/**
+ * 从环境变量中提取自定义请求头
+ * 格式：MCP_CUSTOM_HEADERS_<HEADER_NAME>=<VALUE>
+ */
+function extractCustomHeadersFromEnv(envVars: Record<string, string> = {}): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const prefix = 'MCP_CUSTOM_HEADERS_';
+  
+  // 合并系统环境变量和 .env 文件变量
+  const allEnvVars = { ...envVars, ...process.env };
+  
+  for (const [key, value] of Object.entries(allEnvVars)) {
+    if (key.startsWith(prefix) && value) {
+      const headerName = key.substring(prefix.length).replace(/_/g, '-');
+      headers[headerName] = value;
+    }
+  }
+  
+  return headers;
+}
+
 // 主启动函数 - 专业的视觉体验
 async function main() {
   // 设置 Windows 控制台兼容性
@@ -644,6 +779,10 @@ async function main() {
     console.log(CliDesign.error(`认证配置错误: ${error.message}`));
     process.exit(1);
   }
+
+  // 解析自定义请求头配置
+  const customHeaders = parseCustomHeaders(options, config, envVars);
+  const debugHeaders = options['debug-headers'] || config?.debugHeaders || false;
 
   // 显示启动横幅
   CliDesign.showHeader('MCP SWAGGER SERVER');
@@ -761,7 +900,7 @@ async function main() {
         case 'stdio':
           console.log(CliDesign.loading('正在启动 STDIO 服务器...'));
           console.log(CliDesign.brand.muted(`  ${CliDesign.icons.chat} 适用于 AI 客户端集成（如 Claude Desktop）`));
-          await runStdioServer(openApiData, authConfig);
+          await runStdioServer(openApiData, authConfig, customHeaders, debugHeaders);
           break;
 
         case 'streamable':
@@ -770,7 +909,7 @@ async function main() {
           const streamUrl = `http://localhost:${port}${streamEndpoint}`;
           console.log(CliDesign.brand.muted(`  ${CliDesign.icons.web} 服务器地址: ${streamUrl}`));
           console.log(CliDesign.brand.muted(`  ${CliDesign.icons.link} 适用于 Web 应用集成`));
-          await runStreamableServer(streamEndpoint, port, openApiData, authConfig);
+          await runStreamableServer(streamEndpoint, port, openApiData, authConfig, customHeaders, debugHeaders);
           break;
 
         case 'sse':
@@ -779,7 +918,7 @@ async function main() {
           const sseUrl = `http://localhost:${port}${sseEndpoint}`;
           console.log(CliDesign.brand.muted(`  ${CliDesign.icons.signal} SSE 端点: ${sseUrl}`));
           console.log(CliDesign.brand.muted(`  ${CliDesign.icons.bolt} 适用于实时 Web 应用`));
-          await runSseServer(sseEndpoint, port, openApiData, authConfig);
+          await runSseServer(sseEndpoint, port, openApiData, authConfig, customHeaders, debugHeaders);
           break;
 
         default:
