@@ -3,6 +3,7 @@ import { MCPTool, MCPToolResponse, TransformerOptions, TextContent, ImageContent
 import { SchemaAnnotationExtractor } from '../extractors/schema-annotation-extractor';
 import { AuthManager, AuthConfig } from '../auth/types';
 import { BearerAuthManager } from '../auth/bearer-auth';
+import { CustomHeadersManager } from '../headers/CustomHeadersManager';
 import axios, { AxiosResponse, AxiosError } from 'axios';
 
 // Re-export types
@@ -72,9 +73,15 @@ function createResourceLink(uri: string, name?: string, description?: string, mi
  */
 export class OpenAPIToMCPTransformer {
   private spec: OpenAPISpec;
-  private options: Required<Omit<TransformerOptions, 'authConfig'>> & { authConfig?: AuthConfig };
+  private options: Required<Omit<TransformerOptions, 'authConfig' | 'customHeaders' | 'debugHeaders' | 'protectedHeaders'>> & { 
+    authConfig?: AuthConfig;
+    customHeaders?: TransformerOptions['customHeaders'];
+    debugHeaders?: boolean;
+    protectedHeaders?: string[];
+  };
   private annotationExtractor: SchemaAnnotationExtractor;
   private authManager?: AuthManager;
+  private customHeadersManager?: CustomHeadersManager;
 
   constructor(spec: OpenAPISpec, options: TransformerOptions = {}) {
     this.spec = spec;
@@ -89,6 +96,9 @@ export class OpenAPIToMCPTransformer {
       pathPrefix: options.pathPrefix ?? '',
       stripBasePath: options.stripBasePath ?? false,
       authConfig: options.authConfig ?? undefined,
+      customHeaders: options.customHeaders ?? undefined,
+      debugHeaders: options.debugHeaders ?? false,
+      protectedHeaders: options.protectedHeaders ?? [],
       includeFieldAnnotations: options.includeFieldAnnotations ?? true,
       annotationOptions: {
         showFieldTypes: options.annotationOptions?.showFieldTypes ?? true,
@@ -107,6 +117,9 @@ export class OpenAPIToMCPTransformer {
     
     // 初始化认证管理器
     this.initializeAuthManager();
+    
+    // 初始化自定义请求头管理器
+    this.initializeCustomHeadersManager();
   }
 
   /**
@@ -128,6 +141,21 @@ export class OpenAPIToMCPTransformer {
       default:
         console.warn(`Unsupported auth type: ${authConfig.type}`);
         this.authManager = undefined;
+    }
+  }
+
+  /**
+   * 初始化自定义请求头管理器
+   */
+  private initializeCustomHeadersManager(): void {
+    if (this.options.customHeaders) {
+      this.customHeadersManager = new CustomHeadersManager(
+        this.options.customHeaders,
+        {
+          protectedHeaders: this.options.protectedHeaders,
+          debugMode: this.options.debugHeaders
+        }
+      );
     }
   }
 
@@ -395,10 +423,21 @@ export class OpenAPIToMCPTransformer {
       // 1. 构建请求 URL
       const { url, queryParams } = this.buildUrlWithParams(path, args, operation);
 
-      // 2. 准备请求头
+      // 2. 准备请求头（默认头）
       const headers = { ...this.options.defaultHeaders };
 
-      // 3. 添加认证头
+      // 3. 添加自定义头（在认证头之前，优先级较低）
+      if (this.customHeadersManager) {
+        const customHeaders = await this.customHeadersManager.getHeaders({
+          method,
+          path,
+          args,
+          operation
+        });
+        Object.assign(headers, customHeaders);
+      }
+
+      // 4. 添加认证头（最高优先级，可能覆盖自定义头）
       if (this.authManager) {
         const authHeaders = await this.authManager.getAuthHeaders({
           method,
@@ -408,11 +447,16 @@ export class OpenAPIToMCPTransformer {
         Object.assign(headers, authHeaders);
       }
 
-      // 4. 准备请求体
+      // 5. 准备请求体
       const requestBody = this.buildRequestBody(args, operation);
       console.log(JSON.stringify(requestBody, null, 2));
       
-      // 5. 执行 HTTP 请求
+      // 6. 调试输出最终请求头
+      if (this.options.debugHeaders) {
+        console.log(`[${method.toUpperCase()} ${path}] Final headers:`, headers);
+      }
+      
+      // 7. 执行 HTTP 请求
       const response = await axios({
         method: method.toLowerCase() as any,
         url,

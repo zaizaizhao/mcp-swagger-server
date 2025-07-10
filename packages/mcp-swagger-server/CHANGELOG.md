@@ -1,5 +1,16 @@
 # mcp-swagger-server
 
+## 1.3.0
+
+### Minor Changes
+
+- "add custom http headers"
+
+### Patch Changes
+
+- Updated dependencies []:
+  - mcp-swagger-parser@1.3.0
+
 ## 1.2.2
 
 ### Patch Changes

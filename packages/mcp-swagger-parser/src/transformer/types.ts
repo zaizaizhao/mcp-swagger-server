@@ -3,6 +3,7 @@
  */
 
 import { AuthConfig } from '../auth/types';
+import { OperationObject } from '../types/openapi';
 
 /**
  * MCP Annotations - 用于提供内容的元数据和展示提示
@@ -161,6 +162,45 @@ export interface MCPTool {
 }
 
 /**
+ * 请求上下文
+ */
+export interface RequestContext {
+  method: string;
+  path: string;
+  args: any;
+  operation?: OperationObject;
+}
+
+/**
+ * 自定义请求头配置
+ */
+export interface CustomHeaders {
+  /**
+   * 静态头：固定值的请求头
+   */
+  static?: Record<string, string>;
+  
+  /**
+   * 环境变量头：从环境变量获取值
+   * key: 请求头名称, value: 环境变量名称
+   */
+  env?: Record<string, string>;
+  
+  /**
+   * 动态头：通过函数动态生成
+   */
+  dynamic?: Record<string, () => string | Promise<string>>;
+  
+  /**
+   * 条件头：根据条件动态添加
+   */
+  conditional?: Array<{
+    condition: (context: RequestContext) => boolean;
+    headers: Record<string, string>;
+  }>;
+}
+
+/**
  * Transformer Options
  */
 export interface TransformerOptions {
@@ -178,6 +218,21 @@ export interface TransformerOptions {
    * 认证配置
    */
   authConfig?: AuthConfig;
+  
+  /**
+   * 自定义请求头配置
+   */
+  customHeaders?: CustomHeaders;
+  
+  /**
+   * 是否启用请求头调试
+   */
+  debugHeaders?: boolean;
+  
+  /**
+   * 受保护的请求头列表（不允许被覆盖）
+   */
+  protectedHeaders?: string[];
   
   /**
    * 是否在响应中包含字段注释（默认: true）

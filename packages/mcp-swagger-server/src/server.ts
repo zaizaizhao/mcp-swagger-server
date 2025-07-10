@@ -7,6 +7,8 @@ import { startStdioMcpServer, startSseMcpServer, startStreamableMcpServer } from
 export interface ServerOptions {
   openApiData?: any;
   authConfig?: AuthConfig;
+  customHeaders?: any;
+  debugHeaders?: boolean;
 }
 
 export async function createMcpServer(options: ServerOptions = {}) {
@@ -24,7 +26,7 @@ export async function createMcpServer(options: ServerOptions = {}) {
   );
 
   // 先初始化工具，确保在连接传输层前完成
-  await initTools(server, options.openApiData, options.authConfig);
+  await initTools(server, options.openApiData, options.authConfig, options.customHeaders, options.debugHeaders);
 
   process.on("SIGINT", async () => {
     await server.close();
@@ -34,8 +36,13 @@ export async function createMcpServer(options: ServerOptions = {}) {
   return server;
 }
 
-export async function runStdioServer(openApiData?: any, authConfig?: AuthConfig): Promise<void> {
-  const server = await createMcpServer({ openApiData, authConfig });
+export async function runStdioServer(
+  openApiData?: any, 
+  authConfig?: AuthConfig,
+  customHeaders?: any,
+  debugHeaders?: boolean
+): Promise<void> {
+  const server = await createMcpServer({ openApiData, authConfig, customHeaders, debugHeaders });
   await startStdioMcpServer(server);
 }
 
@@ -43,9 +50,11 @@ export async function runSseServer(
   endpoint = "/sse",
   port = 3322,
   openApiData?: any,
-  authConfig?: AuthConfig
+  authConfig?: AuthConfig,
+  customHeaders?: any,
+  debugHeaders?: boolean
 ): Promise<void> {
-  const server = await createMcpServer({ openApiData, authConfig });
+  const server = await createMcpServer({ openApiData, authConfig, customHeaders, debugHeaders });
   await startSseMcpServer(server, endpoint, port);
 }
 
@@ -53,8 +62,10 @@ export async function runStreamableServer(
   endpoint = "/mcp",
   port = 3322,
   openApiData?: any,
-  authConfig?: AuthConfig
+  authConfig?: AuthConfig,
+  customHeaders?: any,
+  debugHeaders?: boolean
 ): Promise<void> {
-  const server = await createMcpServer({ openApiData, authConfig });
+  const server = await createMcpServer({ openApiData, authConfig, customHeaders, debugHeaders });
   await startStreamableMcpServer(server, endpoint, port);
 }

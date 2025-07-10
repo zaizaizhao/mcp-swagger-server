@@ -9,7 +9,9 @@ export async function transformOpenApiToMcpTools(
   swaggerFilePath?: string,
   baseUrl?: string,
   openApiData?: any,
-  authConfig?: AuthConfig
+  authConfig?: AuthConfig,
+  customHeaders?: any,
+  debugHeaders?: boolean
 ): Promise<MCPTool[]> {
   try {
     let parseResult: any;
@@ -54,7 +56,9 @@ export async function transformOpenApiToMcpTools(
       includeDeprecated: false,
       requestTimeout: 30000,
       pathPrefix: '',
-      authConfig // 传递认证配置
+      authConfig, // 传递认证配置
+      customHeaders, // 传递自定义请求头配置
+      debugHeaders // 传递调试选项
     });
     
     console.log(`🎉 Generated ${tools.length} MCP tools`);
