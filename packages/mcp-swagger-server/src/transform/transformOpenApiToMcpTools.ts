@@ -60,6 +60,8 @@ export async function transformOpenApiToMcpTools(
       customHeaders, // 传递自定义请求头配置
       debugHeaders // 传递调试选项
     });
+
+    
     
     console.log(`🎉 Generated ${tools.length} MCP tools`);
     
