@@ -1,4 +1,4 @@
-import { OpenAPISpec, OperationObject, ParameterObject, RequestBodyObject, SchemaObject, ReferenceObject } from '../types/index';
+import { OpenAPISpec, OperationObject, ParameterObject, RequestBodyObject, SchemaObject, ReferenceObject, MediaTypeObject, ExampleObject } from '../types/index';
 import { MCPTool, MCPToolResponse, TransformerOptions, TextContent, ImageContent, AudioContent, ResourceLink, EmbeddedResource, ContentBlock, ResponseSchemaAnnotation, FieldAnnotation } from './types';
 import { SchemaAnnotationExtractor } from '../extractors/schema-annotation-extractor';
 import { AuthManager, AuthConfig } from '../auth/types';
@@ -329,15 +329,26 @@ export class OpenAPIToMCPTransformer {
     const properties: Record<string, any> = {};
     const required: string[] = [];
 
-    // Add parameters
+    // Add parameters with enhanced example handling
     if (operation.parameters) {
       for (const param of operation.parameters) {
         if (!this.isReferenceObject(param)) {
           const paramSchema = this.convertSchemaToJsonSchema(param.schema || { type: 'string' });
-          properties[param.name] = {
+          
+          // 提取所有可能的示例值
+          const examples = this.extractParameterExamples(param);
+          
+          const finalSchema = {
             ...paramSchema,
             description: param.description || `${param.in} parameter`
           };
+          
+          // 合并示例值，优先使用参数级别的示例
+          if (examples.length > 0) {
+            finalSchema.examples = examples;
+          }
+          
+          properties[param.name] = finalSchema;
 
           if (param.required) {
             required.push(param.name);
@@ -346,14 +357,24 @@ export class OpenAPIToMCPTransformer {
       }
     }
 
-    // Add request body
+    // Add request body with enhanced example handling
     if (operation.requestBody && !this.isReferenceObject(operation.requestBody)) {
       const requestBody = operation.requestBody;
       if (requestBody.content) {
         // Prefer application/json
         const jsonContent = requestBody.content['application/json'];
-        if (jsonContent && jsonContent.schema) {
-          const bodySchema = this.convertSchemaToJsonSchema(jsonContent.schema);
+        if (jsonContent) {
+          let bodySchema;
+          
+          if (jsonContent.schema) {
+            bodySchema = this.convertSchemaToJsonSchema(jsonContent.schema);
+          } else {
+            bodySchema = { type: 'object' };
+          }
+          
+          // 处理 MediaType 级别的示例
+          this.enhanceSchemaWithMediaTypeExamples(bodySchema, jsonContent);
+          
           if (bodySchema.type === 'object' && bodySchema.properties) {
             // Merge request body properties
             Object.assign(properties, bodySchema.properties);
@@ -370,12 +391,22 @@ export class OpenAPIToMCPTransformer {
       }
     }
 
-    return {
-      type: 'object',
+    // 生成完整的输入示例
+    const inputExamples = this.generateInputExamples(properties, operation);
+
+    const inputSchema = {
+      type: 'object' as const,
       properties,
       required: required.length > 0 ? required : undefined,
       additionalProperties: false
     };
+
+    // 如果有完整的输入示例，添加到schema中
+    if (inputExamples.length > 0) {
+      (inputSchema as any).examples = inputExamples;
+    }
+
+    return inputSchema;
   }
 
   /**
@@ -759,6 +790,185 @@ export class OpenAPIToMCPTransformer {
   }
 
   /**
+   * 从OpenAPI参数中提取所有可能的示例值
+   */
+  private extractParameterExamples(param: ParameterObject): any[] {
+    const examples: any[] = [];
+    
+    // 1. 参数级别的 example (最高优先级)
+    if (param.example !== undefined) {
+      examples.push(param.example);
+    }
+    
+    // 2. 参数级别的 examples 对象
+    if (param.examples) {
+      Object.values(param.examples).forEach((exampleObj: ExampleObject | ReferenceObject) => {
+        if (!this.isReferenceObject(exampleObj) && exampleObj.value !== undefined) {
+          examples.push(exampleObj.value);
+        }
+      });
+    }
+    
+    // 3. Schema 级别的示例
+    if (param.schema && !this.isReferenceObject(param.schema)) {
+      const schema = param.schema;
+      
+      // Schema example
+      if (schema.example !== undefined && !examples.includes(schema.example)) {
+        examples.push(schema.example);
+      }
+      
+      // 枚举值作为示例 (取第一个值)
+      if (schema.enum && schema.enum.length > 0 && !examples.includes(schema.enum[0])) {
+        examples.push(schema.enum[0]);
+      }
+      
+      // 默认值作为示例
+      if (schema.default !== undefined && !examples.includes(schema.default)) {
+        examples.push(schema.default);
+      }
+    }
+    
+    return examples;
+  }
+
+  /**
+   * 生成完整的输入示例对象
+   */
+  private generateInputExamples(properties: Record<string, any>, operation: OperationObject): any[] {
+    const examples: any[] = [];
+    
+    // 尝试从请求体的MediaType示例生成完整示例
+    if (operation.requestBody && !this.isReferenceObject(operation.requestBody)) {
+      const requestBody = operation.requestBody;
+      if (requestBody.content) {
+        const jsonContent = requestBody.content['application/json'];
+        if (jsonContent && jsonContent.example) {
+          // 合并请求体示例和参数示例
+          const fullExample = { ...jsonContent.example };
+          
+          // 添加路径和查询参数的示例
+          if (operation.parameters) {
+            for (const param of operation.parameters) {
+              if (!this.isReferenceObject(param)) {
+                const paramExamples = this.extractParameterExamples(param);
+                if (paramExamples.length > 0) {
+                  fullExample[param.name] = paramExamples[0];
+                }
+              }
+            }
+          }
+          
+          examples.push(fullExample);
+        }
+        
+        // 处理多个命名示例
+        if (jsonContent.examples) {
+          Object.values(jsonContent.examples).forEach((exampleObj: ExampleObject | ReferenceObject) => {
+            if (!this.isReferenceObject(exampleObj) && exampleObj.value !== undefined) {
+              const fullExample = { ...exampleObj.value };
+              
+              // 添加参数示例
+              if (operation.parameters) {
+                for (const param of operation.parameters) {
+                  if (!this.isReferenceObject(param)) {
+                    const paramExamples = this.extractParameterExamples(param);
+                    if (paramExamples.length > 0) {
+                      fullExample[param.name] = paramExamples[0];
+                    }
+                  }
+                }
+              }
+              
+              examples.push(fullExample);
+            }
+          });
+        }
+      }
+    }
+    
+    // 如果没有请求体示例，从字段示例构建完整示例
+    if (examples.length === 0) {
+      const constructedExample: any = {};
+      let hasAnyExample = false;
+      
+      for (const [propName, propSchema] of Object.entries(properties)) {
+        if (propSchema.examples && propSchema.examples.length > 0) {
+          constructedExample[propName] = propSchema.examples[0];
+          hasAnyExample = true;
+        } else if (propSchema.type === 'boolean') {
+          constructedExample[propName] = true; // 布尔类型默认示例
+          hasAnyExample = true;
+        } else if (propSchema.type === 'integer' || propSchema.type === 'number') {
+          constructedExample[propName] = propSchema.type === 'integer' ? 1 : 1.0;
+          hasAnyExample = true;
+        } else if (propSchema.type === 'string') {
+          constructedExample[propName] = `example_${propName}`;
+          hasAnyExample = true;
+        } else if (propSchema.type === 'array') {
+          constructedExample[propName] = [];
+          hasAnyExample = true;
+        }
+      }
+      
+      if (hasAnyExample) {
+        examples.push(constructedExample);
+      }
+    }
+    
+    return examples;
+  }
+
+  /**
+   * 使用MediaType级别的示例增强schema
+   */
+  private enhanceSchemaWithMediaTypeExamples(schema: any, mediaType: MediaTypeObject): void {
+    // 处理 MediaType 级别的 example
+    if (mediaType.example !== undefined) {
+      if (schema.type === 'object' && typeof mediaType.example === 'object' && mediaType.example !== null) {
+        // 为对象类型的每个字段添加示例
+        this.mergeExamplesIntoSchemaProperties(schema, mediaType.example);
+      } else {
+        // 为非对象类型直接添加示例
+        schema.examples = schema.examples || [];
+        if (!schema.examples.includes(mediaType.example)) {
+          schema.examples.unshift(mediaType.example); // MediaType级别优先级较高
+        }
+      }
+    }
+    
+    // 处理 MediaType 级别的 examples 对象
+    if (mediaType.examples) {
+      schema.examples = schema.examples || [];
+      Object.values(mediaType.examples).forEach((exampleObj: ExampleObject | ReferenceObject) => {
+        if (!this.isReferenceObject(exampleObj) && exampleObj.value !== undefined) {
+          if (!schema.examples.includes(exampleObj.value)) {
+            schema.examples.push(exampleObj.value);
+          }
+        }
+      });
+    }
+  }
+
+  /**
+   * 将示例对象的值合并到schema的properties中
+   */
+  private mergeExamplesIntoSchemaProperties(schema: any, exampleObject: any): void {
+    if (!schema.properties || typeof exampleObject !== 'object' || !exampleObject) {
+      return;
+    }
+    
+    for (const [key, value] of Object.entries(exampleObject)) {
+      if (schema.properties[key] && value !== undefined) {
+        schema.properties[key].examples = schema.properties[key].examples || [];
+        if (!schema.properties[key].examples.includes(value)) {
+          schema.properties[key].examples.unshift(value);
+        }
+      }
+    }
+  }
+
+  /**
    * Convert OpenAPI schema to JSON schema
    */
   private convertSchemaToJsonSchema(schema: SchemaObject | ReferenceObject): any {
@@ -791,11 +1001,32 @@ export class OpenAPIToMCPTransformer {
     }
 
     if (schema.description) {
-      jsonSchema.description = schema.description;
+      jsonSchema.description = schema.description + (schema.example ? ` .Example: ${JSON.stringify(schema.example, null, 2)}` : '');
     }
 
     if (schema.example !== undefined) {
       jsonSchema.examples = [schema.example];
+    }
+
+    // 新增：处理枚举值作为示例
+    if (schema.enum && schema.enum.length > 0) {
+      jsonSchema.examples = jsonSchema.examples || [];
+      if (!jsonSchema.examples.includes(schema.enum[0])) {
+        jsonSchema.examples.push(schema.enum[0]);
+      }
+    }
+
+    // 新增：处理默认值作为示例
+    if (schema.default !== undefined) {
+      jsonSchema.examples = jsonSchema.examples || [];
+      if (!jsonSchema.examples.includes(schema.default)) {
+        jsonSchema.examples.push(schema.default);
+      }
+    }
+
+    // 新增：处理格式化提示 (可选)
+    if (schema.format) {
+      jsonSchema.format = schema.format;
     }
 
     return jsonSchema;

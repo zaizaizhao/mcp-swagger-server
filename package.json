@@ -18,7 +18,7 @@
     "test": "pnpm -r run test",
     "lint": "pnpm -r run lint",
     "type-check": "pnpm -r run type-check",
-    "changeset": "pnpm changeset && pnpm changeset version && pnpm changeset publish",
+    "changeset": "pnpm changeset && pnpm changeset version && pnpm changeset publish"
   },
   "keywords": [
     "mcp",
