@@ -1,5 +1,11 @@
 # mcp-swagger-parser
 
+## 1.4.0
+
+### Minor Changes
+
+- "解决mcp调用不准确问题"
+
 ## 1.3.0
 
 ### Minor Changes
