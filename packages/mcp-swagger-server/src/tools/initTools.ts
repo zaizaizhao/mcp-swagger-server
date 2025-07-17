@@ -27,6 +27,7 @@ export async function initTools(
           customHeaders, 
           debugHeaders
         );
+   
         
         console.log(`📦 成功生成 ${tools.length} 个工具`);
           // 打印工具摘要
