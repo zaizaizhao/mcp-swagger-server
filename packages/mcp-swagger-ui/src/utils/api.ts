@@ -201,7 +201,7 @@ export async function convertApi(params: {
         version: "1.0.0",
         description: `Generated MCP server with ${tools.length} tools`,
         schema: {
-          tools: tools.map(tool => ({
+          tools: tools.map((tool: any) => ({
             name: tool.name,
             description: tool.description,
             inputSchema: tool.inputSchema

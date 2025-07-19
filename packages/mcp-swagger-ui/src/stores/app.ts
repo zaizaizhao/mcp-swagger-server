@@ -1,296 +1,219 @@
 import { defineStore } from 'pinia'
-import type { 
-  AppState, 
-  InputSource, 
-  ConvertConfig, 
-  OpenApiInfo, 
-  ApiEndpoint, 
-  ConvertResult 
-} from '@/types'
-import { convertApi, validateApi, previewApi } from '@/utils/api'
-import { getAvailableTags, getParserStats } from '@/utils/parser'
-import { mcpApiService, type McpServerStatus } from '@/services/mcpApi'
+import { ref, computed } from 'vue'
+import type { GlobalSettings, Notification, SystemHealth } from '@/types'
 
-interface ExtendedAppState extends AppState {
-  mcpServerStatus: McpServerStatus | null
-  mcpTools: any[]
-}
+export const useAppStore = defineStore('app', () => {
+  // 状态
+  const loading = ref(false)
+  const error = ref<string | null>(null)
+  const notifications = ref<Notification[]>([])
+  const globalSettings = ref<GlobalSettings>({
+    theme: 'light',
+    language: 'zh',
+    autoRefresh: true,
+    refreshInterval: 30000, // 30秒
+    logLevel: 'info',
+    maxLogEntries: 1000,
+    enableNotifications: true,
+    enableSounds: false
+  })
 
-export const useAppStore = defineStore('app', {
-  state: (): ExtendedAppState => ({
-    inputSource: {
-      type: 'url',
-      content: 'https://petstore.swagger.io/v2/swagger.json'
-    },
-    config: {
-      filters: {
-        methods: ['GET', 'POST', 'PUT', 'DELETE'],
-        tags: [],
-        includeDeprecated: false
-      },
-      transport: 'stdio',
-      optimization: {
-        generateValidation: true,
-        includeExamples: false,
-        optimizeNames: true
-      },
-      name: 'Generated MCP Server',
-      version: '1.0.0',
-      description: 'MCP server generated from OpenAPI specification'
-    },
-    apiInfo: null,
-    endpoints: [],
-    convertResult: null,
-    loading: false,
-    error: null,
-    mcpServerStatus: null,
-    mcpTools: []
-  }),
-
-  getters: {
-    isValidInput: (state) => {
-      return state.inputSource.content.trim().length > 0
-    },
-    
-    availableTags: (state) => {
-      const tags = new Set<string>()
-      state.endpoints.forEach(endpoint => {
-        endpoint.tags?.forEach(tag => tags.add(tag))
-      })
-      return Array.from(tags)
-    },
-    
-    filteredEndpoints: (state) => {
-      return state.endpoints.filter(endpoint => {
-        // 方法过滤
-        if (!state.config.filters.methods.includes(endpoint.method.toUpperCase())) {
-          return false
-        }
-        
-        // 标签过滤
-        if (state.config.filters.tags.length > 0) {
-          const hasMatchingTag = endpoint.tags?.some(tag => 
-            state.config.filters.tags.includes(tag)
-          )
-          if (!hasMatchingTag) return false
-        }
-        
-        // 是否包含已弃用的端点
-        if (!state.config.filters.includeDeprecated && endpoint.deprecated) {
-          return false
-        }
-        
-        return true
-      })
-    },
-
-    // MCP 相关 getters
-    isMcpServerRunning: (state) => {
-      return state.mcpServerStatus?.serverRunning || false
-    },
-
-    mcpToolsCount: (state) => {
-      return state.mcpServerStatus?.toolsCount || 0
+  // 系统健康状态
+  const systemHealth = ref<SystemHealth>({
+    isHealthy: true,
+    errorCount: 0,
+    warningCount: 0,
+    lastCheck: new Date(),
+    services: {
+      api: 'healthy',
+      database: 'healthy',
+      websocket: 'healthy'
     }
-  },
+  })
 
-  actions: {
-    setInputSource(source: Partial<InputSource>) {
-      this.inputSource = { ...this.inputSource, ...source }
-      this.clearResults()
-    },
+  // 计算属性
+  const hasError = computed(() => !!error.value)
+  const unreadNotifications = computed(() => 
+    notifications.value.filter(n => !n.read)
+  )
+  const criticalNotifications = computed(() =>
+    notifications.value.filter(n => n.type === 'error' && !n.read)
+  )
 
-    setConfig(config: Partial<ConvertConfig>) {
-      this.config = { ...this.config, ...config }
-    },
+  // Actions
+  const setLoading = (value: boolean) => {
+    loading.value = value
+  }
 
-    clearResults() {
-      this.apiInfo = null
-      this.endpoints = []
-      this.convertResult = null
-      this.error = null
-    },
-
-    async validateInput() {
-      if (!this.isValidInput) {
-        throw new Error('请提供有效的输入内容')
-      }
-
-      this.loading = true
-      this.error = null
-
-      try {
-        const result = await validateApi(this.inputSource)
-        if (result.success) {
-          return true
-        } else {
-          this.error = result.error || '验证失败'
-          return false
-        }
-      } catch (error) {
-        this.error = error instanceof Error ? error.message : '验证失败'
-        return false
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async previewApi() {
-      if (!this.isValidInput) {
-        throw new Error('请提供有效的输入内容')
-      }
-
-      this.loading = true
-      this.error = null
-
-      try {
-        const result = await previewApi(this.inputSource)
-        if (result.success && result.data) {
-          this.apiInfo = result.data.apiInfo
-          this.endpoints = result.data.endpoints || []
-        } else {
-          this.error = result.error || '预览失败'
-        }
-      } catch (error) {
-        this.error = error instanceof Error ? error.message : '预览失败'
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async convertToMcp() {
-      if (!this.isValidInput) {
-        throw new Error('请提供有效的输入内容')
-      }
-
-      this.loading = true
-      this.error = null
-
-      try {
-        const result = await convertApi({
-          source: this.inputSource,
-          config: this.config
-        })
-        
-        if (result.success && result.data) {
-          this.convertResult = result.data
-          // 如果还没有预览数据，更新预览信息
-          if (!this.apiInfo && result.data.metadata) {
-            this.apiInfo = result.data.metadata.apiInfo
-          }
-        } else {
-          this.error = result.error || '转换失败'
-        }
-      } catch (error) {
-        this.error = error instanceof Error ? error.message : '转换失败'
-      } finally {
-        this.loading = false
-      }    },
-
-    async getParserStatistics() {
-      if (!this.isValidInput) {
-        return null
-      }
-
-      try {
-        return await getParserStats(this.inputSource)
-      } catch (error) {
-        console.error('获取解析器统计信息失败:', error)
-        return null
-      }
-    },
-
-    async refreshAvailableTags() {
-      if (!this.isValidInput) {
-        return
-      }
-
-      try {
-        const tags = await getAvailableTags(this.inputSource)
-        // 这里可以更新可用标签列表，如果需要的话
-        return tags
-      } catch (error) {
-        console.error('获取可用标签失败:', error)
-        return []
-      }
-    },
-
-    // MCP 相关 actions
-    async refreshMcpServerStatus() {
-      try {
-        this.mcpServerStatus = await mcpApiService.getHealthStatus()
-      } catch (error) {
-        console.error('获取 MCP 服务器状态失败:', error)
-        this.mcpServerStatus = null
-      }
-    },
-
-    async getMcpTools() {
-      try {
-        this.mcpTools = await mcpApiService.getTools()
-        return this.mcpTools
-      } catch (error) {
-        console.error('获取 MCP 工具失败:', error)
-        this.mcpTools = []
-        return []
-      }
-    },
-
-    async stopMcpServer() {
-      this.loading = true
-      try {
-        await mcpApiService.stopServer()
-        await this.refreshMcpServerStatus()
-        this.mcpTools = []
-        return true
-      } catch (error) {
-        this.error = error instanceof Error ? error.message : '停止服务器失败'
-        return false
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async reloadMcpTools() {
-      if (!this.isValidInput) {
-        throw new Error('请提供有效的输入内容')
-      }
-
-      this.loading = true
-      this.error = null
-
-      try {
-        // 获取 OpenAPI 内容并重新加载工具
-        let openApiData: string | object = this.inputSource.content
-        
-        if (this.inputSource.type === 'url') {
-          // 如果是 URL，需要获取内容
-          const response = await fetch(this.inputSource.content)
-          const content = await response.text()
-          try {
-            openApiData = JSON.parse(content)
-          } catch {
-            openApiData = content
-          }
-        } else {
-          // 尝试解析为 JSON 对象
-          try {
-            openApiData = JSON.parse(this.inputSource.content)
-          } catch {
-            openApiData = this.inputSource.content
-          }
-        }
-
-        await mcpApiService.reloadTools(openApiData)
-        await this.refreshMcpServerStatus()
-        await this.getMcpTools()
-        return true
-      } catch (error) {
-        this.error = error instanceof Error ? error.message : '重新加载工具失败'
-        return false
-      } finally {
-        this.loading = false
-      }
+  const setError = (errorMessage: string | null) => {
+    error.value = errorMessage
+    if (errorMessage) {
+      addNotification({
+        type: 'error',
+        title: '系统错误',
+        message: errorMessage,
+        duration: 5000
+      })
     }
+  }
+
+  const clearError = () => {
+    error.value = null
+  }
+
+  // 通知管理
+  const addNotification = (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
+    const newNotification: Notification = {
+      ...notification,
+      id: `notification-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+      timestamp: new Date(),
+      read: false
+    }
+    
+    notifications.value.unshift(newNotification)
+    
+    // 限制通知数量
+    if (notifications.value.length > 100) {
+      notifications.value = notifications.value.slice(0, 100)
+    }
+    
+    // 自动移除通知
+    if (notification.duration && notification.duration > 0) {
+      setTimeout(() => {
+        removeNotification(newNotification.id)
+      }, notification.duration)
+    }
+  }
+
+  const removeNotification = (id: string) => {
+    const index = notifications.value.findIndex(n => n.id === id)
+    if (index > -1) {
+      notifications.value.splice(index, 1)
+    }
+  }
+
+  const markNotificationAsRead = (id: string) => {
+    const notification = notifications.value.find(n => n.id === id)
+    if (notification) {
+      notification.read = true
+    }
+  }
+
+  const markAllNotificationsAsRead = () => {
+    notifications.value.forEach(n => n.read = true)
+  }
+
+  const clearAllNotifications = () => {
+    notifications.value = []
+  }
+
+  // 全局设置管理
+  const updateGlobalSettings = (settings: Partial<GlobalSettings>) => {
+    globalSettings.value = { ...globalSettings.value, ...settings }
+    // 持久化到本地存储
+    localStorage.setItem('mcp-gateway-settings', JSON.stringify(globalSettings.value))
+  }
+
+  const loadGlobalSettings = () => {
+    try {
+      const saved = localStorage.getItem('mcp-gateway-settings')
+      if (saved) {
+        const parsedSettings = JSON.parse(saved)
+        globalSettings.value = { ...globalSettings.value, ...parsedSettings }
+      }
+    } catch (error) {
+      console.warn('Failed to load global settings:', error)
+    }
+  }
+
+  // 系统健康检查
+  const updateSystemHealth = (health: Partial<SystemHealth>) => {
+    systemHealth.value = { ...systemHealth.value, ...health, lastCheck: new Date() }
+  }
+
+  const checkSystemHealth = async () => {
+    try {
+      // TODO: 实际的健康检查逻辑
+      // const healthData = await api.checkHealth()
+      
+      // 模拟健康检查
+      const isHealthy = Math.random() > 0.1 // 90% 概率健康
+      const errorCount = isHealthy ? 0 : Math.floor(Math.random() * 3) + 1
+      
+      updateSystemHealth({
+        isHealthy,
+        errorCount,
+        warningCount: Math.floor(Math.random() * 2),
+        services: {
+          api: isHealthy ? 'healthy' : 'error',
+          database: 'healthy',
+          websocket: 'healthy'
+        }
+      })
+    } catch (error) {
+      updateSystemHealth({
+        isHealthy: false,
+        errorCount: systemHealth.value.errorCount + 1,
+        services: {
+          ...systemHealth.value.services,
+          api: 'error'
+        }
+      })
+    }
+  }
+
+  // 数据刷新
+  const refreshData = async () => {
+    setLoading(true)
+    try {
+      await checkSystemHealth()
+      // TODO: 刷新其他数据
+      addNotification({
+        type: 'success',
+        title: '刷新成功',
+        message: '系统数据已更新',
+        duration: 2000
+      })
+    } catch (error) {
+      setError('数据刷新失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 初始化
+  const initialize = () => {
+    loadGlobalSettings()
+    checkSystemHealth()
+  }
+
+  return {
+    // 状态
+    loading,
+    error,
+    notifications,
+    globalSettings,
+    systemHealth,
+    
+    // 计算属性
+    hasError,
+    unreadNotifications,
+    criticalNotifications,
+    
+    // Actions
+    setLoading,
+    setError,
+    clearError,
+    addNotification,
+    removeNotification,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+    clearAllNotifications,
+    updateGlobalSettings,
+    loadGlobalSettings,
+    updateSystemHealth,
+    checkSystemHealth,
+    refreshData,
+    initialize
   }
 })

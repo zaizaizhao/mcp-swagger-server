@@ -11,15 +11,18 @@
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore"
   },
   "dependencies": {
-    "vue": "^3.4.0",
-    "vue-router": "^4.2.5",
-    "pinia": "^2.1.7",
-    "axios": "^1.6.0",
-    "element-plus": "^2.4.0",
     "@element-plus/icons-vue": "^2.3.0",
+    "axios": "^1.6.0",
+    "echarts": "^5.6.0",
+    "element-plus": "^2.4.0",
     "highlight.js": "^11.9.0",
+    "mcp-swagger-parser": "workspace:*",
     "monaco-editor": "^0.44.0",
-    "mcp-swagger-parser": "workspace:*"
+    "pinia": "^2.1.7",
+    "socket.io-client": "^4.8.1",
+    "vue": "^3.4.0",
+    "vue-echarts": "^7.0.3",
+    "vue-router": "^4.2.5"
   },
   "devDependencies": {
     "@types/node": "^20.9.0",
