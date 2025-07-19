@@ -22,14 +22,15 @@
   - 添加WebSocket连接管理 (用于实时监控和日志)
   - _Requirements: 1.5, 3.2, 7.1_
 
-- [x] 2.3 定义核心数据类型和接口
-  - 定义MCPServer, OpenAPISpec, AuthConfig, TestCase等TypeScript接口
-  - 创建API响应和请求的类型定义
+- [ ] 2.3 完善核心数据类型和接口
+  - 添加缺失的SystemHealth类型定义到types/index.ts
+  - 完善Notification接口添加read属性
+  - 验证所有TypeScript接口与实际使用保持一致
   - 实现数据验证和转换工具函数（数据验证和转化工具函数可以直接调用mcp-swagger-parser包已经实现的功能）
   - _Requirements: 1.1, 1.2, 1.3_
 
-- [] 3. 实现MCP服务器管理界面
-
+- [ ] 3. 实现MCP服务器管理界面
+- [ ] 3.1 实现服务器列表和管理功能
   - 重构ServerManager.vue实现服务器列表显示和状态监控
   - 创建服务器创建/编辑表单组件包含验证和错误处理
   - 添加服务器启动/停止控制和删除确认功能
@@ -37,8 +38,6 @@
   - _Requirements: 1.1, 1.2, 1.5, 1.6_
 
 - [ ] 3.2 实现服务器详情页面功能
-
-
   - 重构ServerDetail.vue显示完整服务器配置和运行状态
   - 添加服务器日志实时查看和工具列表展示
   - 实现服务器配置编辑和高级设置管理
