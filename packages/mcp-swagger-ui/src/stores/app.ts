@@ -7,6 +7,8 @@ export const useAppStore = defineStore('app', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
   const notifications = ref<Notification[]>([])
+  const startTime = Date.now() // 应用启动时间
+  
   const globalSettings = ref<GlobalSettings>({
     theme: 'light',
     language: 'zh',
@@ -15,24 +17,27 @@ export const useAppStore = defineStore('app', () => {
     logLevel: 'info',
     maxLogEntries: 1000,
     enableNotifications: true,
+    enableWebSocket: true,
     enableSounds: false
   })
 
   // 系统健康状态
   const systemHealth = ref<SystemHealth>({
-    isHealthy: true,
+    status: 'healthy',
     errorCount: 0,
-    warningCount: 0,
+    uptime: 0,
+    version: '1.0.0',
     lastCheck: new Date(),
     services: {
-      api: 'healthy',
-      database: 'healthy',
-      websocket: 'healthy'
+      api: 'online',
+      database: 'online',
+      websocket: 'connected'
     }
   })
 
   // 计算属性
   const hasError = computed(() => !!error.value)
+  const isHealthy = computed(() => systemHealth.value.status === 'healthy')
   const unreadNotifications = computed(() => 
     notifications.value.filter(n => !n.read)
   )
@@ -141,22 +146,22 @@ export const useAppStore = defineStore('app', () => {
       const errorCount = isHealthy ? 0 : Math.floor(Math.random() * 3) + 1
       
       updateSystemHealth({
-        isHealthy,
+        status: isHealthy ? 'healthy' : 'error',
         errorCount,
-        warningCount: Math.floor(Math.random() * 2),
+        uptime: Date.now() - startTime,
         services: {
-          api: isHealthy ? 'healthy' : 'error',
-          database: 'healthy',
-          websocket: 'healthy'
+          api: isHealthy ? 'online' : 'offline',
+          database: 'online',
+          websocket: 'connected'
         }
       })
     } catch (error) {
       updateSystemHealth({
-        isHealthy: false,
+        status: 'error',
         errorCount: systemHealth.value.errorCount + 1,
         services: {
           ...systemHealth.value.services,
-          api: 'error'
+          api: 'offline'
         }
       })
     }
@@ -197,6 +202,7 @@ export const useAppStore = defineStore('app', () => {
     
     // 计算属性
     hasError,
+    isHealthy,
     unreadNotifications,
     criticalNotifications,
     

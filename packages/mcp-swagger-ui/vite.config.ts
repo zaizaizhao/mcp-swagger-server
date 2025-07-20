@@ -42,9 +42,16 @@ export default defineConfig({
       output: {
         manualChunks: {
           'element-plus': ['element-plus'],
-          'monaco-editor': ['monaco-editor']
+          'monaco': ['monaco-editor']
         }
       }
     }
+  },
+  optimizeDeps: {
+    include: ['monaco-editor']
+  },
+  define: {
+    // Monaco Editor 需要的全局变量
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV)
   }
 })

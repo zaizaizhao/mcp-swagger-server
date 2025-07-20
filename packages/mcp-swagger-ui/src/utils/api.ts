@@ -74,13 +74,13 @@ export async function validateApi(source: InputSource): Promise<ApiResponse> {
     const validation = await mcpApiService.validateOpenApi(sourceConfig)
     
     return {
-      success: validation.valid,
+      success: validation.success,
       data: {
-        valid: validation.valid,
-        errors: validation.errors,
-        warnings: validation.warnings
+        valid: validation.success,
+        errors: validation.data?.errors || [],
+        warnings: validation.data?.warnings || []
       },
-      message: validation.valid ? '验证成功' : '验证失败'
+      message: validation.success ? '验证成功' : (validation.error || '验证失败')
     }
   } catch (error) {
     return {
@@ -116,17 +116,21 @@ export async function previewApi(source: InputSource): Promise<ApiResponse> {
     // 使用 MCP API 解析
     const parseResult = await mcpApiService.parseOpenApi(sourceConfig)
     
+    if (!parseResult.success || !parseResult.data) {
+      throw new Error(parseResult.error || 'Parse failed')
+    }
+    
     // 转换为前端期望的格式
     const apiInfo = {
-      title: parseResult.info?.title || 'Unknown API',
-      version: parseResult.info?.version || '1.0.0',
-      description: parseResult.info?.description || '',
-      serverUrl: parseResult.servers?.[0]?.url || '',
-      totalEndpoints: parseResult.paths?.length || 0
+      title: parseResult.data.info?.title || 'Unknown API',
+      version: parseResult.data.info?.version || '1.0.0',
+      description: parseResult.data.info?.description || '',
+      serverUrl: parseResult.data.servers?.[0]?.url || '',
+      totalEndpoints: parseResult.data.paths?.length || 0
     }
     
     // 转换端点数据
-    const endpoints = parseResult.paths?.map((path: any) => ({
+    const endpoints = parseResult.data.paths?.map((path: any) => ({
       method: path.method,
       path: path.path,
       summary: path.summary || '',
@@ -192,7 +196,8 @@ export async function convertApi(params: {
     
     if (createResult.success) {
       // 获取工具列表来构建转换结果
-      const tools = await mcpApiService.getTools()
+      const toolsResponse = await mcpApiService.getTools()
+      const tools = toolsResponse.data || []
       
       // 构建 MCP 配置格式的结果
       const convertResult = {
@@ -209,7 +214,7 @@ export async function convertApi(params: {
         },
         metadata: {
           toolsCount: tools.length,
-          endpoint: createResult.endpoint,
+          endpoint: createResult.data?.endpoint || '',
           createdAt: new Date().toISOString()
         }
       }

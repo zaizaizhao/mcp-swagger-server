@@ -411,7 +411,9 @@ export const detectConfigConflicts = (
       if (existingServer.name !== importedServer.name) {
         conflicts.push({
           type: 'server',
+          id: importedServer.id,
           field: `servers.${importedServer.id}.name`,
+          currentValue: existingServer.name,
           existingValue: existingServer.name,
           newValue: importedServer.name
         })
@@ -421,7 +423,9 @@ export const detectConfigConflicts = (
       if (existingServer.endpoint !== importedServer.endpoint) {
         conflicts.push({
           type: 'server',
+          id: importedServer.id,
           field: `servers.${importedServer.id}.endpoint`,
+          currentValue: existingServer.endpoint,
           existingValue: existingServer.endpoint,
           newValue: importedServer.endpoint
         })
@@ -431,7 +435,9 @@ export const detectConfigConflicts = (
       if (JSON.stringify(existingServer.config) !== JSON.stringify(importedServer.config)) {
         conflicts.push({
           type: 'server',
+          id: importedServer.id,
           field: `servers.${importedServer.id}.config`,
+          currentValue: existingServer.config,
           existingValue: existingServer.config,
           newValue: importedServer.config
         })

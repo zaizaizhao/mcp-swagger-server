@@ -320,6 +320,49 @@ export const useWebSocketStore = defineStore('websocket', () => {
     }
   }
 
+  // 通用订阅方法
+  const subscribe = (eventType: string, callback: (data: any) => void) => {
+    switch (eventType) {
+      case 'server-status':
+        websocketService.on('server:status', callback)
+        break
+      case 'server-metrics':
+        websocketService.on('metrics:server', callback)
+        break
+      case 'system-metrics':
+        websocketService.on('metrics:system', callback)
+        break
+      case 'logs':
+        websocketService.on('logs:new', callback)
+        break
+      default:
+        // 对于其他事件类型，暂时不处理
+        console.warn(`Unsupported event type: ${eventType}`)
+    }
+    subscriptions.value.add(eventType)
+  }
+
+  // 通用取消订阅方法
+  const unsubscribe = (eventType: string) => {
+    switch (eventType) {
+      case 'server-status':
+        websocketService.off('server:status')
+        break
+      case 'server-metrics':
+        websocketService.off('metrics:server')
+        break
+      case 'system-metrics':
+        websocketService.off('metrics:system')
+        break
+      case 'logs':
+        websocketService.off('logs:new')
+        break
+      default:
+        console.warn(`Unsupported event type: ${eventType}`)
+    }
+    subscriptions.value.delete(eventType)
+  }
+
   return {
     // 状态
     connected,
@@ -336,6 +379,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
     connect,
     disconnect,
     reconnect,
+    subscribe,
+    unsubscribe,
     subscribeToMetrics,
     unsubscribeFromMetrics,
     subscribeToServer,

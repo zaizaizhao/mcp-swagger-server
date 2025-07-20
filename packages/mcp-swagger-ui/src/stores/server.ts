@@ -232,6 +232,28 @@ export const useServerStore = defineStore('server', () => {
     }
   }
 
+  // 启动服务器
+  const startServer = async (id: string): Promise<boolean> => {
+    return await toggleServer(id, true)
+  }
+
+  // 停止服务器
+  const stopServer = async (id: string): Promise<boolean> => {
+    return await toggleServer(id, false)
+  }
+
+  // 重启服务器
+  const restartServer = async (id: string): Promise<boolean> => {
+    // 先停止，再启动
+    const stopResult = await stopServer(id)
+    if (stopResult) {
+      // 等待一小段时间确保服务器完全停止
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      return await startServer(id)
+    }
+    return false
+  }
+
   // 选择服务器
   const selectServer = (id: string | null) => {
     selectedServerId.value = id
@@ -303,6 +325,9 @@ export const useServerStore = defineStore('server', () => {
     updateServer,
     deleteServer,
     toggleServer,
+    startServer,
+    stopServer,
+    restartServer,
     fetchServerDetails,
     selectServer,
     updateServerStatus,

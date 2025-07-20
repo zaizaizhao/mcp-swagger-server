@@ -7,6 +7,13 @@ import App from './App.vue'
 import router from './router'
 import './assets/styles/main.css'
 
+// 导入全局功能
+import { globalErrorHandler } from './utils/errorHandler'
+import { ConfirmationPlugin } from './composables/useConfirmation'
+
+// 导入国际化
+import { i18n, initLocale } from './locales'
+
 const app = createApp(App)
 
 // 注册所有图标
@@ -20,20 +27,30 @@ const pinia = createPinia()
 app.use(pinia)
 app.use(router)
 app.use(ElementPlus)
+app.use(i18n) // 注册i18n
+
+// 注册全局功能
+app.use(globalErrorHandler)
+app.use(ConfirmationPlugin)
 
 // 初始化应用
 async function initializeApp() {
+  // 初始化国际化
+  initLocale()
+  
   // 动态导入 stores 以避免循环依赖
-  const { useAppStore, useThemeStore, useWebSocketStore } = await import('./stores')
+  const { useAppStore, useThemeStore, useWebSocketStore, useLocaleStore } = await import('./stores')
   
   // 初始化核心 stores
   const appStore = useAppStore()
   const themeStore = useThemeStore()
   const websocketStore = useWebSocketStore()
+  const localeStore = useLocaleStore()
   
   // 初始化应用状态
   appStore.initialize()
   themeStore.initialize()
+  localeStore.initialize()
   
   // 初始化 WebSocket 连接（异步）
   websocketStore.initialize().catch(error => {

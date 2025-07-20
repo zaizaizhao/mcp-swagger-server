@@ -8,7 +8,8 @@ import type {
   ImportResult,
   ApiEndpoint,
   ParameterSchema,
-  PropertySchema
+  PropertySchema,
+  GlobalSettings
 } from '@/types'
 import {
   transformToMCPTools,
@@ -66,15 +67,9 @@ const convertParserToolToUITool = (parserTool: ParserMCPTool, serverId: string):
     description: parserTool.description || '',
     parameters: convertToParameterSchema(parserTool.inputSchema),
     serverId,
-    endpoint: {
-      method: parserTool.metadata?.method?.toUpperCase() || 'GET',
-      path: parserTool.metadata?.path || '',
-      summary: parserTool.description,
-      description: parserTool.description,
-      operationId: parserTool.metadata?.operationId || parserTool.name,
-      tags: parserTool.metadata?.tags,
-      deprecated: parserTool.metadata?.deprecated
-    },
+    endpoint: parserTool.metadata?.path || '',
+    method: parserTool.metadata?.method?.toUpperCase() || 'GET',
+    path: parserTool.metadata?.path || '',
     createdAt: new Date()
   }
 }
@@ -157,6 +152,8 @@ export const createMCPServer = (config: ServerConfig): MCPServer => {
       successfulRequests: 0,
       failedRequests: 0,
       averageResponseTime: 0,
+      errorRate: 0,
+      activeConnections: 0,
       uptime: 0
     },
     createdAt: new Date(),
@@ -191,6 +188,8 @@ export const cloneServerConfig = (server: MCPServer, newName: string): MCPServer
       successfulRequests: 0,
       failedRequests: 0,
       averageResponseTime: 0,
+      errorRate: 0,
+      activeConnections: 0,
       uptime: 0
     },
     createdAt: new Date(),
@@ -329,6 +328,17 @@ export const serversToConfigFile = (
     version: '1.0.0',
     exportedAt: new Date(),
     servers: processedServers,
+    globalSettings: {
+      theme: 'light',
+      language: 'zh',
+      autoRefresh: true,
+      refreshInterval: 30000,
+      logLevel: 'info',
+      maxLogEntries: 1000,
+      enableNotifications: true,
+      enableWebSocket: true,
+      enableSounds: false
+    },
     encrypted: encryptSensitiveData
   }
 }
@@ -359,6 +369,8 @@ export const configFileToServers = (configFile: ConfigFile): ImportResult => {
             successfulRequests: 0,
             failedRequests: 0,
             averageResponseTime: 0,
+            errorRate: 0,
+            activeConnections: 0,
             uptime: 0
           }
         }
