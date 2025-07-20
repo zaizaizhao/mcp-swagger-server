@@ -1,369 +1,420 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { SystemMetrics, LogEntry, LogFilter, ResourceUsage } from '@/types'
-import { monitoringAPI, logsAPI } from '@/services/api'
-import { useAppStore } from './app'
+import type { 
+  DetailedSystemMetrics, 
+  PerformanceAlert, 
+  MonitoringConfig, 
+  ChartSeries
+} from '@/types'
 
 export const useMonitoringStore = defineStore('monitoring', () => {
-  const appStore = useAppStore()
-
   // 状态
-  const systemMetrics = ref<SystemMetrics | null>(null)
-  const serverMetrics = ref<Map<string, SystemMetrics>>(new Map())
-  const logs = ref<LogEntry[]>([])
-  const logFilter = ref<LogFilter>({})
-  const loading = ref(false)
+  const metrics = ref<DetailedSystemMetrics[]>([])
+  const currentMetrics = ref<DetailedSystemMetrics | null>(null)
+  const alerts = ref<PerformanceAlert[]>([])
+  const config = ref<MonitoringConfig>({
+    refreshInterval: 5000, // 5秒
+    alerts: {
+      cpu: { warning: 70, critical: 90 },
+      memory: { warning: 80, critical: 95 },
+      disk: { warning: 85, critical: 95 },
+      network: { warning: 1000000, critical: 10000000 } // bytes/sec
+    },
+    enableAlerts: true,
+    enableSound: false
+  })
+  const isConnected = ref(false)
+  const isLoading = ref(false)
   const error = ref<string | null>(null)
-  const realTimeEnabled = ref(true)
-  const lastUpdate = ref<Date | null>(null)
-
-  // 历史数据（用于图表显示）
-  const metricsHistory = ref<Array<SystemMetrics & { timestamp: Date }>>([])
-  const maxHistoryLength = 100
 
   // 计算属性
-  const filteredLogs = computed(() => {
-    let filtered = logs.value
-
-    if (logFilter.value.level && logFilter.value.level.length > 0) {
-      filtered = filtered.filter(log => logFilter.value.level!.includes(log.level))
-    }
-
-    if (logFilter.value.serverId) {
-      filtered = filtered.filter(log => log.serverId === logFilter.value.serverId)
-    }
-
-    if (logFilter.value.searchTerm) {
-      const searchTerm = logFilter.value.searchTerm.toLowerCase()
-      filtered = filtered.filter(log => 
-        log.message.toLowerCase().includes(searchTerm) ||
-        (log.metadata && JSON.stringify(log.metadata).toLowerCase().includes(searchTerm))
-      )
-    }
-
-    if (logFilter.value.timeRange) {
-      filtered = filtered.filter(log => 
-        log.timestamp >= logFilter.value.timeRange!.start &&
-        log.timestamp <= logFilter.value.timeRange!.end
-      )
-    }
-
-    return filtered.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-  })
-
-  const errorLogs = computed(() => 
-    logs.value.filter(log => log.level === 'error')
-  )
-
-  const warningLogs = computed(() => 
-    logs.value.filter(log => log.level === 'warn')
-  )
-
-  const logStats = computed(() => ({
-    total: logs.value.length,
-    error: errorLogs.value.length,
-    warning: warningLogs.value.length,
-    info: logs.value.filter(log => log.level === 'info').length,
-    debug: logs.value.filter(log => log.level === 'debug').length
+  const cpuSeries = computed<ChartSeries>(() => ({
+    name: 'CPU使用率',
+    data: metrics.value.slice(-50).map(m => ({
+      timestamp: m.timestamp,
+      value: m.cpu.usage
+    })),
+    color: '#409EFF'
   }))
 
-  const systemHealth = computed(() => {
-    if (!systemMetrics.value) return null
+  const memorySeries = computed<ChartSeries>(() => ({
+    name: '内存使用率',
+    data: metrics.value.slice(-50).map(m => ({
+      timestamp: m.timestamp,
+      value: m.memory.usage
+    })),
+    color: '#67C23A'
+  }))
+
+  const networkInSeries = computed<ChartSeries>(() => ({
+    name: '网络入流量',
+    data: metrics.value.slice(-50).map(m => ({
+      timestamp: m.timestamp,
+      value: m.network.bytesIn
+    })),
+    color: '#E6A23C'
+  }))
+
+  const networkOutSeries = computed<ChartSeries>(() => ({
+    name: '网络出流量',
+    data: metrics.value.slice(-50).map(m => ({
+      timestamp: m.timestamp,
+      value: m.network.bytesOut
+    })),
+    color: '#F56C6C'
+  }))
+
+  const diskSeries = computed<ChartSeries>(() => ({
+    name: '磁盘使用率',
+    data: metrics.value.slice(-50).map(m => ({
+      timestamp: m.timestamp,
+      value: m.disk.usage
+    })),
+    color: '#909399'
+  }))
+
+  const activeAlerts = computed(() => 
+    alerts.value.filter(alert => !alert.acknowledged)
+  )
+
+  const criticalAlerts = computed(() => 
+    activeAlerts.value.filter(alert => alert.level === 'critical')
+  )
+
+  const warningAlerts = computed(() => 
+    activeAlerts.value.filter(alert => alert.level === 'warning')
+  )
+
+  const systemStatus = computed(() => {
+    if (!currentMetrics.value) return 'unknown'
     
-    const { errorRate, averageResponseTime, resourceUsage } = systemMetrics.value
+    const cpu = currentMetrics.value.cpu.usage
+    const memory = currentMetrics.value.memory.usage
+    const disk = currentMetrics.value.disk.usage
     
-    // 计算健康分数
-    let healthScore = 100
-    
-    // 错误率影响
-    if (errorRate > 0.1) healthScore -= 30 // 10%以上错误率
-    else if (errorRate > 0.05) healthScore -= 15 // 5%以上错误率
-    
-    // 响应时间影响
-    if (averageResponseTime > 5000) healthScore -= 25 // 5秒以上
-    else if (averageResponseTime > 2000) healthScore -= 10 // 2秒以上
-    
-    // 资源使用影响
-    if (resourceUsage.cpu > 90) healthScore -= 20
-    else if (resourceUsage.cpu > 70) healthScore -= 10
-    
-    if (resourceUsage.memory > 90) healthScore -= 20
-    else if (resourceUsage.memory > 70) healthScore -= 10
-    
-    return {
-      score: Math.max(0, healthScore),
-      status: healthScore >= 80 ? 'healthy' : healthScore >= 60 ? 'warning' : 'critical'
+    if (cpu >= config.value.alerts.cpu.critical ||
+        memory >= config.value.alerts.memory.critical ||
+        disk >= config.value.alerts.disk.critical) {
+      return 'critical'
     }
+    
+    if (cpu >= config.value.alerts.cpu.warning ||
+        memory >= config.value.alerts.memory.warning ||
+        disk >= config.value.alerts.disk.warning) {
+      return 'warning'
+    }
+    
+    return 'healthy'
   })
 
-  // Actions
-  const setLoading = (value: boolean) => {
-    loading.value = value
-  }
+  // WebSocket连接
+  let ws: WebSocket | null = null
+  let reconnectTimer: NodeJS.Timeout | null = null
 
-  const setError = (errorMessage: string | null) => {
-    error.value = errorMessage
-    if (errorMessage) {
-      appStore.addNotification({
-        type: 'error',
-        title: '监控数据错误',
-        message: errorMessage,
-        duration: 5000
-      })
-    }
-  }
-
-  const clearError = () => {
-    error.value = null
-  }
-
-  // 获取系统指标
-  const fetchSystemMetrics = async () => {
+  // 方法
+  const connectWebSocket = () => {
     try {
-      const response = await monitoringAPI.getMetrics()
-      if (response.success && response.data) {
-        systemMetrics.value = response.data
-        lastUpdate.value = new Date()
-        
-        // 添加到历史数据
-        metricsHistory.value.push({
-          ...response.data,
-          timestamp: new Date()
-        })
-        
-        // 限制历史数据长度
-        if (metricsHistory.value.length > maxHistoryLength) {
-          metricsHistory.value = metricsHistory.value.slice(-maxHistoryLength)
-        }
-        
-        clearError()
-      } else {
-        throw new Error(response.error || '获取系统指标失败')
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '获取系统指标失败'
-      setError(errorMessage)
-      console.error('Failed to fetch system metrics:', err)
-    }
-  }
-
-  // 获取服务器指标
-  const fetchServerMetrics = async (serverId: string) => {
-    try {
-      const response = await monitoringAPI.getServerMetrics(serverId)
-      if (response.success && response.data) {
-        serverMetrics.value.set(serverId, response.data)
-        clearError()
-      } else {
-        throw new Error(response.error || '获取服务器指标失败')
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '获取服务器指标失败'
-      setError(errorMessage)
-      console.error('Failed to fetch server metrics:', err)
-    }
-  }
-
-  // 获取日志
-  const fetchLogs = async (filter?: LogFilter) => {
-    setLoading(true)
-    try {
-      const response = await logsAPI.getLogs(filter)
-      if (response.success && response.data) {
-        logs.value = response.data
-        clearError()
-      } else {
-        throw new Error(response.error || '获取日志失败')
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '获取日志失败'
-      setError(errorMessage)
-      console.error('Failed to fetch logs:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // 设置日志过滤器
-  const setLogFilter = (filter: LogFilter) => {
-    logFilter.value = { ...filter }
-  }
-
-  // 清除日志过滤器
-  const clearLogFilter = () => {
-    logFilter.value = {}
-  }
-
-  // 添加日志条目（用于WebSocket实时更新）
-  const addLogEntry = (entry: LogEntry) => {
-    logs.value.unshift(entry)
-    
-    // 限制日志数量
-    const maxLogs = appStore.globalSettings.maxLogEntries
-    if (logs.value.length > maxLogs) {
-      logs.value = logs.value.slice(0, maxLogs)
-    }
-    
-    // 如果是错误日志，发送通知
-    if (entry.level === 'error' && appStore.globalSettings.enableNotifications) {
-      appStore.addNotification({
-        type: 'error',
-        title: '系统错误',
-        message: entry.message,
-        duration: 5000
-      })
-    }
-  }
-
-  // 批量添加日志条目
-  const addLogEntries = (entries: LogEntry[]) => {
-    entries.forEach(entry => addLogEntry(entry))
-  }
-
-  // 更新系统指标（用于WebSocket实时更新）
-  const updateSystemMetrics = (metrics: SystemMetrics) => {
-    systemMetrics.value = metrics
-    lastUpdate.value = new Date()
-    
-    // 添加到历史数据
-    metricsHistory.value.push({
-      ...metrics,
-      timestamp: new Date()
-    })
-    
-    // 限制历史数据长度
-    if (metricsHistory.value.length > maxHistoryLength) {
-      metricsHistory.value = metricsHistory.value.slice(-maxHistoryLength)
-    }
-  }
-
-  // 更新服务器指标（用于WebSocket实时更新）
-  const updateServerMetrics = (serverId: string, metrics: SystemMetrics) => {
-    serverMetrics.value.set(serverId, metrics)
-  }
-
-  // 导出日志
-  const exportLogs = async (filter?: LogFilter): Promise<boolean> => {
-    try {
-      const response = await logsAPI.exportLogs(filter)
-      if (response.success && response.data) {
-        // 创建下载链接
-        const blob = response.data as Blob
-        const url = window.URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `logs-${new Date().toISOString().split('T')[0]}.txt`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        window.URL.revokeObjectURL(url)
-        
-        appStore.addNotification({
-          type: 'success',
-          title: '日志导出成功',
-          message: '日志文件已下载',
-          duration: 3000
-        })
-        
-        return true
-      } else {
-        throw new Error('导出日志失败')
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '导出日志失败'
-      setError(errorMessage)
-      console.error('Failed to export logs:', err)
-      return false
-    }
-  }
-
-  // 清除日志
-  const clearLogs = () => {
-    logs.value = []
-    appStore.addNotification({
-      type: 'info',
-      title: '日志已清除',
-      message: '所有日志记录已清除',
-      duration: 2000
-    })
-  }
-
-  // 切换实时监控
-  const toggleRealTime = (enabled: boolean) => {
-    realTimeEnabled.value = enabled
-    if (enabled) {
-      appStore.addNotification({
-        type: 'info',
-        title: '实时监控已启用',
-        message: '系统将实时更新监控数据',
-        duration: 2000
-      })
-    }
-  }
-
-  // 刷新所有监控数据
-  const refreshAll = async () => {
-    setLoading(true)
-    try {
-      await Promise.all([
-        fetchSystemMetrics(),
-        fetchLogs(logFilter.value)
-      ])
+      // 假设WebSocket端点，实际项目中应该从配置获取
+      ws = new WebSocket('ws://localhost:3001/ws/monitoring')
       
-      appStore.addNotification({
-        type: 'success',
-        title: '监控数据已刷新',
-        message: '所有监控数据已更新',
-        duration: 2000
-      })
+      ws.onopen = () => {
+        isConnected.value = true
+        error.value = null
+        console.log('Monitoring WebSocket connected')
+      }
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          if (data.type === 'metrics') {
+            updateMetrics(data.payload)
+          } else if (data.type === 'alert') {
+            addAlert(data.payload)
+          }
+        } catch (err) {
+          console.error('Failed to parse WebSocket message:', err)
+        }
+      }
+      
+      ws.onclose = () => {
+        isConnected.value = false
+        console.log('Monitoring WebSocket disconnected')
+        // 尝试重连
+        if (!reconnectTimer) {
+          reconnectTimer = setTimeout(() => {
+            reconnectTimer = null
+            connectWebSocket()
+          }, 5000)
+        }
+      }
+      
+      ws.onerror = (err) => {
+        error.value = 'WebSocket连接错误'
+        console.error('Monitoring WebSocket error:', err)
+      }
     } catch (err) {
-      console.error('Failed to refresh monitoring data:', err)
-    } finally {
-      setLoading(false)
+      error.value = 'WebSocket连接失败'
+      console.error('Failed to connect WebSocket:', err)
     }
   }
 
-  // 初始化
-  const initialize = async () => {
-    await refreshAll()
+  const disconnectWebSocket = () => {
+    if (ws) {
+      ws.close()
+      ws = null
+    }
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer)
+      reconnectTimer = null
+    }
+    isConnected.value = false
+  }
+
+  const updateMetrics = (newMetrics: DetailedSystemMetrics) => {
+    currentMetrics.value = newMetrics
+    metrics.value.push(newMetrics)
+    
+    // 保持最近1000个数据点
+    if (metrics.value.length > 1000) {
+      metrics.value = metrics.value.slice(-1000)
+    }
+    
+    // 检查告警
+    checkAlerts(newMetrics)
+  }
+
+  const checkAlerts = (metrics: DetailedSystemMetrics) => {
+    if (!config.value.enableAlerts) return
+    
+    const now = new Date()
+    
+    // CPU告警
+    if (metrics.cpu.usage >= config.value.alerts.cpu.critical) {
+      addAlert({
+        id: `cpu-critical-${now.getTime()}`,
+        type: 'cpu',
+        level: 'critical',
+        message: `CPU使用率过高: ${metrics.cpu.usage.toFixed(1)}%`,
+        value: metrics.cpu.usage,
+        threshold: config.value.alerts.cpu.critical,
+        timestamp: now,
+        acknowledged: false
+      })
+    } else if (metrics.cpu.usage >= config.value.alerts.cpu.warning) {
+      addAlert({
+        id: `cpu-warning-${now.getTime()}`,
+        type: 'cpu',
+        level: 'warning',
+        message: `CPU使用率较高: ${metrics.cpu.usage.toFixed(1)}%`,
+        value: metrics.cpu.usage,
+        threshold: config.value.alerts.cpu.warning,
+        timestamp: now,
+        acknowledged: false
+      })
+    }
+    
+    // 内存告警
+    if (metrics.memory.usage >= config.value.alerts.memory.critical) {
+      addAlert({
+        id: `memory-critical-${now.getTime()}`,
+        type: 'memory',
+        level: 'critical',
+        message: `内存使用率过高: ${metrics.memory.usage.toFixed(1)}%`,
+        value: metrics.memory.usage,
+        threshold: config.value.alerts.memory.critical,
+        timestamp: now,
+        acknowledged: false
+      })
+    } else if (metrics.memory.usage >= config.value.alerts.memory.warning) {
+      addAlert({
+        id: `memory-warning-${now.getTime()}`,
+        type: 'memory',
+        level: 'warning',
+        message: `内存使用率较高: ${metrics.memory.usage.toFixed(1)}%`,
+        value: metrics.memory.usage,
+        threshold: config.value.alerts.memory.warning,
+        timestamp: now,
+        acknowledged: false
+      })
+    }
+    
+    // 磁盘告警
+    if (metrics.disk.usage >= config.value.alerts.disk.critical) {
+      addAlert({
+        id: `disk-critical-${now.getTime()}`,
+        type: 'disk',
+        level: 'critical',
+        message: `磁盘使用率过高: ${metrics.disk.usage.toFixed(1)}%`,
+        value: metrics.disk.usage,
+        threshold: config.value.alerts.disk.critical,
+        timestamp: now,
+        acknowledged: false
+      })
+    } else if (metrics.disk.usage >= config.value.alerts.disk.warning) {
+      addAlert({
+        id: `disk-warning-${now.getTime()}`,
+        type: 'disk',
+        level: 'warning',
+        message: `磁盘使用率较高: ${metrics.disk.usage.toFixed(1)}%`,
+        value: metrics.disk.usage,
+        threshold: config.value.alerts.disk.warning,
+        timestamp: now,
+        acknowledged: false
+      })
+    }
+  }
+
+  const addAlert = (alert: PerformanceAlert) => {
+    alerts.value.unshift(alert)
+    
+    // 保持最近100个告警
+    if (alerts.value.length > 100) {
+      alerts.value = alerts.value.slice(0, 100)
+    }
+  }
+
+  const acknowledgeAlert = (alertId: string) => {
+    const alert = alerts.value.find(a => a.id === alertId)
+    if (alert) {
+      alert.acknowledged = true
+    }
+  }
+
+  const clearAcknowledgedAlerts = () => {
+    alerts.value = alerts.value.filter(alert => !alert.acknowledged)
+  }
+
+  const dismissAlert = (alertId: string) => {
+    const index = alerts.value.findIndex(a => a.id === alertId)
+    if (index !== -1) {
+      alerts.value.splice(index, 1)
+    }
+  }
+
+  const refreshMetrics = async () => {
+    isLoading.value = true
+    try {
+      // 模拟刷新数据
+      const mockMetrics = generateMockMetrics()
+      mockMetrics.memory.free = mockMetrics.memory.total - mockMetrics.memory.used
+      mockMetrics.memory.usage = (mockMetrics.memory.used / mockMetrics.memory.total) * 100
+      mockMetrics.disk.free = mockMetrics.disk.total - mockMetrics.disk.used
+      mockMetrics.disk.usage = (mockMetrics.disk.used / mockMetrics.disk.total) * 100
+      
+      updateMetrics(mockMetrics)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const startMonitoring = (interval?: number) => {
+    if (interval) {
+      config.value.refreshInterval = interval
+    }
+    isConnected.value = true
+    return startMockData()
+  }
+
+  const stopMonitoring = () => {
+    isConnected.value = false
+    // 实际应用中这里会清除定时器
+  }
+
+  const updateConfig = (newConfig: Partial<MonitoringConfig>) => {
+    config.value = { ...config.value, ...newConfig }
+  }
+
+  // 模拟数据生成器（用于演示）
+  const generateMockMetrics = (): DetailedSystemMetrics => {
+    const now = new Date()
+    const baseLoad = 0.3 + Math.sin(now.getTime() / 60000) * 0.2
+    
+    return {
+      timestamp: now,
+      cpu: {
+        usage: Math.max(0, Math.min(100, baseLoad * 100 + (Math.random() - 0.5) * 30)),
+        cores: 8,
+        temperature: 45 + Math.random() * 20
+      },
+      memory: {
+        total: 16 * 1024 * 1024 * 1024, // 16GB
+        used: baseLoad * 16 * 1024 * 1024 * 1024 + Math.random() * 2 * 1024 * 1024 * 1024,
+        free: 0,
+        usage: 0
+      },
+      network: {
+        bytesIn: Math.random() * 1000000,
+        bytesOut: Math.random() * 1000000,
+        packetsIn: Math.random() * 1000,
+        packetsOut: Math.random() * 1000,
+        connections: Math.floor(Math.random() * 100)
+      },
+      disk: {
+        total: 500 * 1024 * 1024 * 1024, // 500GB
+        used: baseLoad * 400 * 1024 * 1024 * 1024,
+        free: 0,
+        usage: 0,
+        readOps: Math.random() * 100,
+        writeOps: Math.random() * 50
+      },
+      process: {
+        pid: 1234,
+        uptime: Math.floor(Date.now() / 1000) - 86400, // 1天前启动
+        memory: baseLoad * 1024 * 1024 * 1024,
+        cpu: baseLoad * 100
+      }
+    }
+  }
+
+  const startMockData = () => {
+    const interval = setInterval(() => {
+      const mockMetrics = generateMockMetrics()
+      
+      // 计算派生值
+      mockMetrics.memory.free = mockMetrics.memory.total - mockMetrics.memory.used
+      mockMetrics.memory.usage = (mockMetrics.memory.used / mockMetrics.memory.total) * 100
+      mockMetrics.disk.free = mockMetrics.disk.total - mockMetrics.disk.used
+      mockMetrics.disk.usage = (mockMetrics.disk.used / mockMetrics.disk.total) * 100
+      
+      updateMetrics(mockMetrics)
+    }, config.value.refreshInterval)
+    
+    return () => clearInterval(interval)
   }
 
   return {
     // 状态
-    systemMetrics,
-    serverMetrics,
-    logs,
-    logFilter,
-    loading,
+    metrics,
+    currentMetrics,
+    alerts,
+    config,
+    isConnected,
+    isLoading,
     error,
-    realTimeEnabled,
-    lastUpdate,
-    metricsHistory,
     
     // 计算属性
-    filteredLogs,
-    errorLogs,
-    warningLogs,
-    logStats,
-    systemHealth,
+    cpuSeries,
+    memorySeries,
+    networkInSeries,
+    networkOutSeries,
+    diskSeries,
+    activeAlerts,
+    criticalAlerts,
+    warningAlerts,
+    systemStatus,
     
-    // Actions
-    setLoading,
-    setError,
-    clearError,
-    fetchSystemMetrics,
-    fetchServerMetrics,
-    fetchLogs,
-    setLogFilter,
-    clearLogFilter,
-    addLogEntry,
-    addLogEntries,
-    updateSystemMetrics,
-    updateServerMetrics,
-    exportLogs,
-    clearLogs,
-    toggleRealTime,
-    refreshAll,
-    initialize
+    // 方法
+    connectWebSocket,
+    disconnectWebSocket,
+    updateMetrics,
+    addAlert,
+    acknowledgeAlert,
+    clearAcknowledgedAlerts,
+    dismissAlert,
+    refreshMetrics,
+    startMonitoring,
+    stopMonitoring,
+    updateConfig,
+    startMockData
   }
 })

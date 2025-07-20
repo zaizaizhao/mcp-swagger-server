@@ -210,6 +210,70 @@ export const serverAPI = {
 // ============================================================================
 
 export const openApiAPI = {
+  // 获取所有规范
+  async getSpecs(): Promise<ApiResponse<OpenAPISpec[]>> {
+    const response = await api.get('/openapi/specs')
+    return response.data
+  },
+
+  // 创建新规范
+  async createSpec(config: {
+    name: string
+    version: string
+    description?: string
+    template?: string
+  }): Promise<ApiResponse<OpenAPISpec>> {
+    const response = await api.post('/openapi/specs', config)
+    return response.data
+  },
+
+  // 从内容创建规范
+  async createSpecFromContent(config: {
+    name: string
+    content: string
+    fileName?: string
+  }): Promise<ApiResponse<OpenAPISpec>> {
+    const response = await api.post('/openapi/specs/content', config)
+    return response.data
+  },
+
+  // 从URL导入规范
+  async importFromUrl(config: {
+    url: string
+    name: string
+    authType: 'none' | 'bearer' | 'basic'
+    token?: string
+    username?: string
+    password?: string
+  }): Promise<ApiResponse<OpenAPISpec>> {
+    const response = await api.post('/openapi/specs/import', config)
+    return response.data
+  },
+
+  // 获取规范内容
+  async getSpecContent(id: string): Promise<ApiResponse<string>> {
+    const response = await api.get(`/openapi/specs/${id}/content`)
+    return response.data
+  },
+
+  // 更新规范内容
+  async updateSpecContent(id: string, content: string): Promise<ApiResponse<OpenAPISpec>> {
+    const response = await api.put(`/openapi/specs/${id}/content`, { content })
+    return response.data
+  },
+
+  // 复制规范
+  async duplicateSpec(id: string): Promise<ApiResponse<OpenAPISpec>> {
+    const response = await api.post(`/openapi/specs/${id}/duplicate`)
+    return response.data
+  },
+
+  // 删除规范
+  async deleteSpec(id: string): Promise<ApiResponse<void>> {
+    const response = await api.delete(`/openapi/specs/${id}`)
+    return response.data
+  },
+
   // 上传OpenAPI文件
   async uploadSpec(file: File): Promise<ApiResponse<OpenAPISpec>> {
     const formData = new FormData()
@@ -226,9 +290,9 @@ export const openApiAPI = {
     return response.data
   },
 
-  // 验证OpenAPI规范
-  async validateSpec(spec: OpenAPISpec): Promise<ApiResponse<{ valid: boolean; errors: any[] }>> {
-    const response = await api.post('/openapi/validate', spec)
+  // 验证OpenAPI规范（支持字符串内容）
+  async validateSpec(content: string): Promise<ApiResponse<{ valid: boolean; errors: any[]; warnings?: any[] }>> {
+    const response = await api.post('/openapi/validate', { content })
     return response.data
   },
 

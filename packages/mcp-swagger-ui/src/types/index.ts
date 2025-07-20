@@ -1,9 +1,41 @@
 // ============================================================================
+// API 相关类型
+// ============================================================================
+
+export interface InputSource {
+  type: 'url' | 'file' | 'text'
+  content: string
+  auth?: {
+    type: 'bearer' | 'apikey'
+    token: string
+  }
+}
+
+export interface ConvertConfig {
+  name?: string
+  version?: string
+  description?: string
+  port?: number
+  transport?: 'streamable' | 'sse' | 'stdio'
+  includeDeprecated: boolean
+  includeExamples: boolean
+  generateTypes: boolean
+  outputFormat: 'json' | 'yaml'
+}
+
+// ============================================================================
 // 基础类型定义
 // ============================================================================
 
 export type ServerStatus = 'running' | 'stopped' | 'error' | 'starting' | 'stopping'
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
+
+// 服务状态类型
+export interface ServiceStatus {
+  name: string
+  status: 'online' | 'offline' | 'degraded' | 'connecting'
+  icon: any
+}
 
 // ============================================================================
 // API 响应类型
@@ -33,6 +65,8 @@ export interface ServerConfig {
 
 export interface ServerMetrics {
   totalRequests: number
+  successfulRequests: number
+  failedRequests: number
   averageResponseTime: number
   errorRate: number
   activeConnections: number
@@ -66,18 +100,17 @@ export interface MCPServer {
 // ============================================================================
 // OpenAPI 相关类型
 // ============================================================================
+// API 端点类型
+// ============================================================================
 
-export interface OpenAPISpec {
-  id: string
-  version: '2.0' | '3.0' | '3.1'
-  content: object
-  metadata: {
-    title: string
-    version: string
-    description?: string
-  }
-  validationStatus: 'valid' | 'invalid' | 'warning'
-  validationErrors?: ValidationError[]
+export interface ApiEndpoint {
+  method: string
+  path: string
+  summary: string
+  description: string
+  operationId: string
+  tags?: string[]
+  deprecated?: boolean
 }
 
 export interface ValidationError {
@@ -85,6 +118,30 @@ export interface ValidationError {
   message: string
   severity: 'error' | 'warning' | 'info'
   code: string
+}
+
+export interface ValidationResult {
+  valid: boolean
+  errors?: ValidationError[]
+  warnings?: ValidationError[]
+}
+
+// ============================================================================
+// OpenAPI 规范类型
+// ============================================================================
+
+export interface OpenAPISpec {
+  id: string
+  name: string
+  version: string
+  description?: string
+  content: string
+  pathCount: number
+  toolCount: number
+  createdAt: string
+  lastModified: string
+  validationStatus: 'valid' | 'invalid' | 'warning'
+  validationErrors?: ValidationError[]
 }
 
 // ============================================================================
@@ -98,7 +155,19 @@ export interface MCPTool {
   parameters: ParameterSchema
   serverId: string
   endpoint?: string
-  method?: string
+  method: string
+  path?: string
+  createdAt?: Date
+  updatedAt?: Date
+}
+
+export interface ToolParameter {
+  name: string
+  type: 'string' | 'number' | 'integer' | 'boolean' | 'array' | 'object'
+  description?: string
+  required: boolean
+  default?: any
+  enum?: any[]
 }
 
 export interface ParameterSchema {
@@ -163,6 +232,9 @@ export interface AuthConfig {
   }
   envVars?: string[]
   encrypted: boolean
+  expiresAt?: string | Date
+  autoRenewal?: boolean
+  renewalInterval?: number
 }
 
 export interface AuthTestResult {
@@ -216,6 +288,7 @@ export interface ConfigFile {
   servers: MCPServer[]
   globalSettings: GlobalSettings
   exportedAt: Date
+  encrypted?: boolean
 }
 
 export interface ExportOptions {
@@ -238,6 +311,7 @@ export interface ConfigConflict {
   field: string
   currentValue: any
   newValue: any
+  existingValue?: any
   resolution?: 'keep' | 'replace' | 'merge'
 }
 
@@ -288,6 +362,99 @@ export interface GlobalSettings {
   maxLogEntries: number
   enableNotifications: boolean
   enableWebSocket: boolean
+  enableSounds: boolean
+}
+
+// ============================================================================
+// 系统监控相关类型
+// ============================================================================
+
+export interface DetailedSystemMetrics {
+  timestamp: Date
+  cpu: {
+    usage: number // 百分比
+    cores: number
+    temperature?: number
+  }
+  memory: {
+    total: number // bytes
+    used: number // bytes
+    free: number // bytes
+    usage: number // 百分比
+  }
+  network: {
+    bytesIn: number
+    bytesOut: number
+    packetsIn: number
+    packetsOut: number
+    connections: number
+  }
+  disk: {
+    total: number // bytes
+    used: number // bytes
+    free: number // bytes
+    usage: number // 百分比
+    readOps: number
+    writeOps: number
+  }
+  process: {
+    pid: number
+    uptime: number // seconds
+    memory: number // bytes
+    cpu: number // 百分比
+  }
+}
+
+export interface PerformanceAlert {
+  id: string
+  type: 'cpu' | 'memory' | 'disk' | 'network' | 'error'
+  level: 'info' | 'warning' | 'critical'
+  message: string
+  value: number
+  threshold: number
+  timestamp: Date
+  acknowledged: boolean
+}
+
+export interface MonitoringConfig {
+  refreshInterval: number // milliseconds
+  alerts: {
+    cpu: { warning: number; critical: number }
+    memory: { warning: number; critical: number }
+    disk: { warning: number; critical: number }
+    network: { warning: number; critical: number }
+  }
+  enableAlerts: boolean
+  enableSound: boolean
+}
+
+export interface ChartDataPoint {
+  timestamp: Date
+  value: number
+  label?: string
+}
+
+export interface ChartSeries {
+  name: string
+  data: ChartDataPoint[]
+  color?: string
+}
+
+// ============================================================================
+// 系统健康状态类型
+// ============================================================================
+
+export interface SystemHealth {
+  status: 'healthy' | 'warning' | 'error'
+  services: {
+    api: 'online' | 'offline' | 'degraded'
+    websocket: 'connected' | 'disconnected' | 'reconnecting'
+    database: 'online' | 'offline' | 'degraded'
+  }
+  errorCount: number
+  lastCheck: Date
+  uptime: number
+  version: string
 }
 
 // ============================================================================
@@ -301,6 +468,7 @@ export interface Notification {
   message: string
   duration?: number
   timestamp: Date
+  read?: boolean
   actions?: NotificationAction[]
 }
 

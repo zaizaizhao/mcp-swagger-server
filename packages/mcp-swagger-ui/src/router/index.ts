@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
-import MainLayout from '@/components/MainLayout.vue'
+import MainLayout from '@/layout/MainLayout.vue'
 
 // 路由配置
 const routes: RouteRecordRaw[] = [
@@ -11,7 +11,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: '/dashboard',
         name: 'dashboard',
-        component: () => import('@/views/Dashboard.vue'),
+        component: () => import('@/modules/dashboard/Dashboard.vue'),
         meta: { 
           title: '仪表板',
           icon: 'Monitor',
@@ -21,7 +21,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: '/servers',
         name: 'servers',
-        component: () => import('@/views/ServerManager.vue'),
+        component: () => import('@/modules/servers/ServerManager.vue'),
         meta: { 
           title: '服务器管理',
           icon: 'Server',
@@ -31,7 +31,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: '/servers/:id',
         name: 'server-detail',
-        component: () => import('@/views/ServerDetail.vue'),
+        component: () => import('@/modules/servers/ServerDetail.vue'),
         meta: { 
           title: '服务器详情',
           hidden: true,
@@ -41,7 +41,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: '/openapi',
         name: 'openapi',
-        component: () => import('@/views/OpenAPIManager.vue'),
+        component: () => import('@/modules/openapi/OpenAPIManager.vue'),
         meta: { 
           title: 'OpenAPI管理',
           icon: 'Document',
@@ -51,7 +51,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: '/tester',
         name: 'tester',
-        component: () => import('@/views/APITester.vue'),
+        component: () => import('@/modules/testing/APITester.vue'),
         meta: { 
           title: 'API测试',
           icon: 'Tools',
@@ -61,7 +61,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: '/auth',
         name: 'auth',
-        component: () => import('@/views/AuthManager.vue'),
+        component: () => import('@/modules/auth/AuthManager.vue'),
         meta: { 
           title: '认证管理',
           icon: 'Lock',
@@ -71,7 +71,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: '/config',
         name: 'config',
-        component: () => import('@/views/ConfigManager.vue'),
+        component: () => import('@/modules/config/ConfigManagerNew.vue'),
         meta: { 
           title: '配置管理',
           icon: 'Setting',
@@ -81,7 +81,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: '/logs',
         name: 'logs',
-        component: () => import('@/views/LogViewer.vue'),
+        component: () => import('@/modules/logs/LogViewer.vue'),
         meta: { 
           title: '日志查看',
           icon: 'List',
@@ -89,9 +89,19 @@ const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: '/monitoring',
+        name: 'monitoring',
+        component: () => import('@/modules/monitoring/monitoring/Dashboard.vue'),
+        meta: { 
+          title: '系统监控',
+          icon: 'Monitor',
+          description: '系统性能监控和告警'
+        }
+      },
+      {
         path: '/ai',
         name: 'ai',
-        component: () => import('@/views/AIAssistant.vue'),
+        component: () => import('@/modules/ai/AIAssistant.vue'),
         meta: { 
           title: 'AI助手',
           icon: 'ChatDotRound',
