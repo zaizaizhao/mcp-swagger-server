@@ -1,6 +1,7 @@
 export default {
   // 通用
   common: {
+    all: '全部',
     confirm: '确认',
     cancel: '取消',
     save: '保存',

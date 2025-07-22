@@ -1,6 +1,7 @@
 export default {
   // Common
   common: {
+    all: 'All',
     confirm: 'Confirm',
     cancel: 'Cancel',
     save: 'Save',
