@@ -11,8 +11,10 @@ import { AppConfigService } from './config/app-config.service';
 import { validationSchema } from './config/validation.schema';
 
 // 模块
+import { DatabaseModule } from './database/database.module';
 import { OpenAPIModule } from './modules/openapi/openapi.module';
 import { MCPModule } from './modules/mcp/mcp.module';
+import { ServersModule } from './modules/servers/servers.module';
 import { HealthModule } from './modules/health/health.module';
 import { ConfigModule as AppConfigModule } from './modules/config/config.module';
 
@@ -69,9 +71,13 @@ import { MCPExceptionFilter } from './common/filters/mcp-exception.filter';
     // 健康检查模块
     TerminusModule,
 
+    // 数据库模块
+    DatabaseModule,
+
     // 功能模块
     OpenAPIModule,
     MCPModule,
+    ServersModule,
     HealthModule,
     AppConfigModule,
   ],
