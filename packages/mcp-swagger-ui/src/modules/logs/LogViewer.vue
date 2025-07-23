@@ -3,13 +3,44 @@
     <div class="log-header">
       <h2>{{ t('logs.title') }}</h2>
       <div class="log-controls">
+        <!-- 搜索框 -->
+        <el-input
+          v-model="searchText"
+          :placeholder="t('logs.searchPlaceholder')"
+          style="width: 200px"
+          clearable
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+        </el-input>
+        
+        <!-- 级别筛选 -->
         <el-select v-model="selectedLevel" :placeholder="t('logs.logLevel')" style="width: 120px">
           <el-option :label="t('common.all')" value="all" />
-          <el-option :label="t('logs.error')" value="error" />
-          <el-option :label="t('logs.warn')" value="warn" />
-          <el-option :label="t('logs.info')" value="info" />
           <el-option :label="t('logs.debug')" value="debug" />
+          <el-option :label="t('logs.info')" value="info" />
+          <el-option :label="t('logs.warn')" value="warn" />
+          <el-option :label="t('logs.error')" value="error" />
+          <el-option :label="t('logs.fatal')" value="fatal" />
         </el-select>
+        
+        <!-- 来源筛选 -->
+        <el-select 
+          v-model="selectedSource" 
+          :placeholder="t('logs.source')" 
+          style="width: 150px"
+          clearable
+        >
+          <el-option :label="t('common.all')" value="all" />
+          <el-option
+            v-for="source in availableSources"
+            :key="source"
+            :label="source"
+            :value="source"
+          />
+        </el-select>
+        
         <el-button @click="clearLogs" type="danger" plain>
           <el-icon><Delete /></el-icon>
           {{ t('logs.clearLogs') }}
@@ -26,18 +57,13 @@
         <el-empty :description="t('logs.noLogs')" />
       </div>
       <div v-else class="log-list">
-        <div
+        <LogEntry
           v-for="log in filteredLogs"
           :key="log.id"
-          :class="['log-item', `log-${log.level}`]"
-        >
-          <div class="log-time">{{ formatTime(log.timestamp) }}</div>
-          <div class="log-level">{{ log.level.toUpperCase() }}</div>
-          <div class="log-message">{{ log.message }}</div>
-          <div v-if="log.details" class="log-details">
-            <pre>{{ JSON.stringify(log.details, null, 2) }}</pre>
-          </div>
-        </div>
+          :log="log"
+          :search-text="searchText"
+          @search-related="handleSearchRelated"
+        />
       </div>
     </div>
   </div>
@@ -46,93 +72,157 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Delete, Refresh } from '@element-plus/icons-vue'
+import { Delete, Refresh, Search } from '@element-plus/icons-vue'
+import LogEntry from './components/LogEntry.vue'
+import type { LogEntry as LogEntryType, LogLevel } from '@/stores/log'
 
 // 国际化
 const { t, locale } = useI18n()
 
-interface LogEntry {
-  id: string
-  timestamp: number
-  level: 'error' | 'warn' | 'info' | 'debug'
-  message: string
-  details?: any
-}
-
+// 响应式数据
 const selectedLevel = ref('all')
-const rawLogs = ref<Array<{id: string, timestamp: number, level: 'error' | 'warn' | 'info' | 'debug', messageKey: string, details?: any}>>([])
+const selectedSource = ref('all')
+const searchText = ref('')
+const rawLogs = ref<LogEntryType[]>([])
 
-// 根据当前语言生成本地化的日志数据（没有必要，需要统一接口错误定义）
-const logs = computed(() => {
-  const messageMap: Record<string, {zh: string, en: string}> = {
-    'mcp_server_started': {
-      zh: 'MCP服务器启动成功',
-      en: 'MCP server started successfully'
-    },
-    'openapi_parse_warning': {
-      zh: 'OpenAPI规范解析警告',
-      en: 'OpenAPI specification parsing warning'
-    },
-    'api_call_failed': {
-      zh: 'API调用失败',
-      en: 'API call failed'
-    }
-  }
-  
-  return rawLogs.value.map(log => ({
-    ...log,
-    message: locale.value === 'zh-CN' ? messageMap[log.messageKey].zh : messageMap[log.messageKey].en
-  }))
+// 计算属性
+const logs = computed(() => rawLogs.value)
+
+const availableSources = computed(() => {
+  const sources = new Set(rawLogs.value.map(log => log.source))
+  return Array.from(sources).sort()
 })
 
 const filteredLogs = computed(() => {
-  if (selectedLevel.value === 'all') {
-    return logs.value
+  let filtered = logs.value
+
+  // 按级别筛选
+  if (selectedLevel.value !== 'all') {
+    filtered = filtered.filter(log => log.level === selectedLevel.value)
   }
-  return logs.value.filter(log => log.level === selectedLevel.value)
+
+  // 按来源筛选
+  if (selectedSource.value !== 'all') {
+    filtered = filtered.filter(log => log.source === selectedSource.value)
+  }
+
+  // 按搜索文本筛选
+  if (searchText.value.trim()) {
+    const searchTerm = searchText.value.toLowerCase()
+    filtered = filtered.filter(log => 
+      log.message.toLowerCase().includes(searchTerm) ||
+      log.source.toLowerCase().includes(searchTerm) ||
+      (log.tags && log.tags.some(tag => tag.toLowerCase().includes(searchTerm)))
+    )
+  }
+
+  return filtered.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
 })
 
-const formatTime = (timestamp: number) => {
-  // 根据当前语言环境格式化时间
-  const localeCode = locale.value === 'zh-CN' ? 'zh-CN' : 'en-US'
-  return new Date(timestamp).toLocaleString(localeCode)
-}
-
+// 方法
 const clearLogs = () => {
   rawLogs.value = []
 }
 
 const refreshLogs = () => {
-  // 模拟获取日志数据
   loadLogs()
 }
 
+const handleSearchRelated = (log: LogEntryType) => {
+  // 根据日志来源或错误类型搜索相关日志
+  selectedSource.value = log.source
+  if (log.level === 'error' || log.level === 'fatal') {
+    selectedLevel.value = 'error'
+  }
+}
+
 const loadLogs = () => {
-  // 模拟日志数据 - 使用消息键而不是直接的文本
-  const mockLogs = [
+  // 模拟日志数据 - 使用新的LogEntry结构
+  const mockLogs: LogEntryType[] = [
     {
       id: '1',
-      timestamp: Date.now() - 60000,
-      level: 'info' as const,
-      messageKey: 'mcp_server_started'
+      timestamp: new Date(Date.now() - 60000),
+      level: 'info' as LogLevel,
+      source: 'mcp-server',
+      message: 'MCP服务器启动成功',
+      tags: ['startup', 'server']
     },
     {
       id: '2',
-      timestamp: Date.now() - 30000,
-      level: 'warn' as const,
-      messageKey: 'openapi_parse_warning',
-      details: { endpoint: '/api/users', issue: 'Missing response schema' }
+      timestamp: new Date(Date.now() - 45000),
+      level: 'info' as LogLevel,
+      source: 'swagger-parser',
+      message: '正在解析OpenAPI规范文件',
+      context: { 
+        file: 'test-openapi.json',
+        endpoints: 15 
+      },
+      tags: ['parsing', 'openapi']
     },
     {
       id: '3',
-      timestamp: Date.now() - 10000,
-      level: 'error' as const,
-      messageKey: 'api_call_failed',
-      details: { url: 'https://api.example.com/users', error: 'Network timeout' }
+      timestamp: new Date(Date.now() - 30000),
+      level: 'warn' as LogLevel,
+      source: 'swagger-parser',
+      message: 'OpenAPI规范解析警告：部分端点缺少响应模式定义',
+      context: { 
+        endpoint: '/api/users',
+        issue: 'Missing response schema',
+        severity: 'medium'
+      },
+      tags: ['parsing', 'validation', 'warning']
+    },
+    {
+      id: '4',
+      timestamp: new Date(Date.now() - 15000),
+      level: 'debug' as LogLevel,
+      source: 'api-client',
+      message: '发送API请求',
+      context: {
+        method: 'GET',
+        url: '/api/users',
+        headers: { 'Content-Type': 'application/json' }
+      },
+      tags: ['api', 'request']
+    },
+    {
+      id: '5',
+      timestamp: new Date(Date.now() - 10000),
+      level: 'error' as LogLevel,
+      source: 'api-client',
+      message: 'API调用失败：网络超时',
+      context: { 
+        url: 'https://api.example.com/users',
+        timeout: 5000,
+        retryCount: 3
+      },
+      stack: `Error: Network timeout
+    at ApiClient.request (/path/to/api-client.js:45:12)
+    at async UserService.getUsers (/path/to/user-service.js:23:18)
+    at async UserController.handleGetUsers (/path/to/user-controller.js:67:25)`,
+      tags: ['api', 'error', 'network']
+    },
+    {
+      id: '6',
+      timestamp: new Date(Date.now() - 5000),
+      level: 'fatal' as LogLevel,
+      source: 'database',
+      message: '数据库连接失败',
+      context: {
+        host: 'localhost',
+        port: 5432,
+        database: 'mcp_swagger',
+        error: 'Connection refused'
+      },
+      stack: `Error: Connection refused
+    at Database.connect (/path/to/database.js:78:15)
+    at DatabaseManager.initialize (/path/to/db-manager.js:34:22)
+    at Server.start (/path/to/server.js:56:18)`,
+      tags: ['database', 'fatal', 'connection']
     }
   ]
   
-  rawLogs.value = mockLogs.sort((a, b) => b.timestamp - a.timestamp)
+  rawLogs.value = mockLogs
 }
 
 onMounted(() => {
@@ -166,6 +256,7 @@ onMounted(() => {
   display: flex;
   gap: 10px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .log-content {
@@ -187,87 +278,41 @@ onMounted(() => {
   overflow-y: auto;
   border: 1px solid var(--el-border-color);
   border-radius: 6px;
+  background: var(--el-bg-color);
 }
 
-.log-item {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-  display: grid;
-  grid-template-columns: 150px 80px 1fr;
-  gap: 12px;
-  align-items: start;
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .log-header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: flex-start;
+  }
+  
+  .log-controls {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  
+  .log-controls > * {
+    flex-shrink: 0;
+  }
 }
 
-.log-item:last-child {
-  border-bottom: none;
-}
-
-.log-item.log-error {
-  background-color: var(--el-color-error-light-9);
-  border-left: 4px solid var(--el-color-error);
-}
-
-.log-item.log-warn {
-  background-color: var(--el-color-warning-light-9);
-  border-left: 4px solid var(--el-color-warning);
-}
-
-.log-item.log-info {
-  background-color: var(--el-color-info-light-9);
-  border-left: 4px solid var(--el-color-info);
-}
-
-.log-item.log-debug {
-  background-color: var(--el-color-success-light-9);
-  border-left: 4px solid var(--el-color-success);
-}
-
-.log-time {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-  font-family: monospace;
-}
-
-.log-level {
-  font-size: 12px;
-  font-weight: bold;
-  text-transform: uppercase;
-}
-
-.log-item.log-error .log-level {
-  color: var(--el-color-error);
-}
-
-.log-item.log-warn .log-level {
-  color: var(--el-color-warning);
-}
-
-.log-item.log-info .log-level {
-  color: var(--el-color-info);
-}
-
-.log-item.log-debug .log-level {
-  color: var(--el-color-success);
-}
-
-.log-message {
-  color: var(--el-text-color-primary);
-  word-break: break-word;
-}
-
-.log-details {
-  grid-column: 1 / -1;
-  margin-top: 8px;
-  padding: 8px;
-  background-color: var(--el-fill-color-lighter);
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-.log-details pre {
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-word;
-  color: var(--el-text-color-secondary);
+@media (max-width: 480px) {
+  .log-viewer {
+    padding: 10px;
+  }
+  
+  .log-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  
+  .log-controls .el-input,
+  .log-controls .el-select {
+    width: 100% !important;
+  }
 }
 </style>
