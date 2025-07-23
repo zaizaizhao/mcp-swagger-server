@@ -17,6 +17,7 @@ import { MCPModule } from './modules/mcp/mcp.module';
 import { ServersModule } from './modules/servers/servers.module';
 import { HealthModule } from './modules/health/health.module';
 import { ConfigModule as AppConfigModule } from './modules/config/config.module';
+import { WebSocketModule } from './modules/websocket/websocket.module';
 
 // 通用组件
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
@@ -80,6 +81,7 @@ import { MCPExceptionFilter } from './common/filters/mcp-exception.filter';
     ServersModule,
     HealthModule,
     AppConfigModule,
+    WebSocketModule,
   ],
   controllers: [],
   providers: [
