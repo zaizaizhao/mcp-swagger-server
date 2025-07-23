@@ -1,1 +1,1 @@
-export { default as LogViewer } from './LogViewer.vue'
+export { default as LogViewer } from './components/LogEntry.vue'
