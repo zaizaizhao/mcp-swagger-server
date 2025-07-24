@@ -4,7 +4,7 @@ import { MCPServerEntity } from './entities/mcp-server.entity';
 import { AuthConfigEntity } from './entities/auth-config.entity';
 import { TestCaseEntity } from './entities/test-case.entity';
 import { LogEntryEntity } from './entities/log-entry.entity';
-
+console.log(process.env.DB_HOST)
 // 开发环境的数据源配置
 export const AppDataSource = new DataSource({
   type: 'postgres',
