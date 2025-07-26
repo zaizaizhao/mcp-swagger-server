@@ -7,7 +7,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { MCPServerEntity, ServerStatus, TransportType } from '../../../database/entities/mcp-server.entity';
 import { LogEntryEntity, LogLevel, LogSource } from '../../../database/entities/log-entry.entity';
 import { ServerLifecycleService } from './server-lifecycle.service';
-import { CreateServerDto, UpdateServerDto, ServerQueryDto } from '../dto/server.dto';
+import { CreateServerDto, UpdateServerDto, ServerQueryDto, ServerResponseDto, PaginatedResponseDto } from '../dto/server.dto';
+import { ServerMapper } from '../utils/server-mapper.util';
 
 export interface ServerInstance {
   id: string;
@@ -75,7 +76,7 @@ export class ServerManagerService {
   /**
    * 创建新的MCP服务器
    */
-  async createServer(createDto: CreateServerDto): Promise<MCPServerEntity> {
+  async createServer(createDto: CreateServerDto): Promise<ServerResponseDto> {
     // 检查名称是否已存在
     const existingServer = await this.serverRepository.findOne({
       where: { name: createDto.name },
@@ -132,18 +133,13 @@ export class ServerManagerService {
       serverName: savedServer.name,
     });
 
-    return savedServer;
+    return ServerMapper.toResponseDto(savedServer);
   }
 
   /**
    * 获取所有服务器
    */
-  async getAllServers(query?: ServerQueryDto): Promise<{
-    servers: MCPServerEntity[];
-    total: number;
-    page: number;
-    limit: number;
-  }> {
+  async getAllServers(query?: ServerQueryDto): Promise<PaginatedResponseDto<ServerResponseDto>> {
     const { page = 1, limit = 10, status, transport, search, tags } = query || {};
     
     const queryBuilder = this.serverRepository.createQueryBuilder('server');
@@ -165,7 +161,7 @@ export class ServerManagerService {
     }
 
     if (tags && tags.length > 0) {
-      queryBuilder.andWhere('server.tags && :tags', { tags });
+      queryBuilder.andWhere('server.tags ?| :tags', { tags });
     }
 
     // 分页
@@ -177,18 +173,26 @@ export class ServerManagerService {
 
     const [servers, total] = await queryBuilder.getManyAndCount();
 
-    return {
-      servers,
-      total,
-      page,
-      limit,
-    };
+    return ServerMapper.toPaginatedResponseDto(servers, total, page, limit);
   }
 
   /**
    * 根据ID获取服务器
    */
-  async getServerById(id: string): Promise<MCPServerEntity> {
+  async getServerById(id: string): Promise<ServerResponseDto> {
+    const server = await this.serverRepository.findOne({ where: { id } });
+    
+    if (!server) {
+      throw new NotFoundException(`Server with ID '${id}' not found`);
+    }
+
+    return ServerMapper.toResponseDto(server);
+  }
+
+  /**
+   * 根据ID获取服务器实体（内部使用）
+   */
+  private async getServerEntityById(id: string): Promise<MCPServerEntity> {
     const server = await this.serverRepository.findOne({ where: { id } });
     
     if (!server) {
@@ -201,8 +205,8 @@ export class ServerManagerService {
   /**
    * 更新服务器配置
    */
-  async updateServer(id: string, updateDto: UpdateServerDto): Promise<MCPServerEntity> {
-    const server = await this.getServerById(id);
+  async updateServer(id: string, updateDto: UpdateServerDto): Promise<ServerResponseDto> {
+    const server = await this.getServerEntityById(id);
 
     // 如果服务器正在运行，某些字段不能修改
     if (server.status === ServerStatus.RUNNING) {
@@ -263,14 +267,14 @@ export class ServerManagerService {
       changes: updateDto,
     });
 
-    return updatedServer;
+    return ServerMapper.toResponseDto(updatedServer);
   }
 
   /**
    * 删除服务器
    */
   async deleteServer(id: string): Promise<void> {
-    const server = await this.getServerById(id);
+    const server = await this.getServerEntityById(id);
 
     // 如果服务器正在运行，先停止它
     if (server.status === ServerStatus.RUNNING) {
@@ -295,7 +299,7 @@ export class ServerManagerService {
    * 启动服务器
    */
   async startServer(id: string): Promise<void> {
-    const server = await this.getServerById(id);
+    const server = await this.getServerEntityById(id);
     
     if (server.status === ServerStatus.RUNNING) {
       throw new ConflictException('Server is already running');
@@ -338,7 +342,7 @@ export class ServerManagerService {
    * 停止服务器
    */
   async stopServer(id: string): Promise<void> {
-    const server = await this.getServerById(id);
+    const server = await this.getServerEntityById(id);
     
     if (server.status === ServerStatus.STOPPED) {
       throw new ConflictException('Server is already stopped');
@@ -380,7 +384,7 @@ export class ServerManagerService {
    * 重启服务器
    */
   async restartServer(id: string): Promise<void> {
-    const server = await this.getServerById(id);
+    const server = await this.getServerEntityById(id);
     
     if (server.status === ServerStatus.RUNNING) {
       await this.stopServer(id);

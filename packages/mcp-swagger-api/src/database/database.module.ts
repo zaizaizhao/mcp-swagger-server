@@ -6,6 +6,14 @@ import { MCPServerEntity } from './entities/mcp-server.entity';
 import { AuthConfigEntity } from './entities/auth-config.entity';
 import { TestCaseEntity } from './entities/test-case.entity';
 import { LogEntryEntity } from './entities/log-entry.entity';
+import { User } from './entities/user.entity';
+import { Role } from './entities/role.entity';
+import { Permission } from './entities/permission.entity';
+import { ApiKey } from './entities/api-key.entity';
+import { AuditLog } from './entities/audit-log.entity';
+import { RefreshToken } from './entities/refresh-token.entity';
+import { AiAssistantTemplateEntity } from '../modules/ai-assistant/entities/ai-assistant-template.entity';
+import { AiAssistantConfigEntity } from '../modules/ai-assistant/entities/ai-assistant-config.entity';
 
 @Module({
   imports: [
@@ -23,6 +31,14 @@ import { LogEntryEntity } from './entities/log-entry.entity';
           AuthConfigEntity,
           TestCaseEntity,
           LogEntryEntity,
+          User,
+          Role,
+          Permission,
+          ApiKey,
+          AuditLog,
+          RefreshToken,
+          AiAssistantTemplateEntity,
+          AiAssistantConfigEntity,
         ],
         synchronize: configService.get('NODE_ENV') === 'development',
         logging: configService.get('DB_LOGGING', false),
@@ -43,6 +59,14 @@ import { LogEntryEntity } from './entities/log-entry.entity';
       AuthConfigEntity,
       TestCaseEntity,
       LogEntryEntity,
+      User,
+      Role,
+      Permission,
+      ApiKey,
+      AuditLog,
+      RefreshToken,
+      AiAssistantTemplateEntity,
+      AiAssistantConfigEntity,
     ]),
   ],
   exports: [

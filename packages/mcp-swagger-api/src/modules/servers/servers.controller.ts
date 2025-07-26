@@ -38,7 +38,7 @@ import {
   PaginatedResponseDto,
   OperationResultDto,
 } from './dto/server.dto';
-import { MCPServerEntity } from '../../database/entities/mcp-server.entity';
+
 
 @ApiTags('服务器管理')
 @Controller('api/v1/servers')
@@ -67,7 +67,7 @@ export class ServersController {
       
       const server = await this.serverManager.createServer(createDto);
       
-      return this.transformServerResponse(server);
+      return server;
     } catch (error) {
       this.logger.error(`Failed to create server: ${error.message}`, error.stack);
       
@@ -98,17 +98,7 @@ export class ServersController {
     try {
       const result = await this.serverManager.getAllServers(query);
       
-      const transformedServers = result.servers.map(server => this.transformServerResponse(server));
-      
-      return {
-        data: transformedServers,
-        total: result.total,
-        page: result.page,
-        limit: result.limit,
-        totalPages: Math.ceil(result.total / result.limit),
-        hasNext: result.page * result.limit < result.total,
-        hasPrev: result.page > 1,
-      };
+      return result;
     } catch (error) {
       this.logger.error(`Failed to get servers: ${error.message}`, error.stack);
       throw new HttpException(
@@ -129,7 +119,7 @@ export class ServersController {
   async getServerById(@Param('id') id: string): Promise<ServerResponseDto> {
     try {
       const server = await this.serverManager.getServerById(id);
-      return this.transformServerResponse(server);
+      return server;
     } catch (error) {
       this.logger.error(`Failed to get server ${id}: ${error.message}`, error.stack);
       
@@ -162,7 +152,7 @@ export class ServersController {
       
       const server = await this.serverManager.updateServer(id, updateDto);
       
-      return this.transformServerResponse(server);
+      return server;
     } catch (error) {
       this.logger.error(`Failed to update server ${id}: ${error.message}`, error.stack);
       
@@ -475,27 +465,4 @@ export class ServersController {
     }
   }
 
-  /**
-   * 转换服务器实体为响应DTO
-   */
-  private transformServerResponse(server: MCPServerEntity): ServerResponseDto {
-    return {
-      id: server.id,
-      name: server.name,
-      version: server.version,
-      description: server.description,
-      port: server.port,
-      transport: server.transport,
-      status: server.status,
-      healthy: server.healthy,
-      endpoint: server.endpoint,
-      toolCount: server.tools ? server.tools.length : 0,
-      autoStart: server.autoStart,
-      tags: server.tags || [],
-      errorMessage: server.errorMessage,
-      lastHealthCheck: server.lastHealthCheck,
-      createdAt: server.createdAt,
-      updatedAt: server.updatedAt,
-    };
-  }
 }

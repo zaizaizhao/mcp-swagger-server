@@ -29,6 +29,9 @@ export class TestCaseEntity {
   @Column({ type: 'varchar', length: 255 })
   name: string;
 
+  @Column({ type: 'varchar', length: 255 })
+  serverName: string;
+
   @Column({ type: 'text', nullable: true })
   description?: string;
 

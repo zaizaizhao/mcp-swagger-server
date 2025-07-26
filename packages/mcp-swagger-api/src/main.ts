@@ -50,7 +50,7 @@ async function bootstrap() {
 
     // 全局前缀
     app.setGlobalPrefix('api', {
-      exclude: ['/health', '/metrics']
+      exclude: ['/', '/health', '/metrics', '/favicon.ico']
     });
 
     // 全局验证管道
