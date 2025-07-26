@@ -14,7 +14,6 @@
     "clean": "node scripts/clean.js",
     "clean:build": "node scripts/clean.js --build-only",
     "diagnostic": "node scripts/diagnostic.js",
-    "postinstall": "pnpm run build:packages",
     "test": "pnpm -r run test",
     "lint": "pnpm -r run lint",
     "type-check": "pnpm -r run type-check"

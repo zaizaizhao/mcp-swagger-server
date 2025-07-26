@@ -12,17 +12,22 @@ import { validationSchema } from './config/validation.schema';
 
 // 模块
 import { DatabaseModule } from './database/database.module';
+import { SecurityModule } from './modules/security/security.module';
 import { OpenAPIModule } from './modules/openapi/openapi.module';
 import { MCPModule } from './modules/mcp/mcp.module';
 import { ServersModule } from './modules/servers/servers.module';
 import { HealthModule } from './modules/health/health.module';
 import { ConfigModule as AppConfigModule } from './modules/config/config.module';
 import { WebSocketModule } from './modules/websocket/websocket.module';
+import { AiAssistantModule } from './modules/ai-assistant/ai-assistant.module';
 
 // 通用组件
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { MCPExceptionFilter } from './common/filters/mcp-exception.filter';
+
+// 控制器
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -76,14 +81,16 @@ import { MCPExceptionFilter } from './common/filters/mcp-exception.filter';
     DatabaseModule,
 
     // 功能模块
+    SecurityModule,
     OpenAPIModule,
     MCPModule,
     ServersModule,
     HealthModule,
     AppConfigModule,
     WebSocketModule,
+    AiAssistantModule,
   ],
-  controllers: [],
+  controllers: [AppController],
   providers: [
     // 全局配置服务
     AppConfigService,
