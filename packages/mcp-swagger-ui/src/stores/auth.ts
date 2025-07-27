@@ -1,12 +1,23 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import type { AuthConfig, AuthTestResult } from '@/types'
+import type { AuthConfig, AuthTestResult, User, LoginCredentials, RegisterData, LoginResponse } from '@/types'
+import { userAuthAPI } from '@/services/api'
 import { useAppStore } from './app'
+import { i18n } from '@/locales'
 
 export const useAuthStore = defineStore('auth', () => {
   const appStore = useAppStore()
+  const t = i18n.global.t
   
-  // State
+  // 用户认证状态
+  const currentUser = ref<User | null>(null)
+  const accessToken = ref<string | null>(localStorage.getItem('auth_token'))
+  const refreshToken = ref<string | null>(localStorage.getItem('refresh_token'))
+  const isAuthenticated = computed(() => !!accessToken.value && !!currentUser.value)
+  const authLoading = ref(false)
+  const authError = ref<string | null>(null)
+  
+  // API认证配置状态
   const authConfigs = ref<Map<string, AuthConfig>>(new Map())
   const activeConfigId = ref<string | null>(null)
   const loading = ref(false)
@@ -44,7 +55,182 @@ export const useAuthStore = defineStore('auth', () => {
     return grouped
   })
 
-  // Actions
+  // 用户认证 Actions
+  const setAuthLoading = (value: boolean) => {
+    authLoading.value = value
+  }
+
+  const setAuthError = (value: string | null) => {
+    authError.value = value
+    if (value) {
+      appStore.addNotification({
+        type: 'error',
+        title: '认证错误',
+        message: value,
+        duration: 5000
+      })
+    }
+  }
+
+  const clearAuthError = () => {
+    authError.value = null
+  }
+
+  // 设置认证令牌
+  const setTokens = (tokens: { accessToken: string; refreshToken: string }) => {
+    accessToken.value = tokens.accessToken
+    refreshToken.value = tokens.refreshToken
+    localStorage.setItem('auth_token', tokens.accessToken)
+    localStorage.setItem('refresh_token', tokens.refreshToken)
+  }
+
+  // 清除认证令牌
+  const clearTokens = () => {
+    accessToken.value = null
+    refreshToken.value = null
+    currentUser.value = null
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('refresh_token')
+  }
+
+  // 用户登录
+  const login = async (credentials: LoginCredentials): Promise<boolean> => {
+    setAuthLoading(true)
+    clearAuthError()
+    
+    try {
+      const response = await userAuthAPI.login(credentials)
+      
+      if (response.success && response.data) {
+        setTokens({
+          accessToken: response.data.accessToken,
+          refreshToken: response.data.refreshToken
+        })
+        currentUser.value = response.data.user
+        
+        appStore.addNotification({
+          type: 'success',
+          title: t('userAuth.messages.loginSuccess'),
+          message: t('userAuth.messages.welcomeBack', { username: response.data.user.username }),
+          duration: 3000
+        })
+        
+        return true
+      } else {
+        setAuthError(response.error || t('userAuth.errors.loginFailed'))
+        return false
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : t('userAuth.errors.loginFailed')
+      setAuthError(errorMessage)
+      return false
+    } finally {
+      setAuthLoading(false)
+    }
+  }
+
+  // 用户注册
+  const register = async (userData: RegisterData): Promise<boolean> => {
+    setAuthLoading(true)
+    clearAuthError()
+    
+    try {
+      const response = await userAuthAPI.register(userData)
+      
+      if (response.success && response.data) {
+        appStore.addNotification({
+          type: 'success',
+          title: t('userAuth.messages.registerSuccess'),
+          message: response.data.message || t('userAuth.messages.checkEmailVerification'),
+          duration: 5000
+        })
+        
+        return true
+      } else {
+        setAuthError(response.error || t('userAuth.errors.registerFailed'))
+        return false
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : t('userAuth.errors.registerFailed')
+      setAuthError(errorMessage)
+      return false
+    } finally {
+      setAuthLoading(false)
+    }
+  }
+
+  // 用户登出
+  const logout = async (): Promise<void> => {
+    try {
+      await userAuthAPI.logout()
+    } catch (error) {
+      console.warn('Logout API call failed:', error)
+    } finally {
+      clearTokens()
+      appStore.addNotification({
+        type: 'info',
+        title: t('userAuth.messages.loggedOut'),
+        message: t('userAuth.messages.logoutSuccess'),
+        duration: 3000
+      })
+    }
+  }
+
+  // 获取当前用户信息
+  const fetchCurrentUser = async (): Promise<boolean> => {
+    if (!accessToken.value) return false
+    
+    try {
+      const response = await userAuthAPI.getCurrentUser()
+      
+      if (response.success && response.data) {
+        currentUser.value = response.data
+        return true
+      } else {
+        clearTokens()
+        return false
+      }
+    } catch (error) {
+      clearTokens()
+      return false
+    }
+  }
+
+  // 刷新令牌
+  const refreshAccessToken = async (): Promise<boolean> => {
+    if (!refreshToken.value) return false
+    
+    try {
+      const response = await userAuthAPI.refreshToken(refreshToken.value)
+      
+      if (response.success && response.data) {
+        setTokens({
+          accessToken: response.data.accessToken,
+          refreshToken: response.data.refreshToken
+        })
+        return true
+      } else {
+        clearTokens()
+        return false
+      }
+    } catch (error) {
+      clearTokens()
+      return false
+    }
+  }
+
+  // 初始化认证状态
+  const initializeAuth = async (): Promise<void> => {
+    if (accessToken.value) {
+      const success = await fetchCurrentUser()
+      if (!success) {
+        // 尝试刷新令牌
+        await refreshAccessToken()
+      }
+    }
+  }
+
+  // API认证配置 Actions
   const setLoading = (value: boolean) => {
     loading.value = value
   }
@@ -54,7 +240,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (value) {
       appStore.addNotification({
         type: 'error',
-        title: '认证配置错误',
+        title: t('auth.errors.configError'),
         message: value,
         duration: 5000
       })
@@ -80,8 +266,8 @@ export const useAuthStore = defineStore('auth', () => {
     
     appStore.addNotification({
       type: 'success',
-      title: '认证配置创建成功',
-      message: `认证配置 "${name}" 已创建`,
+      title: t('auth.messages.configCreated'),
+      message: t('auth.messages.configCreatedDetail', { name }),
       duration: 3000
     })
     
@@ -92,7 +278,7 @@ export const useAuthStore = defineStore('auth', () => {
   const updateAuthConfig = (id: string, updates: Partial<AuthConfig>) => {
     const existing = authConfigs.value.get(id)
     if (!existing) {
-      setError('认证配置不存在')
+      setError(t('auth.errors.configNotFound'))
       return
     }
     
@@ -109,8 +295,8 @@ export const useAuthStore = defineStore('auth', () => {
     
     appStore.addNotification({
       type: 'success',
-      title: '认证配置更新成功',
-      message: '认证配置已更新',
+      title: t('auth.messages.configUpdated'),
+      message: t('auth.messages.configUpdatedDetail'),
       duration: 3000
     })
   }
@@ -597,7 +783,15 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   return {
-    // State
+    // 用户认证状态
+    currentUser,
+    accessToken,
+    refreshToken,
+    isAuthenticated,
+    authLoading,
+    authError,
+    
+    // API认证配置状态
     authConfigs,
     activeConfigId,
     loading,
@@ -610,7 +804,20 @@ export const useAuthStore = defineStore('auth', () => {
     configList,
     configsByType,
     
-    // Actions
+    // 用户认证 Actions
+    setAuthLoading,
+    setAuthError,
+    clearAuthError,
+    setTokens,
+    clearTokens,
+    login,
+    register,
+    logout,
+    fetchCurrentUser,
+    refreshAccessToken,
+    initializeAuth,
+    
+    // API认证配置 Actions
     setLoading,
     setError,
     clearError,

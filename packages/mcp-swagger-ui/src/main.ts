@@ -39,18 +39,22 @@ async function initializeApp() {
   initLocale()
   
   // 动态导入 stores 以避免循环依赖
-  const { useAppStore, useThemeStore, useWebSocketStore, useLocaleStore } = await import('./stores')
+  const { useAppStore, useThemeStore, useWebSocketStore, useLocaleStore, useAuthStore } = await import('./stores')
   
   // 初始化核心 stores
   const appStore = useAppStore()
   const themeStore = useThemeStore()
   const websocketStore = useWebSocketStore()
   const localeStore = useLocaleStore()
+  const authStore = useAuthStore()
   
   // 初始化应用状态
   appStore.initialize()
   themeStore.initialize()
   localeStore.initialize()
+  
+  // 初始化认证状态（从本地存储恢复登录状态）
+  await authStore.initializeAuth()
   
   // 初始化 WebSocket 连接（异步）
   websocketStore.initialize().catch(error => {

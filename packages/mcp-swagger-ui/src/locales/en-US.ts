@@ -45,6 +45,10 @@ export default {
     disconnected: 'Disconnected',
     healthy: 'Healthy',
     unhealthy: 'Unhealthy',
+    expand: 'Expand',
+    collapse: 'Collapse',
+    refreshSuccess: 'Refresh successful',
+    refreshFailed: 'Refresh failed',
     active: 'Active',
     inactive: 'Inactive',
     enabled: 'Enabled',
@@ -54,7 +58,19 @@ export default {
     pending: 'Pending',
     failed: 'Failed',
     completed: 'Completed',
-    processing: 'Processing'
+    processing: 'Processing',
+    saving: 'Saving...',
+    deleting: 'Deleting...',
+    updating: 'Updating...',
+    creating: 'Creating...',
+    connecting: 'Connecting...',
+    disconnecting: 'Disconnecting...',
+    testing: 'Testing...',
+    validating: 'Validating...',
+    importing: 'Importing...',
+    exporting: 'Exporting...',
+    uploading: 'Uploading...',
+    downloading: 'Downloading...'
   },
 
   // Navigation menu
@@ -467,7 +483,9 @@ export default {
     copyError: 'Copy Failed',
     parseError: 'Parse Failed',
     retryOperation: 'Retry Operation',
-    contactSupport: 'Contact Support'
+    contactSupport: 'Contact Support',
+    loginFailed: 'Login failed',
+    registerFailed: 'Registration failed'
   },
 
   // Success messages
@@ -484,7 +502,13 @@ export default {
     connectionSuccess: 'Connection Successful',
     testSuccess: 'Test Successful',
     validationSuccess: 'Validation Successful',
-    configurationSuccess: 'Configuration Successful'
+    configurationSuccess: 'Configuration Successful',
+    welcomeBack: 'Welcome back, {username}!',
+    checkEmailVerification: 'Registration successful, please check your email for verification',
+    loggedOut: 'Logged out',
+    logoutSuccess: 'You have successfully logged out',
+    profileInDevelopment: 'Profile feature is under development',
+    settingsInDevelopment: 'Account settings feature is under development'
   },
 
   // Form validation
@@ -533,5 +557,126 @@ export default {
     lastMonth: 'Last month',
     thisYear: 'This year',
     lastYear: 'Last year'
+  },
+
+  // User Authentication
+  userAuth: {
+    // Login page
+    login: {
+      title: 'User Login',
+      subtitle: 'Welcome back, please sign in to your account',
+      username: 'Username',
+      email: 'Email Address',
+      password: 'Password',
+      usernameOrEmail: 'Username or Email',
+      enterUsername: 'Please enter username',
+      enterEmail: 'Please enter email address',
+      enterPassword: 'Please enter password',
+      rememberMe: 'Remember me',
+      forgotPassword: 'Forgot password?',
+      loginButton: 'Sign In',
+      loggingIn: 'Signing in...',
+      noAccount: "Don't have an account?",
+      signUp: 'Sign up now',
+      loginSuccess: 'Login successful',
+      loginFailed: 'Login failed',
+      invalidCredentials: 'Invalid username or password',
+      accountLocked: 'Account has been locked',
+      accountDisabled: 'Account has been disabled',
+      sessionExpired: 'Session expired, please sign in again'
+    },
+
+    // Register page
+    register: {
+      title: 'User Registration',
+      subtitle: 'Create your new account',
+      username: 'Username',
+      email: 'Email Address',
+      password: 'Password',
+      confirmPassword: 'Confirm Password',
+      enterUsername: 'Please enter username',
+      enterEmail: 'Please enter email address',
+      enterPassword: 'Please enter password',
+      confirmPasswordPlaceholder: 'Please enter password again',
+      agreeToTerms: 'I agree to the',
+      termsOfService: 'Terms of Service',
+      privacyPolicy: 'Privacy Policy',
+      registerButton: 'Sign Up',
+      registering: 'Signing up...',
+      hasAccount: 'Already have an account?',
+      signIn: 'Sign in now',
+      registerSuccess: 'Registration successful',
+      registerFailed: 'Registration failed',
+      emailExists: 'Email address already registered',
+      usernameExists: 'Username already taken',
+      weakPassword: 'Password is too weak',
+      passwordMismatch: 'Passwords do not match',
+      mustAgreeTerms: 'Please agree to the Terms of Service and Privacy Policy'
+    },
+
+    // Password strength
+    passwordStrength: {
+      label: 'Password Strength',
+      weak: 'Weak',
+      medium: 'Medium',
+      strong: 'Strong',
+      requirements: {
+        length: 'At least 8 characters',
+        number: 'Contains numbers',
+        lowercase: 'Contains lowercase letters',
+        uppercase: 'Contains uppercase letters',
+        special: 'Contains special characters'
+      }
+    },
+
+    // User info
+    user: {
+      profile: 'Profile',
+      accountSettings: 'Account Settings',
+      logout: 'Sign Out',
+      avatar: 'Avatar',
+      displayName: 'Display Name',
+      bio: 'Bio',
+      location: 'Location',
+      website: 'Website',
+      joinDate: 'Join Date',
+      lastLogin: 'Last Login',
+      changePassword: 'Change Password',
+      changeEmail: 'Change Email',
+      deleteAccount: 'Delete Account',
+      logoutConfirm: 'Are you sure you want to sign out?',
+      logoutSuccess: 'Successfully signed out'
+    },
+
+    // Form validation
+    validation: {
+      usernameRequired: 'Please enter username',
+      usernameMinLength: 'Username must be at least 3 characters',
+      usernameMaxLength: 'Username must be no more than 20 characters',
+      usernameInvalid: 'Username can only contain letters, numbers and underscores',
+      emailRequired: 'Please enter email address',
+      emailInvalid: 'Please enter a valid email address',
+      passwordRequired: 'Please enter password',
+      passwordMinLength: 'Password must be at least 6 characters',
+      passwordMaxLength: 'Password must be no more than 50 characters',
+      confirmPasswordRequired: 'Please confirm password',
+      passwordNotMatch: 'Passwords do not match',
+      termsRequired: 'Please agree to the Terms of Service and Privacy Policy'
+    },
+
+    // Error messages
+    errors: {
+      networkError: 'Network connection error, please check your network settings',
+      serverError: 'Server error, please try again later',
+      unauthorized: 'Unauthorized access, please sign in again',
+      forbidden: 'Access forbidden',
+      userNotFound: 'User does not exist',
+      invalidToken: 'Invalid access token',
+      tokenExpired: 'Access token has expired',
+      refreshTokenExpired: 'Refresh token has expired, please sign in again',
+      tooManyAttempts: 'Too many login attempts, please try again later',
+      accountNotVerified: 'Account not verified, please check your email',
+      unknownError: 'Unknown error, please contact administrator'
+    }
   }
 }

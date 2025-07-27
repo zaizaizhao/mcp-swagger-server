@@ -14,6 +14,7 @@ import { AuditLog } from './entities/audit-log.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { AiAssistantTemplateEntity } from '../modules/ai-assistant/entities/ai-assistant-template.entity';
 import { AiAssistantConfigEntity } from '../modules/ai-assistant/entities/ai-assistant-config.entity';
+import { SeedService } from './seed.service';
 
 @Module({
   imports: [
@@ -69,8 +70,12 @@ import { AiAssistantConfigEntity } from '../modules/ai-assistant/entities/ai-ass
       AiAssistantConfigEntity,
     ]),
   ],
+  providers: [
+    SeedService,
+  ],
   exports: [
     TypeOrmModule,
+    SeedService,
   ],
 })
 export class DatabaseModule {}

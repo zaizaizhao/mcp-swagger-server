@@ -12,6 +12,7 @@ import { validationSchema } from './config/validation.schema';
 
 // 模块
 import { DatabaseModule } from './database/database.module';
+import { CoreModule } from './modules/core/core.module';
 import { SecurityModule } from './modules/security/security.module';
 import { OpenAPIModule } from './modules/openapi/openapi.module';
 import { MCPModule } from './modules/mcp/mcp.module';
@@ -79,6 +80,9 @@ import { AppController } from './app.controller';
 
     // 数据库模块
     DatabaseModule,
+
+    // 核心模块（包含系统初始化）
+    CoreModule,
 
     // 功能模块
     SecurityModule,

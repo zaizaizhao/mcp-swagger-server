@@ -54,7 +54,11 @@ export default {
     pending: '等待中',
     failed: '失败',
     completed: '已完成',
-    processing: '处理中'
+    processing: '处理中',
+    expand: '展开',
+    collapse: '收起',
+    refreshSuccess: '刷新成功',
+    refreshFailed: '刷新失败'
   },
 
   // 导航菜单
@@ -454,9 +458,11 @@ export default {
     badRequest: '请求参数错误',
     internalError: '内部错误',
     unknownError: '未知错误',
+    operationFailed: '操作失败，请重试',
+    loginFailed: '登录失败',
+    registerFailed: '注册失败',
     validationError: '验证错误',
     connectionFailed: '连接失败',
-    operationFailed: '操作失败',
     saveError: '保存失败',
     loadError: '加载失败',
     deleteError: '删除失败',
@@ -533,5 +539,131 @@ export default {
     lastMonth: '上月',
     thisYear: '今年',
     lastYear: '去年'
+  },
+
+  // 用户认证
+  userAuth: {
+    // 登录页面
+    login: {
+      title: '用户登录',
+      subtitle: '欢迎回来，请登录您的账户',
+      username: '用户名',
+      email: '邮箱地址',
+      password: '密码',
+      usernameOrEmail: '用户名或邮箱',
+      enterUsername: '请输入用户名',
+      enterEmail: '请输入邮箱地址',
+      enterPassword: '请输入密码',
+      rememberMe: '记住我',
+      forgotPassword: '忘记密码？',
+      loginButton: '登录',
+      loggingIn: '登录中...',
+      noAccount: '还没有账户？',
+      signUp: '立即注册',
+      loginSuccess: '登录成功',
+      loginFailed: '登录失败',
+      invalidCredentials: '用户名或密码错误',
+      accountLocked: '账户已被锁定',
+      accountDisabled: '账户已被禁用',
+      sessionExpired: '会话已过期，请重新登录'
+    },
+
+    // 注册页面
+    register: {
+      title: '用户注册',
+      subtitle: '创建您的新账户',
+      username: '用户名',
+      email: '邮箱地址',
+      password: '密码',
+      confirmPassword: '确认密码',
+      enterUsername: '请输入用户名',
+      enterEmail: '请输入邮箱地址',
+      enterPassword: '请输入密码',
+      confirmPasswordPlaceholder: '请再次输入密码',
+      agreeToTerms: '我同意',
+      termsOfService: '服务条款',
+      privacyPolicy: '隐私政策',
+      registerButton: '注册',
+      registering: '注册中...',
+      hasAccount: '已有账户？',
+      signIn: '立即登录',
+      registerSuccess: '注册成功',
+      registerFailed: '注册失败',
+      emailExists: '邮箱已被注册',
+      usernameExists: '用户名已被使用',
+      weakPassword: '密码强度太弱',
+      passwordMismatch: '两次输入的密码不一致',
+      mustAgreeTerms: '请同意服务条款和隐私政策'
+    },
+
+    // 密码强度
+    passwordStrength: {
+      label: '密码强度',
+      weak: '弱',
+      medium: '中等',
+      strong: '强',
+      requirements: {
+        length: '至少8位',
+        number: '包含数字',
+        lowercase: '包含小写字母',
+        uppercase: '包含大写字母',
+        special: '包含特殊字符'
+      }
+    },
+
+    // 用户信息
+    user: {
+      profile: '个人资料',
+      accountSettings: '账户设置',
+      logout: '退出登录',
+      avatar: '头像',
+      displayName: '显示名称',
+      bio: '个人简介',
+      location: '所在地',
+      website: '个人网站',
+      joinDate: '加入时间',
+      lastLogin: '最后登录',
+      changePassword: '修改密码',
+      changeEmail: '修改邮箱',
+      deleteAccount: '删除账户',
+      logoutConfirm: '确定要退出登录吗？',
+      logoutSuccess: '已成功退出登录',
+      welcomeBack: '欢迎回来，{username}！',
+      checkEmailVerification: '注册成功，请查看邮箱进行验证',
+      loggedOut: '已登出',
+      profileInDevelopment: '个人资料功能开发中',
+      settingsInDevelopment: '账户设置功能开发中'
+    },
+
+    // 表单验证
+    validation: {
+      usernameRequired: '请输入用户名',
+      usernameMinLength: '用户名至少3位',
+      usernameMaxLength: '用户名最多20位',
+      usernameInvalid: '用户名只能包含字母、数字和下划线',
+      emailRequired: '请输入邮箱地址',
+      emailInvalid: '请输入有效的邮箱地址',
+      passwordRequired: '请输入密码',
+      passwordMinLength: '密码长度至少6位',
+      passwordMaxLength: '密码长度最多50位',
+      confirmPasswordRequired: '请确认密码',
+      passwordNotMatch: '两次输入的密码不一致',
+      termsRequired: '请同意服务条款和隐私政策'
+    },
+
+    // 错误信息
+    errors: {
+      networkError: '网络连接错误，请检查网络设置',
+      serverError: '服务器错误，请稍后重试',
+      unauthorized: '未授权访问，请重新登录',
+      forbidden: '访问被禁止',
+      userNotFound: '用户不存在',
+      invalidToken: '无效的访问令牌',
+      tokenExpired: '访问令牌已过期',
+      refreshTokenExpired: '刷新令牌已过期，请重新登录',
+      tooManyAttempts: '登录尝试次数过多，请稍后重试',
+      accountNotVerified: '账户未验证，请检查邮箱',
+      unknownError: '未知错误，请联系管理员'
+    }
   }
 }

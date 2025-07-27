@@ -57,11 +57,18 @@ export class AuthController {
   async login(
     @Body() loginDto: LoginDto,
     @Req() req: Request,
-  ): Promise<LoginResponseDto> {
+  ): Promise<any> {
     const ipAddress = this.getClientIp(req);
     const userAgent = req.get('User-Agent') || '';
 
-    return this.authService.login(loginDto, ipAddress, userAgent);
+    const result = await this.authService.login(loginDto, ipAddress, userAgent);
+    
+    return {
+      success: true,
+      data: result,
+      message: '登录成功',
+      timestamp: new Date().toISOString()
+    };
   }
 
   @Public()
