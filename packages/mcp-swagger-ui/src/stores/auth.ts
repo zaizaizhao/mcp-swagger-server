@@ -177,7 +177,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // 获取当前用户信息
-  const fetchCurrentUser = async (): Promise<boolean> => {
+  const fetchCurrentUser = async (clearOnFailure: boolean = true): Promise<boolean> => {
     if (!accessToken.value) return false
     
     try {
@@ -185,13 +185,20 @@ export const useAuthStore = defineStore('auth', () => {
       
       if (response.success && response.data) {
         currentUser.value = response.data
+        console.log('获取用户信息成功:', response.data.username)
         return true
       } else {
-        clearTokens()
+        console.log('获取用户信息失败，响应无效')
+        if (clearOnFailure) {
+          clearTokens()
+        }
         return false
       }
     } catch (error) {
-      clearTokens()
+      console.error('获取用户信息异常:', error)
+      if (clearOnFailure) {
+        clearTokens()
+      }
       return false
     }
   }
@@ -221,12 +228,28 @@ export const useAuthStore = defineStore('auth', () => {
 
   // 初始化认证状态
   const initializeAuth = async (): Promise<void> => {
+    console.log('开始初始化认证状态')
     if (accessToken.value) {
-      const success = await fetchCurrentUser()
+      console.log('检测到 accessToken，尝试获取用户信息')
+      // 第一次尝试获取用户信息，失败时不清除令牌
+      const success = await fetchCurrentUser(false)
       if (!success) {
+        console.log('获取用户信息失败，尝试刷新令牌')
         // 尝试刷新令牌
-        await refreshAccessToken()
+        const refreshSuccess = await refreshAccessToken()
+        if (refreshSuccess) {
+          console.log('令牌刷新成功，再次尝试获取用户信息')
+          // 刷新成功后再次尝试获取用户信息，这次失败就清除令牌
+          await fetchCurrentUser(true)
+        } else {
+          console.log('令牌刷新失败，清除所有认证信息')
+          clearTokens()
+        }
+      } else {
+        console.log('用户信息获取成功，认证状态已恢复')
       }
+    } else {
+      console.log('未检测到 accessToken')
     }
   }
 

@@ -7,11 +7,6 @@ import { SecurityModule } from '../security/security.module';
 
 @Module({
   imports: [
-    NestConfigModule.forRoot({
-      isGlobal: true,
-      validationSchema,
-      envFilePath: ['.env.local', '.env'],
-    }),
     SecurityModule,
   ],
   controllers: [ConfigController],

@@ -150,35 +150,79 @@ router.beforeEach(async (to, from, next) => {
   const { useAuthStore } = await import('@/stores/auth')
   const authStore = useAuthStore()
   
+  console.log('路由守卫 - 目标路径:', to.path)
+  console.log('路由守卫 - accessToken:', !!authStore.accessToken)
+  console.log('路由守卫 - currentUser:', !!authStore.currentUser)
+  
   // 公开路由（不需要认证）
   const publicRoutes = ['/login', '/forgot-password']
   const isPublicRoute = publicRoutes.includes(to.path)
   
-  // 如果是公开路由，直接通过
-  if (isPublicRoute) {
-    // 如果已经登录，重定向到首页
-    if (authStore.isAuthenticated && to.path === '/login') {
+  // 如果是登录页面
+  if (to.path === '/login') {
+    // 检查是否需要初始化认证状态（只在有token但没有用户信息时）
+    if (authStore.accessToken && !authStore.currentUser) {
+      console.log('登录页面 - 检测到 token 但无用户信息，尝试初始化认证状态')
+      try {
+        await authStore.initializeAuth()
+        console.log('登录页面 - 认证初始化完成 - currentUser:', !!authStore.currentUser)
+        // 如果初始化后有用户信息，重定向到仪表板
+        if (authStore.currentUser) {
+          console.log('登录页面 - 用户已认证，重定向到仪表板')
+          next('/dashboard')
+          return
+        }
+      } catch (error) {
+        console.error('登录页面 - 认证初始化失败:', error)
+      }
+    } else if (authStore.currentUser) {
+      // 如果已经有用户信息，重定向到仪表板
+      console.log('登录页面 - 用户已认证，重定向到仪表板')
       next('/dashboard')
       return
     }
+    // 允许访问登录页面
+    console.log('登录页面 - 允许访问')
     next()
     return
   }
   
-  // 检查是否已认证
-  if (!authStore.isAuthenticated) {
-    // 尝试初始化认证状态（从本地存储恢复）
-    await authStore.initializeAuth()
-    
-    // 如果仍未认证，重定向到登录页面
-    if (!authStore.isAuthenticated) {
-      next({
-        path: '/login',
-        query: { redirect: to.fullPath }
-      })
-      return
+  // 其他公开路由直接通过
+  if (isPublicRoute) {
+    next()
+    return
+  }
+  
+  // 对于需要认证的路由，先检查是否需要初始化认证状态
+  if (authStore.accessToken && !authStore.currentUser) {
+    console.log('受保护路由 - 检测到 token 但无用户信息，开始初始化认证状态')
+    try {
+      await authStore.initializeAuth()
+      console.log('受保护路由 - 认证初始化完成 - currentUser:', !!authStore.currentUser)
+    } catch (error) {
+      console.error('受保护路由 - 认证初始化失败:', error)
     }
   }
+  
+  // 最终检查认证状态：必须同时有 accessToken 和 currentUser
+  const isAuthenticated = !!authStore.accessToken && !!authStore.currentUser
+  console.log('受保护路由 - 最终认证状态检查:', { 
+    hasToken: !!authStore.accessToken, 
+    hasUser: !!authStore.currentUser, 
+    isAuthenticated 
+  })
+  
+  if (!isAuthenticated) {
+    console.log('用户未认证，重定向到登录页面')
+    // 重定向到登录页面
+    next({
+      path: '/login',
+      query: { redirect: to.fullPath }
+    })
+    return
+  }
+  
+  console.log('用户已认证，允许访问')
   
   // 设置页面标题
   if (to.meta?.title) {
