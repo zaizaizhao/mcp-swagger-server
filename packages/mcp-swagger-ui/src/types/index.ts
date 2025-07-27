@@ -217,6 +217,49 @@ export interface TestCase {
 }
 
 // ============================================================================
+// 用户认证相关类型
+// ============================================================================
+
+export interface User {
+  id: string
+  username: string
+  email: string
+  status: 'active' | 'pending' | 'locked'
+  emailVerified: boolean
+  createdAt: string
+  updatedAt: string
+  lastLoginAt?: string
+  failedLoginAttempts?: number
+}
+
+export interface LoginCredentials {
+  username: string
+  password: string
+}
+
+export interface RegisterData {
+  username: string
+  email: string
+  password: string
+}
+
+export interface AuthTokens {
+  accessToken: string
+  refreshToken: string
+}
+
+export interface LoginResponse {
+  accessToken: string
+  refreshToken: string
+  user: User
+}
+
+export interface RegisterResponse {
+  user: User
+  message: string
+}
+
+// ============================================================================
 // 认证相关类型
 // ============================================================================
 

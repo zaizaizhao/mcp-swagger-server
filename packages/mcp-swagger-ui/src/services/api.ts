@@ -23,7 +23,7 @@ import { normalizeAPIError, logAPIError, createRetryFunction, type APIError } fr
 
 // 创建axios实例
 const api: AxiosInstance = axios.create({
-  baseURL: '/api',
+  baseURL: '/api', // 使用相对路径，通过 Vite 代理转发到后端
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json'
@@ -347,6 +347,60 @@ export const testingAPI = {
   // 删除测试用例
   async deleteTestCase(id: string): Promise<ApiResponse<void>> {
     const response = await api.delete(`/test-cases/${id}`)
+    return response.data
+  }
+}
+
+// ============================================================================
+// 用户认证 API
+// ============================================================================
+
+export const userAuthAPI = {
+  // 用户登录
+  async login(credentials: { username: string; password: string }): Promise<ApiResponse<{ accessToken: string; refreshToken: string; user: any }>> {
+    const response = await api.post('/auth/login', credentials)
+    return response.data
+  },
+
+  // 用户注册
+  async register(userData: { username: string; email: string; password: string }): Promise<ApiResponse<{ user: any; message: string }>> {
+    const response = await api.post('/auth/register', userData)
+    return response.data
+  },
+
+  // 获取当前用户信息
+  async getCurrentUser(): Promise<ApiResponse<any>> {
+    const response = await api.get('/auth/me')
+    return response.data
+  },
+
+  // 刷新token
+  async refreshToken(refreshToken: string): Promise<ApiResponse<{ accessToken: string; refreshToken: string }>> {
+    const response = await api.post('/auth/refresh', { refreshToken })
+    return response.data
+  },
+
+  // 用户登出
+  async logout(): Promise<ApiResponse<void>> {
+    const response = await api.post('/auth/logout')
+    return response.data
+  },
+
+  // 邮箱验证
+  async verifyEmail(token: string): Promise<ApiResponse<{ message: string }>> {
+    const response = await api.post('/auth/verify-email', { token })
+    return response.data
+  },
+
+  // 重置密码请求
+  async requestPasswordReset(email: string): Promise<ApiResponse<{ message: string }>> {
+    const response = await api.post('/auth/forgot-password', { email })
+    return response.data
+  },
+
+  // 重置密码
+  async resetPassword(token: string, newPassword: string): Promise<ApiResponse<{ message: string }>> {
+    const response = await api.post('/auth/reset-password', { token, newPassword })
     return response.data
   }
 }

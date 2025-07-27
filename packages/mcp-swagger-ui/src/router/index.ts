@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import MainLayout from '@/layout/MainLayout.vue'
+import Login from '@/views/Login.vue'
 
 // 路由配置
 const routes: RouteRecordRaw[] = [
@@ -111,6 +112,16 @@ const routes: RouteRecordRaw[] = [
     ]
   },
   {
+    path: '/login',
+    name: 'login',
+    component: Login,
+    meta: {
+      title: '登录',
+      hidden: true
+    }
+  },
+
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/views/NotFound.vue'),
@@ -134,11 +145,47 @@ const router = createRouter({
 })
 
 // 路由守卫
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
+  // 动态导入 auth store 以避免循环依赖
+  const { useAuthStore } = await import('@/stores/auth')
+  const authStore = useAuthStore()
+  
+  // 公开路由（不需要认证）
+  const publicRoutes = ['/login', '/forgot-password']
+  const isPublicRoute = publicRoutes.includes(to.path)
+  
+  // 如果是公开路由，直接通过
+  if (isPublicRoute) {
+    // 如果已经登录，重定向到首页
+    if (authStore.isAuthenticated && to.path === '/login') {
+      next('/dashboard')
+      return
+    }
+    next()
+    return
+  }
+  
+  // 检查是否已认证
+  if (!authStore.isAuthenticated) {
+    // 尝试初始化认证状态（从本地存储恢复）
+    await authStore.initializeAuth()
+    
+    // 如果仍未认证，重定向到登录页面
+    if (!authStore.isAuthenticated) {
+      next({
+        path: '/login',
+        query: { redirect: to.fullPath }
+      })
+      return
+    }
+  }
+  
   // 设置页面标题
   if (to.meta?.title) {
     document.title = `${to.meta.title} - MCP Gateway`
   }
+  
+  // 已认证，允许访问
   next()
 })
 

@@ -67,7 +67,7 @@
           @click="toggleSidebar"
           text
           class="collapse-btn"
-          :title="sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'"
+          :title="sidebarCollapsed ? t('common.expand') : t('common.collapse')"
         />
       </div>
     </el-aside>
@@ -155,6 +155,37 @@
             text
             :title="$t('common.settings')"
           />
+          
+          <!-- 用户信息 -->
+          <el-dropdown @command="handleUserAction" trigger="click" class="user-dropdown">
+            <div class="user-info">
+              <el-avatar 
+                :size="32" 
+                :src="currentUser?.avatar" 
+                class="user-avatar"
+              >
+                <el-icon><User /></el-icon>
+              </el-avatar>
+              <span v-if="!isMobile" class="username">{{ currentUser?.username }}</span>
+              <el-icon class="el-icon--right"><CaretBottom /></el-icon>
+            </div>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="profile">
+                  <el-icon><User /></el-icon>
+                  {{ t('userAuth.userInfo.profile') }}
+                </el-dropdown-item>
+                <el-dropdown-item command="settings">
+                  <el-icon><Setting /></el-icon>
+                  {{ t('userAuth.userInfo.settings') }}
+                </el-dropdown-item>
+                <el-dropdown-item divided command="logout">
+                  <el-icon><SwitchButton /></el-icon>
+                  {{ t('userAuth.userInfo.logout') }}
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
       </el-header>
 
@@ -193,11 +224,14 @@ import {
   WarningFilled,
   Sunny,
   Moon,
-  CaretBottom
+  CaretBottom,
+  User,
+  SwitchButton
 } from '@element-plus/icons-vue'
 import { useAppStore } from '@/stores/app'
 import { useThemeStore } from '@/stores/theme'
 import { useLocaleStore } from '@/stores/locale'
+import { useAuthStore } from '@/stores/auth'
 import { SUPPORT_LOCALES, type Locale } from '@/locales'
 
 // 国际化
@@ -234,6 +268,7 @@ const router = useRouter()
 const appStore = useAppStore()
 const themeStore = useThemeStore()
 const localeStore = useLocaleStore()
+const authStore = useAuthStore()
 
 // 响应式状态
 const sidebarCollapsed = ref(false)
@@ -253,6 +288,7 @@ const currentRoute = computed(() => route)
 const isDark = computed(() => themeStore.isDark)
 const currentLanguage = computed(() => localeStore.currentLanguage)
 const supportedLocales = computed(() => SUPPORT_LOCALES)
+const currentUser = computed(() => authStore.currentUser)
 
 const sidebarWidth = computed(() => {
   if (isMobile.value) {
@@ -313,14 +349,14 @@ const refreshData = async () => {
       'layout-refresh-data',
       { currentRoute: route.path }
     )
-    ElMessage.success('数据刷新成功')
+    ElMessage.success(t('common.refreshSuccess'))
   } catch (error: any) {
     globalErrorHandler?.captureError(error, {
       context: 'layout-refresh-data',
       currentRoute: route.path,
       action: 'refresh_app_data'
     })
-    ElMessage.error('数据刷新失败')
+    ElMessage.error(t('common.refreshFailed'))
   } finally {
     isRefreshing.value = false
   }
@@ -394,6 +430,39 @@ const showSystemStatus = () => {
       context: 'layout-show-system-status',
       action: 'show_status'
     })
+  }
+}
+
+// 处理用户操作
+const handleUserAction = async (command: string) => {
+  try {
+    switch (command) {
+      case 'profile':
+        // TODO: 打开个人资料页面
+        ElMessage.info(t('userAuth.messages.profileInDevelopment'))
+        break
+      case 'settings':
+        // TODO: 打开账户设置页面
+        ElMessage.info(t('userAuth.messages.settingsInDevelopment'))
+        break
+      case 'logout':
+        await measureFunction(
+          async () => {
+            await authStore.logout()
+            router.push('/login')
+          },
+          'layout-user-logout'
+        )
+        break
+      default:
+        console.warn('Unknown user action:', command)
+    }
+  } catch (error: any) {
+    globalErrorHandler?.captureError(error, {
+      context: 'layout-user-action',
+      action: command
+    })
+    ElMessage.error(t('userAuth.errors.operationFailed'))
   }
 }
 
@@ -629,6 +698,45 @@ onMounted(() => {
   margin-left: 2px !important;
 }
 
+/* 用户信息样式 */
+.user-dropdown {
+  margin-left: 8px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.user-info:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.user-avatar {
+  flex-shrink: 0;
+}
+
+.username {
+  font-size: 14px;
+  font-weight: 500;
+  color: #303133;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-info .el-icon--right {
+  margin-left: 4px;
+  font-size: 12px;
+  color: #909399;
+}
+
 /* 主内容区域 */
 .main-content {
   background-color: #f5f7fa;
@@ -708,5 +816,17 @@ onMounted(() => {
 
 .dark .sidebar-footer {
   border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .user-info:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .username {
+  color: #f9fafb;
+}
+
+.dark .user-info .el-icon--right {
+  color: #9ca3af;
 }
 </style>
