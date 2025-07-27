@@ -27,7 +27,6 @@ out/
 # TypeScript build artifacts
 *.js
 *.js.map
-*.d.ts
 # But allow specific config files
 !*.config.js
 !rollup.config.js
