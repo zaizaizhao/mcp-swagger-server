@@ -109,11 +109,18 @@ export class AuthController {
   async refreshToken(
     @Body('refreshToken') refreshToken: string,
     @Req() req: Request,
-  ): Promise<Omit<LoginResponseDto, 'user'>> {
+  ): Promise<any> {
     const ipAddress = this.getClientIp(req);
     const userAgent = req.get('User-Agent') || '';
 
-    return this.authService.refreshToken(refreshToken, ipAddress, userAgent);
+    const result = await this.authService.refreshToken(refreshToken, ipAddress, userAgent);
+    
+    return {
+      success: true,
+      data: result,
+      message: '令牌刷新成功',
+      timestamp: new Date().toISOString()
+    };
   }
 
   @Post('logout')
@@ -201,8 +208,15 @@ export class AuthController {
   })
   async getCurrentUser(
     @CurrentUser() user: User,
-  ): Promise<UserResponseDto> {
-    return this.authService.getCurrentUser(user.id);
+  ): Promise<any> {
+    const userData = await this.authService.getCurrentUser(user.id);
+    
+    return {
+      success: true,
+      data: userData,
+      message: '获取用户信息成功',
+      timestamp: new Date().toISOString()
+    };
   }
 
   @Get('check-permission')

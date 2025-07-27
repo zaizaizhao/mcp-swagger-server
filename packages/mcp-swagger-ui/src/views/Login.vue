@@ -605,10 +605,12 @@ onMounted(() => {
 }
 
 .login-button:disabled {
-  background: var(--text-disabled);
+  background: var(--system-gray-3);
+  color: var(--text-secondary);
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+  opacity: 0.6;
 }
 
 .loading-icon {

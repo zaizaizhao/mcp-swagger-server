@@ -25,12 +25,16 @@
   --bg-secondary: #f8f9fa;
   --bg-tertiary: #f2f2f7;
   --bg-quaternary: rgba(116, 116, 128, 0.08);
+  --bg-hover: rgba(0, 0, 0, 0.04);
+  --bg-error: rgba(255, 59, 48, 0.05);
+  --border-error: rgba(255, 59, 48, 0.2);
   
   /* Text Colors */
   --text-primary: #1d1d1f;
   --text-secondary: #86868b;
   --text-tertiary: #6e6e73;
   --text-quaternary: #86868b;
+  --text-disabled: #c7c7cc;
   
   /* Border & Shadow */
   --border-color: rgba(0, 0, 0, 0.08);

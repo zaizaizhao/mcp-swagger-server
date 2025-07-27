@@ -173,15 +173,15 @@
               <el-dropdown-menu>
                 <el-dropdown-item command="profile">
                   <el-icon><User /></el-icon>
-                  {{ t('userAuth.userInfo.profile') }}
+                  {{ t('userAuth.user.profile') }}
                 </el-dropdown-item>
                 <el-dropdown-item command="settings">
                   <el-icon><Setting /></el-icon>
-                  {{ t('userAuth.userInfo.settings') }}
+                  {{ t('userAuth.user.accountSettings') }}
                 </el-dropdown-item>
                 <el-dropdown-item divided command="logout">
                   <el-icon><SwitchButton /></el-icon>
-                  {{ t('userAuth.userInfo.logout') }}
+                  {{ t('userAuth.user.logout') }}
                 </el-dropdown-item>
               </el-dropdown-menu>
             </template>
