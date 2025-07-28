@@ -138,10 +138,6 @@ export class AppModule {
       logger.log('📈 Metrics collection enabled');
     }
     
-    if (this.configService.get('API_KEY')) {
-      logger.log('🔐 API Key authentication enabled');
-    } else {
-      logger.warn('⚠️ API Key authentication disabled - not recommended for production');
-    }
+    logger.log('🔐 JWT authentication enabled');
   }
 }

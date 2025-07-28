@@ -41,16 +41,8 @@ export class AppConfigService {
   }
 
   // 安全配置
-  get apiKey(): string | undefined {
-    return this.configService.get<string>('API_KEY');
-  }
-
   get jwtSecret(): string | undefined {
     return this.configService.get<string>('JWT_SECRET');
-  }
-
-  get hasApiKey(): boolean {
-    return !!this.apiKey;
   }
 
   // 日志配置
@@ -143,8 +135,8 @@ export class AppConfigService {
         origins: this.corsOrigins,
       },
       security: {
-        hasApiKey: this.hasApiKey,
-        // 不暴露实际的密钥值
+        // JWT认证配置
+        jwtEnabled: !!this.jwtSecret,
       },
       logging: {
         level: this.logLevel,

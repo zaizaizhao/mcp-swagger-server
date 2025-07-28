@@ -19,18 +19,17 @@ import {
   ApiSecurity,
 } from '@nestjs/swagger';
 import { ThrottlerGuard } from '@nestjs/throttler';
-import { ApiKeyGuard } from '../../common/guards/api-key.guard';
+import { JwtAuthGuard } from '../security/guards/jwt-auth.guard';
 import { LoggingInterceptor } from '../../common/interceptors/logging.interceptor';
 import { OpenAPIService } from './services/openapi.service';
 import { ConfigureOpenAPIDto } from './dto/configure-openapi.dto';
 import { OpenAPIResponseDto } from './dto/openapi-response.dto';
 
 @ApiTags('OpenAPI')
-@Controller('api/v1/openapi')
-@UseGuards(ApiKeyGuard)
+@Controller('v1/openapi')
+@UseGuards(JwtAuthGuard)
 @UseInterceptors(LoggingInterceptor)
 @ApiBearerAuth()
-@ApiSecurity('api-key')
 export class OpenAPIController {
   private readonly logger = new Logger(OpenAPIController.name);
 
@@ -57,7 +56,7 @@ export class OpenAPIController {
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
-    description: 'Invalid or missing API key',
+    description: 'Invalid or missing JWT token',
   })
   @ApiResponse({
     status: HttpStatus.TOO_MANY_REQUESTS,
