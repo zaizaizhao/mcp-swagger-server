@@ -40,7 +40,6 @@ async function bootstrap() {
       allowedHeaders: [
         'Content-Type', 
         'Authorization', 
-        'x-api-key', 
         'mcp-session-id',
         'accept',
         'origin',
@@ -80,18 +79,18 @@ async function bootstrap() {
           - 实时协议处理
           
           ## 认证方式
-          使用API Key认证，请在请求头中添加 x-api-key
+          使用JWT Bearer Token认证，请在请求头中添加 Authorization: Bearer <token>
         `)
         .setVersion('1.0')
         .addServer(`http://localhost:${configService.get<number>('PORT', 3001)}`, 'Development')
-        .addApiKey(
-          { 
-            type: 'apiKey', 
-            name: 'x-api-key', 
-            in: 'header',
-            description: 'API密钥认证'
-          }, 
-          'apiKey'
+        .addBearerAuth(
+          {
+            type: 'http',
+            scheme: 'bearer',
+            bearerFormat: 'JWT',
+            description: 'JWT令牌认证'
+          },
+          'JWT'
         )
         .addTag('OpenAPI', 'OpenAPI规范管理')
         .addTag('MCP', 'MCP协议处理')
@@ -101,12 +100,12 @@ async function bootstrap() {
 
       const document = SwaggerModule.createDocument(app, config);
 
-      // 强制所有接口都加上 security 字段，确保Swagger UI调试时自动携带 x-api-key
+      // 强制所有接口都加上 security 字段，确保Swagger UI调试时自动携带 JWT
       Object.values(document.paths).forEach((pathItem: any) => {
         ['get', 'post', 'put', 'delete', 'patch', 'options', 'head'].forEach(method => {
           if (pathItem[method]) {
             if (!pathItem[method].security) {
-              pathItem[method].security = [{ apiKey: [] }];
+              pathItem[method].security = [{ JWT: [] }];
             }
           }
         });
@@ -131,7 +130,7 @@ async function bootstrap() {
     const port = configService.get<number>('PORT', 3001);
     await app.listen(port, '0.0.0.0');
 
-    logger.log(`🚀 Application is running on: http://localhost:${port}`);
+    logger.log(`🚀 Application is running on: http://localhost:${port}/api-docs`);
     logger.log(`🏥 Health check available at: http://localhost:${port}/health`);
     logger.log(`🎛️ MCP Server running on port: ${configService.get<number>('MCP_PORT', 3322)}`);
     

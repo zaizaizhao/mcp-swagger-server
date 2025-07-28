@@ -39,6 +39,8 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`
     }
     
+    // 移除了 API Key 认证，统一使用 JWT
+    
     // 添加请求ID用于追踪
     config.headers['X-Request-ID'] = `req-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
     
@@ -299,6 +301,64 @@ export const openApiAPI = {
   // 转换为MCP工具
   async convertToMCP(spec: OpenAPISpec): Promise<ApiResponse<MCPTool[]>> {
     const response = await api.post('/openapi/convert', spec)
+    return response.data
+  },
+
+  // 新增：解析 OpenAPI JSON 内容
+  async parseOpenAPIContent(content: string): Promise<ApiResponse<{
+    info: any;
+    paths: any[];
+    tools: any[];
+    servers: any[];
+    openapi: string;
+    components: any;
+    parsedAt: string;
+    parseId?: string;
+  }>> {
+    const response = await api.post('/v1/openapi/parse', {
+      source: {
+        type: 'content',
+        content: content
+      }
+    })
+    return response.data
+  },
+
+  // 新增：从 URL 解析 OpenAPI
+  async parseOpenAPIFromUrl(url: string, authHeaders?: Record<string, string>): Promise<ApiResponse<{
+    info: any;
+    paths: any[];
+    tools: any[];
+    servers: any[];
+    openapi: string;
+    components: any;
+    parsedAt: string;
+    parseId?: string;
+  }>> {
+    const response = await api.post('/v1/openapi/parse', {
+      source: {
+        type: 'url',
+        content: url
+      },
+      options: {
+        authHeaders: authHeaders
+      }
+    })
+    return response.data
+  },
+
+  // 新增：验证 OpenAPI 规范
+  async validateOpenAPIContent(content: string): Promise<ApiResponse<{
+    valid: boolean;
+    errors: string[];
+    warnings: string[];
+  }>> {
+    const response = await api.post('/v1/openapi/validate', {
+      source: {
+        type: 'content',
+        content: content
+      }
+    })
     return response.data
   }
 }

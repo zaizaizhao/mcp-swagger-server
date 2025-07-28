@@ -14,7 +14,7 @@ import {
 import * as bcrypt from 'bcrypt';
 import { Role } from './role.entity';
 import { AuditLog } from './audit-log.entity';
-import { ApiKey } from './api-key.entity';
+
 
 export enum UserStatus {
   ACTIVE = 'active',
@@ -109,8 +109,7 @@ export class User {
   @OneToMany(() => AuditLog, auditLog => auditLog.user)
   auditLogs: AuditLog[];
 
-  @OneToMany(() => ApiKey, apiKey => apiKey.user)
-  apiKeys: ApiKey[];
+
 
   @CreateDateColumn()
   createdAt: Date;

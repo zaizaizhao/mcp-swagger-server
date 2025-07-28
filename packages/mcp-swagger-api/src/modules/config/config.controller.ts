@@ -1,13 +1,12 @@
 import { Controller, Get, UseGuards, Logger } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiSecurity } from '@nestjs/swagger';
-import { ApiKeyGuard } from '../../common/guards/api-key.guard';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../security/guards/jwt-auth.guard';
 import { AppConfigService } from '../../config/app-config.service';
 
 @ApiTags('Configuration')
 @Controller('api/v1/config')
-@UseGuards(ApiKeyGuard)
+@UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
-@ApiSecurity('api-key')
 export class ConfigController {
   private readonly logger = new Logger(ConfigController.name);
 

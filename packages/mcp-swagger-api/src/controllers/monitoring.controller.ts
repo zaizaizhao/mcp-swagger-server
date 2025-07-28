@@ -1,12 +1,12 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiSecurity } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { MCPMonitoringService } from '../services/monitoring.service';
-import { ApiKeyGuard } from '../common/guards/api-key.guard';
+import { JwtAuthGuard } from '../modules/security/guards/jwt-auth.guard';
 
 @ApiTags('Monitoring')
 @Controller('api/v1/monitoring')
-@UseGuards(ApiKeyGuard)
-@ApiSecurity('api-key')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 export class MonitoringController {
   constructor(private readonly monitoringService: MCPMonitoringService) {}
 

@@ -13,6 +13,19 @@ export const useOpenAPIStore = defineStore('openapi', () => {
   const selectedSpecId = ref<string | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
+  
+  // 新增：解析结果状态
+  const currentParsedResult = ref<{
+    info: any;
+    paths: any[];
+    tools: any[];
+    servers: any[];
+    openapi: string;
+    components: any;
+    parsedAt: string;
+    parseId?: string;
+  } | null>(null)
+  const parsing = ref(false)
 
   // 计算属性
   const selectedSpec = computed(() => 
@@ -348,6 +361,72 @@ export const useOpenAPIStore = defineStore('openapi', () => {
     selectedSpecId.value = id
   }
 
+  // 新增：解析 OpenAPI 内容
+  const parseOpenAPIContent = async (content: string) => {
+    parsing.value = true
+    try {
+      const response = await openApiAPI.parseOpenAPIContent(content)
+      if (response.success && response.data) {
+        currentParsedResult.value = response.data
+        appStore.addNotification({
+          type: 'success',
+          title: '解析成功',
+          message: `成功解析 ${response.data.paths?.length || 0} 个接口`,
+          duration: 3000
+        })
+        clearError()
+        return response.data
+      } else {
+        throw new Error(response.error || '解析失败')
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : '解析失败'
+      setError(errorMessage)
+      console.error('Failed to parse OpenAPI content:', err)
+      throw err
+    } finally {
+      parsing.value = false
+    }
+  }
+
+  // 新增：从 URL 解析 OpenAPI
+  const parseOpenAPIFromUrl = async (url: string, authHeaders?: Record<string, string>) => {
+    parsing.value = true
+    try {
+      const response = await openApiAPI.parseOpenAPIFromUrl(url, authHeaders)
+      if (response.success && response.data) {
+        currentParsedResult.value = response.data
+        appStore.addNotification({
+          type: 'success',
+          title: '解析成功',
+          message: `成功解析 ${response.data.paths?.length || 0} 个接口`,
+          duration: 3000
+        })
+        clearError()
+        return response.data
+      } else {
+        throw new Error(response.error || '解析失败')
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : '解析失败'
+      setError(errorMessage)
+      console.error('Failed to parse OpenAPI from URL:', err)
+      throw err
+    } finally {
+      parsing.value = false
+    }
+  }
+
+  // 新增：设置当前解析结果
+  const setCurrentParsedResult = (result: any) => {
+    currentParsedResult.value = result
+  }
+
+  // 新增：清除解析结果
+  const clearParsedResult = () => {
+    currentParsedResult.value = null
+  }
+
   // 初始化
   const initialize = async () => {
     await fetchSpecs()
@@ -359,6 +438,8 @@ export const useOpenAPIStore = defineStore('openapi', () => {
     selectedSpecId,
     loading,
     error,
+    currentParsedResult,
+    parsing,
     
     // 计算属性
     selectedSpec,
@@ -381,6 +462,12 @@ export const useOpenAPIStore = defineStore('openapi', () => {
     validateSpec,
     convertToMCP,
     selectSpec,
-    initialize
+    initialize,
+    
+    // 新增：解析相关方法
+    parseOpenAPIContent,
+    parseOpenAPIFromUrl,
+    setCurrentParsedResult,
+    clearParsedResult
   }
 })

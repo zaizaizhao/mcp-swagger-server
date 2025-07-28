@@ -21,7 +21,7 @@ import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { UserStatus } from '../../../database/entities/user.entity';
 import { RoleType } from '../../../database/entities/role.entity';
 import { PermissionCategory, PermissionAction } from '../../../database/entities/permission.entity';
-import { ApiKeyType, ApiKeyStatus } from '../../../database/entities/api-key.entity';
+
 import { AuditAction, AuditLevel, AuditStatus } from '../../../database/entities/audit-log.entity';
 
 // 用户管理 DTOs
@@ -430,96 +430,7 @@ export class PermissionQueryDto {
   limit?: number = 20;
 }
 
-// API密钥管理 DTOs
-export class CreateApiKeyDto {
-  @ApiProperty({ description: 'API密钥名称', example: 'My API Key' })
-  @IsString()
-  @MinLength(1)
-  @MaxLength(100)
-  name: string;
 
-  @ApiPropertyOptional({ description: 'API密钥描述', example: '用于自动化脚本的API密钥' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  description?: string;
-
-  @ApiPropertyOptional({ description: 'API密钥类型', enum: ApiKeyType, example: ApiKeyType.PERSONAL })
-  @IsOptional()
-  @IsEnum(ApiKeyType)
-  type?: ApiKeyType;
-
-  @ApiPropertyOptional({ description: '特定权限列表', type: [String] })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  permissions?: string[];
-
-  @ApiPropertyOptional({ description: '访问限制', type: 'object' })
-  @IsOptional()
-  @IsObject()
-  restrictions?: any;
-
-  @ApiPropertyOptional({ description: '过期时间' })
-  @IsOptional()
-  @IsDateString()
-  expiresAt?: string;
-
-  @ApiPropertyOptional({ description: '最大使用次数' })
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  maxUsage?: number;
-
-  @ApiPropertyOptional({ description: '元数据', type: 'object' })
-  @IsOptional()
-  @IsObject()
-  metadata?: any;
-}
-
-export class UpdateApiKeyDto extends PartialType(CreateApiKeyDto) {
-  @ApiPropertyOptional({ description: 'API密钥状态', enum: ApiKeyStatus })
-  @IsOptional()
-  @IsEnum(ApiKeyStatus)
-  status?: ApiKeyStatus;
-}
-
-export class ApiKeyQueryDto {
-  @ApiPropertyOptional({ description: '搜索关键词' })
-  @IsOptional()
-  @IsString()
-  search?: string;
-
-  @ApiPropertyOptional({ description: 'API密钥类型', enum: ApiKeyType })
-  @IsOptional()
-  @IsEnum(ApiKeyType)
-  type?: ApiKeyType;
-
-  @ApiPropertyOptional({ description: 'API密钥状态', enum: ApiKeyStatus })
-  @IsOptional()
-  @IsEnum(ApiKeyStatus)
-  status?: ApiKeyStatus;
-
-  @ApiPropertyOptional({ description: '用户ID' })
-  @IsOptional()
-  @IsUUID()
-  userId?: string;
-
-  @ApiPropertyOptional({ description: '页码', example: 1 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
-
-  @ApiPropertyOptional({ description: '每页数量', example: 20 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  limit?: number = 20;
-}
 
 // 审计日志 DTOs
 export class AuditLogQueryDto {
@@ -772,34 +683,7 @@ export class RoleResponseDto {
   createdAt: Date;
 }
 
-export class ApiKeyResponseDto {
-  @ApiProperty({ description: 'API密钥ID' })
-  id: string;
 
-  @ApiProperty({ description: 'API密钥名称' })
-  name: string;
-
-  @ApiProperty({ description: '掩码后的密钥' })
-  maskedKey: string;
-
-  @ApiProperty({ description: 'API密钥类型', enum: ApiKeyType })
-  type: ApiKeyType;
-
-  @ApiProperty({ description: 'API密钥状态', enum: ApiKeyStatus })
-  status: ApiKeyStatus;
-
-  @ApiPropertyOptional({ description: '过期时间' })
-  expiresAt?: Date;
-
-  @ApiPropertyOptional({ description: '最后使用时间' })
-  lastUsedAt?: Date;
-
-  @ApiProperty({ description: '使用次数' })
-  usageCount: number;
-
-  @ApiProperty({ description: '创建时间' })
-  createdAt: Date;
-}
 
 export class LoginResponseDto {
   @ApiProperty({ description: '访问令牌' })

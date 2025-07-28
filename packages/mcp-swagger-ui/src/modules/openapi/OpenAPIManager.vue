@@ -163,6 +163,12 @@
                       预览
                     </el-button>
                     <el-button 
+                      :type="editorMode === 'apis' ? 'primary' : ''"
+                      @click="editorMode = 'apis'"
+                    >
+                      接口列表
+                    </el-button>
+                    <el-button 
                       :type="editorMode === 'tools' ? 'primary' : ''"
                       @click="editorMode = 'tools'"
                     >
@@ -214,6 +220,83 @@
             <!-- 预览面板 -->
             <div class="preview-container" v-show="editorMode === 'preview'">
               <SpecPreview :spec="selectedSpec" :content="specContent" />
+            </div>
+            
+            <!-- 接口列表 -->
+            <div class="apis-container" v-show="editorMode === 'apis'">
+              <div v-if="openApiStore.currentParsedResult" class="api-list">
+                <div class="api-summary">
+                  <el-alert
+                    type="success"
+                    :title="`共解析到 ${openApiStore.currentParsedResult.paths?.length || 0} 个接口`"
+                    :closable="false"
+                    style="margin-bottom: 16px;"
+                  />
+                </div>
+                
+                <el-table 
+                  :data="openApiStore.currentParsedResult.paths || []"
+                  stripe
+                  style="width: 100%"
+                  max-height="500"
+                >
+                  <el-table-column prop="method" label="方法" width="80">
+                    <template #default="{ row }">
+                      <el-tag 
+                        :type="getMethodTagType(row.method)"
+                        size="small"
+                      >
+                        {{ row.method.toUpperCase() }}
+                      </el-tag>
+                    </template>
+                  </el-table-column>
+                  
+                  <el-table-column prop="path" label="路径" min-width="200" />
+                  
+                  <el-table-column prop="summary" label="摘要" min-width="150" show-overflow-tooltip />
+                  
+                  <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
+                  
+                  <el-table-column prop="tags" label="标签" width="120">
+                    <template #default="{ row }">
+                      <el-tag 
+                        v-for="tag in row.tags" 
+                        :key="tag"
+                        size="small"
+                        effect="plain"
+                        style="margin-right: 4px;"
+                      >
+                        {{ tag }}
+                      </el-tag>
+                    </template>
+                  </el-table-column>
+                  
+                  <el-table-column label="操作" width="100">
+                    <template #default="{ row }">
+                      <el-button 
+                        size="small"
+                        type="primary"
+                        text
+                        @click="viewApiDetail(row)"
+                      >
+                        详情
+                      </el-button>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </div>
+              
+              <el-empty 
+                v-else
+                description="暂无解析结果，请先导入OpenAPI文件"
+                :image-size="150"
+              >
+                <template #extra>
+                  <el-button type="primary" @click="showUploadDialog = true">
+                    上传文件
+                  </el-button>
+                </template>
+              </el-empty>
             </div>
             
             <!-- MCP工具预览 -->
@@ -424,7 +507,7 @@
         
         <el-form-item v-if="urlForm.authType === 'basic'" label="密码">
           <el-input 
-            v="urlForm.password"
+            v-model="urlForm.password"
             type="password"
             placeholder="请输入密码"
             show-password
@@ -488,7 +571,7 @@ const {
 const specsLoading = ref(false)
 const searchQuery = ref('')
 const selectedSpecId = ref<string | null>(null)
-const editorMode = ref<'edit' | 'preview' | 'tools'>('edit')
+const editorMode = ref<'edit' | 'preview' | 'apis' | 'tools'>('edit')
 const specContent = ref('')
 const saving = ref(false)
 const validating = ref(false)
@@ -755,18 +838,25 @@ const uploadFile = async () => {
     const file = uploadFileList.value[0]
     const content = await readFileContent(file.raw!)
     
+    // 首先使用后端 API 解析 OpenAPI 内容
+    const parseResult = await openApiStore.parseOpenAPIContent(content)
+    
+    // 创建规范并保存解析结果
     const spec = await openApiStore.createSpecFromContent({
       name: file.name.replace(/\.(yaml|yml|json)$/, ''),
       content,
       fileName: file.name
     })
     
+    // 保存解析后的接口列表到 store
+    openApiStore.setCurrentParsedResult(parseResult)
+    
     selectedSpecId.value = spec.id
     specContent.value = spec.content || ''
     showUploadDialog.value = false
     uploadFileList.value = []
     
-    ElMessage.success('文件上传成功')
+    ElMessage.success(`文件上传成功！解析到 ${parseResult.paths?.length || 0} 个接口`)
   } catch (error) {
     ElMessage.error(`上传失败: ${error}`)
   } finally {
@@ -781,6 +871,19 @@ const importFromUrl = async () => {
     await urlFormRef.value.validate()
     importing.value = true
     
+    const authHeaders: Record<string, string> = {}
+    
+    if (urlForm.value.authType === 'bearer' && urlForm.value.token) {
+      authHeaders['Authorization'] = `Bearer ${urlForm.value.token}`
+    } else if (urlForm.value.authType === 'basic' && urlForm.value.username && urlForm.value.password) {
+      const credentials = btoa(`${urlForm.value.username}:${urlForm.value.password}`)
+      authHeaders['Authorization'] = `Basic ${credentials}`
+    }
+
+    // 先解析 OpenAPI 内容
+    const parseResult = await openApiStore.parseOpenAPIFromUrl(urlForm.value.url, authHeaders)
+    
+    // 然后导入规范
     const spec = await openApiStore.importFromUrl({
       url: urlForm.value.url,
       name: urlForm.value.name,
@@ -789,6 +892,9 @@ const importFromUrl = async () => {
       username: urlForm.value.username,
       password: urlForm.value.password
     })
+    
+    // 保存解析结果
+    openApiStore.setCurrentParsedResult(parseResult)
     
     selectedSpecId.value = spec.id
     specContent.value = spec.content || ''
@@ -804,7 +910,7 @@ const importFromUrl = async () => {
       password: ''
     }
     
-    ElMessage.success('导入成功')
+    ElMessage.success(`导入成功，解析到 ${parseResult.paths?.length || 0} 个接口`)
   } catch (error) {
     ElMessage.error(`导入失败: ${error}`)
   } finally {
@@ -862,6 +968,38 @@ const handleTestTool = async (tool: MCPTool, params: Record<string, any>) => {
   } catch (error) {
     ElMessage.error(`工具测试失败: ${error instanceof Error ? error.message : error}`)
   }
+}
+
+// 接口相关方法
+const getMethodTagType = (method: string) => {
+  const methodMap: Record<string, string> = {
+    'get': 'success',
+    'post': 'primary',
+    'put': 'warning',
+    'delete': 'danger',
+    'patch': 'info',
+    'head': '',
+    'options': ''
+  }
+  return methodMap[method.toLowerCase()] || ''
+}
+
+const viewApiDetail = (api: any) => {
+  ElMessageBox.alert(
+    `<div>
+      <p><strong>路径:</strong> ${api.path}</p>
+      <p><strong>方法:</strong> ${api.method.toUpperCase()}</p>
+      <p><strong>摘要:</strong> ${api.summary || '无'}</p>
+      <p><strong>描述:</strong> ${api.description || '无'}</p>
+      <p><strong>操作ID:</strong> ${api.operationId || '无'}</p>
+      <p><strong>标签:</strong> ${api.tags?.join(', ') || '无'}</p>
+    </div>`,
+    '接口详情',
+    {
+      dangerouslyUseHTMLString: true,
+      confirmButtonText: '确定'
+    }
+  )
 }
 
 // 生命周期
