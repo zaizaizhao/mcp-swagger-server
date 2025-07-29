@@ -171,8 +171,17 @@ export class OpenAPIService {
       const contentType = response.headers.get('content-type');
       const text = await response.text();
 
+      // Check if the response is empty or null
+      if (!text || text.trim() === '' || text.trim() === 'null') {
+        throw new Error('Empty or null response from URL');
+      }
+
       if (contentType?.includes('application/json')) {
-        return JSON.parse(text);
+        try {
+          return JSON.parse(text);
+        } catch (error) {
+          throw new Error(`Invalid JSON response: ${error.message}`);
+        }
       } else if (contentType?.includes('yaml') || contentType?.includes('yml')) {
         // Parse YAML (we'll need to add yaml parsing support)
         return this.parseYaml(text);
@@ -180,8 +189,12 @@ export class OpenAPIService {
         // Try to parse as JSON first, then YAML
         try {
           return JSON.parse(text);
-        } catch {
-          return this.parseYaml(text);
+        } catch (jsonError) {
+          try {
+            return this.parseYaml(text);
+          } catch (yamlError) {
+            throw new Error(`Failed to parse response as JSON or YAML. JSON error: ${jsonError.message}, YAML error: ${yamlError.message}`);
+          }
         }
       }
     } catch (error) {

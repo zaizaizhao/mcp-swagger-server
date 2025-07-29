@@ -300,11 +300,27 @@ export const useOpenAPIStore = defineStore('openapi', () => {
   // 验证规范
   const validateSpec = async (content: string): Promise<ValidationResult> => {
     try {
-      const response = await openApiAPI.validateSpec(content)
-      if (response.success && response.data) {
-        return response.data
+      const result = await openApiAPI.validateSpec(content);
+      console.log(result);
+      
+      // 确保返回符合ValidationResult接口的数据
+      if (result.success && result.data) {
+        return {
+          valid: result.data.valid,
+          errors: result.data.errors || [],
+          warnings: result.data.warnings || []
+        };
       } else {
-        throw new Error(response.error || '验证规范失败')
+        return {
+          valid: false,
+          errors: [{
+            path: '',
+            message: result.error || '验证失败',
+            severity: 'error',
+            code: 'VALIDATION_ERROR'
+          }],
+          warnings: []
+        };
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '验证规范失败'
@@ -393,7 +409,7 @@ export const useOpenAPIStore = defineStore('openapi', () => {
   const parseOpenAPIFromUrl = async (url: string, authHeaders?: Record<string, string>) => {
     parsing.value = true
     try {
-      const response = await openApiAPI.parseOpenAPIFromUrl(url, authHeaders)
+      const response = await openApiAPI.parseSpecFromUrl(url)
       if (response.success && response.data) {
         currentParsedResult.value = response.data
         appStore.addNotification({
@@ -414,6 +430,114 @@ export const useOpenAPIStore = defineStore('openapi', () => {
       throw err
     } finally {
       parsing.value = false
+    }
+  }
+
+  // 新增：上传并解析 OpenAPI 文件
+  const uploadAndParseSpec = async (file: File) => {
+    parsing.value = true
+    try {
+      const response = await openApiAPI.uploadAndParseSpec(file)
+      if (response.success && response.data) {
+        currentParsedResult.value = response.data
+        appStore.addNotification({
+          type: 'success',
+          title: '文件解析成功',
+          message: `成功解析 ${response.data.paths?.length || 0} 个接口`,
+          duration: 3000
+        })
+        clearError()
+        return response.data
+      } else {
+        throw new Error(response.error || '文件解析失败')
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : '文件解析失败'
+      setError(errorMessage)
+      console.error('Failed to upload and parse spec:', err)
+      throw err
+    } finally {
+      parsing.value = false
+    }
+  }
+
+  // 新增：上传并验证 OpenAPI 文件
+  const uploadAndValidateSpec = async (file: File): Promise<ValidationResult> => {
+    try {
+      const response = await openApiAPI.uploadAndValidateSpec(file)
+      if (response.success && response.data) {
+        return {
+          valid: response.data.valid,
+          errors: response.data.errors.map(error => ({
+            path: '',
+            message: error,
+            severity: 'error' as const,
+            code: 'VALIDATION_ERROR'
+          })),
+          warnings: response.data.warnings.map(warning => ({
+            path: '',
+            message: warning,
+            severity: 'warning' as const,
+            code: 'VALIDATION_WARNING'
+          }))
+        }
+      } else {
+        return {
+          valid: false,
+          errors: [{
+            path: '',
+            message: response.error || '文件验证失败',
+            severity: 'error',
+            code: 'VALIDATION_ERROR'
+          }],
+          warnings: []
+        }
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : '文件验证失败'
+      setError(errorMessage)
+      console.error('Failed to upload and validate spec:', err)
+      throw err
+    }
+  }
+
+  // 新增：从URL验证 OpenAPI 规范
+  const validateSpecFromUrl = async (url: string): Promise<ValidationResult> => {
+    try {
+      const response = await openApiAPI.validateSpecFromUrl(url)
+      if (response.success && response.data) {
+        return {
+          valid: response.data.valid,
+          errors: response.data.errors.map(error => ({
+            path: '',
+            message: error,
+            severity: 'error' as const,
+            code: 'VALIDATION_ERROR'
+          })),
+          warnings: response.data.warnings.map(warning => ({
+            path: '',
+            message: warning,
+            severity: 'warning' as const,
+            code: 'VALIDATION_WARNING'
+          }))
+        }
+      } else {
+        return {
+          valid: false,
+          errors: [{
+            path: '',
+            message: response.error || 'URL验证失败',
+            severity: 'error',
+            code: 'VALIDATION_ERROR'
+          }],
+          warnings: []
+        }
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'URL验证失败'
+      setError(errorMessage)
+      console.error('Failed to validate spec from URL:', err)
+      throw err
     }
   }
 
@@ -467,6 +591,9 @@ export const useOpenAPIStore = defineStore('openapi', () => {
     // 新增：解析相关方法
     parseOpenAPIContent,
     parseOpenAPIFromUrl,
+    uploadAndParseSpec,
+    uploadAndValidateSpec,
+    validateSpecFromUrl,
     setCurrentParsedResult,
     clearParsedResult
   }
