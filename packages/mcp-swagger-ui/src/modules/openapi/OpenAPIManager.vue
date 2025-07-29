@@ -1,346 +1,285 @@
 <template>
   <div class="openapi-manager">
-    <!-- 页面头部 -->
-    <div class="page-header">
-      <el-page-header :content="'OpenAPI规范管理'">
-        <template #extra>
-          <div class="header-actions">
-            <el-button 
-              type="primary" 
-              :icon="Plus" 
-              @click="showCreateDialog = true"
-            >
-              新建规范
-            </el-button>
-            <el-button 
-              :icon="Upload" 
-              @click="showUploadDialog = true"
-            >
-              上传文件
-            </el-button>
-            <el-button 
-              :icon="Link" 
-              @click="showUrlDialog = true"
-            >
-              从URL导入
-            </el-button>
-          </div>
-        </template>
-      </el-page-header>
+    <!-- 顶部工具栏 -->
+    <div class="manager-header">
+      <div class="header-left">
+        <h2 class="page-title">
+          <el-icon><Document /></el-icon>
+          OpenAPI 管理器
+        </h2>
+        <p class="page-description">管理和转换您的 OpenAPI 规范文档</p>
+      </div>
+      <div class="header-actions">
+        <el-button 
+          type="primary" 
+          @click="showUploadDialog = true"
+          :icon="Upload"
+          size="large"
+        >
+          上传文档
+        </el-button>
+        <el-button 
+          @click="showUrlDialog = true"
+          :icon="Link"
+          size="large"
+        >
+          从URL导入
+        </el-button>
+      </div>
     </div>
 
     <!-- 主要内容区域 -->
-    <div class="page-content">
-      <el-row :gutter="24">
-        <!-- 左侧：规范列表 -->
+    <div class="manager-content">
+      <el-row :gutter="24" style="height: calc(100vh - 200px);">
+        <!-- 左侧：文档列表 -->
         <el-col :span="8">
-          <el-card class="specs-list-card">
+          <el-card shadow="always" class="document-list-card" style="height: 100%;">
             <template #header>
-              <div class="card-header">
-                <span><el-icon><Document /></el-icon> 规范列表</span>
-                <div class="list-controls">
-                  <el-input
-                    v-model="searchQuery"
-                    placeholder="搜索规范..."
-                    :prefix-icon="Search"
-                    size="small"
-                    style="width: 200px;"
-                    clearable
-                  />
-                </div>
+              <div class="list-header">
+                <span>
+                   <el-icon><Folder /></el-icon>
+                   文档列表 ({{ documents.length }})
+                 </span>
               </div>
             </template>
-            
-            <div class="specs-list" v-loading="specsLoading">
+          
+          <!-- 搜索框 -->
+          <div class="search-container">
+            <el-input
+              v-model="searchQuery"
+              placeholder="搜索文档..."
+              clearable
+              size="small"
+            >
+              <template #prefix>
+                <el-icon><Search /></el-icon>
+              </template>
+            </el-input>
+          </div>
+          
+          <!-- 文档列表 -->
+          <div class="document-list">
+            <el-empty v-if="!filteredDocuments.length" description="暂无文档，请上传OpenAPI文档" />
+            <div v-else class="document-items">
               <div 
-                v-for="spec in filteredSpecs" 
-                :key="spec.id"
-                class="spec-item"
-                :class="{ active: selectedSpecId === spec.id }"
-                @click="selectSpec(spec)"
+                v-for="doc in filteredDocuments" 
+                :key="doc.id"
+                class="document-item"
+                :class="{ active: selectedDocument?.id === doc.id }"
+                @click="selectDocument(doc)"
               >
-                <div class="spec-header">
-                  <div class="spec-name">
-                    <el-icon><Document /></el-icon>
-                    {{ spec.name }}
-                  </div>
-                  <div class="spec-actions">
-                    <el-dropdown trigger="click" @command="handleSpecAction">
-                      <el-button 
-                        size="small" 
-                        text 
-                        :icon="MoreFilled"
-                        @click.stop
-                      />
-                      <template #dropdown>
-                        <el-dropdown-menu>
-                          <el-dropdown-item 
-                            :command="{ action: 'edit', spec }"
-                            :icon="Edit"
-                          >
-                            编辑
-                          </el-dropdown-item>
-                          <el-dropdown-item 
-                            :command="{ action: 'duplicate', spec }"
-                            :icon="DocumentCopy"
-                          >
-                            复制
-                          </el-dropdown-item>
-                          <el-dropdown-item 
-                            :command="{ action: 'download', spec }"
-                            :icon="Download"
-                          >
-                            下载
-                          </el-dropdown-item>
-                          <el-dropdown-item 
-                            :command="{ action: 'delete', spec }"
-                            :icon="Delete"
-                            divided
-                          >
-                            删除
-                          </el-dropdown-item>
-                        </el-dropdown-menu>
-                      </template>
-                    </el-dropdown>
+                <div class="document-info">
+                  <div class="document-name">{{ doc.name }}</div>
+                  <div class="document-meta">
+                    <span class="upload-time">{{ formatDate(doc.uploadTime) }}</span>
+                    <el-tag 
+                      :type="doc.status === 'valid' ? 'success' : doc.status === 'invalid' ? 'danger' : 'warning'"
+                      size="small"
+                    >
+                      {{ getStatusText(doc.status) }}
+                    </el-tag>
                   </div>
                 </div>
-                
-                <div class="spec-meta">
-                  <div class="spec-version">
-                    <el-tag size="small" effect="plain">{{ spec.version }}</el-tag>
-                  </div>
-                  <div class="spec-date">
-                    {{ formatDate(spec.lastModified) }}
-                  </div>
-                </div>
-                
-                <div class="spec-description" v-if="spec.description">
-                  {{ spec.description }}
-                </div>
-                
-                <div class="spec-stats">
-                  <span class="stat-item">
-                    <el-icon><Operation /></el-icon>
-                    {{ spec.pathCount }} 路径
-                  </span>
-                  <span class="stat-item">
-                    <el-icon><Tools /></el-icon>
-                    {{ spec.toolCount }} 工具
-                  </span>
+                <div class="document-actions">
+                  <el-button-group size="small">
+                    <el-button @click.stop="editDocument(doc)">
+                      <el-icon><Edit /></el-icon>
+                    </el-button>
+                    <el-button @click.stop="deleteDocument(doc.id)">
+                      <el-icon><Delete /></el-icon>
+                    </el-button>
+                  </el-button-group>
                 </div>
               </div>
-              
-              <el-empty 
-                v-if="filteredSpecs.length === 0 && !specsLoading" 
-                description="暂无OpenAPI规范"
-                :image-size="100"
-              />
             </div>
-          </el-card>
+          </div>
+        </el-card>
         </el-col>
-
-        <!-- 右侧：编辑器 -->
+      
+        <!-- 右侧：文档详情 -->
         <el-col :span="16">
-          <el-card class="editor-card" v-if="selectedSpec">
+          <el-card shadow="always" class="detail-card" style="height: 100%;">
             <template #header>
-              <div class="card-header">
+              <div class="detail-header" v-if="selectedDocument">
                 <span>
-                  <el-icon><Edit /></el-icon> 
-                  {{ selectedSpec.name }}
+                  <el-icon><Document /></el-icon>
+                  {{ selectedDocument.name }}
                 </span>
-                <div class="editor-controls">
-                  <el-button-group size="small">
+                <div class="detail-controls">
+                  <el-button-group>
                     <el-button 
-                      :type="editorMode === 'edit' ? 'primary' : ''"
-                      @click="editorMode = 'edit'"
+                      :type="activeTab === 'editor' ? 'primary' : ''"
+                      size="small" 
+                      @click="activeTab = 'editor'"
+                      :disabled="selectedDocument.status !== 'valid'"
                     >
+                      <el-icon><Edit /></el-icon>
                       编辑
                     </el-button>
                     <el-button 
-                      :type="editorMode === 'preview' ? 'primary' : ''"
-                      @click="editorMode = 'preview'"
+                      :type="activeTab === 'preview' ? 'primary' : ''"
+                      size="small" 
+                      @click="activeTab = 'preview'"
+                      :disabled="selectedDocument.status !== 'valid'"
                     >
+                      <el-icon><Document /></el-icon>
                       预览
                     </el-button>
                     <el-button 
-                      :type="editorMode === 'apis' ? 'primary' : ''"
-                      @click="editorMode = 'apis'"
+                      :type="activeTab === 'apis' ? 'primary' : ''"
+                      size="small" 
+                      @click="activeTab = 'apis'"
+                      :disabled="selectedDocument.status !== 'valid'"
                     >
+                      <el-icon><Operation /></el-icon>
                       接口列表
                     </el-button>
                     <el-button 
-                      :type="editorMode === 'tools' ? 'primary' : ''"
-                      @click="editorMode = 'tools'"
+                      :type="activeTab === 'tools' ? 'primary' : ''"
+                      size="small" 
+                      @click="activeTab = 'tools'"
+                      :disabled="selectedDocument.status !== 'valid'"
                     >
+                      <el-icon><Tools /></el-icon>
                       MCP工具
                     </el-button>
                   </el-button-group>
                   <el-divider direction="vertical" />
-                  <el-button 
-                    size="small"
-                    :icon="Check"
-                    @click="validateSpec"
-                    :loading="validating"
-                  >
+                  <el-button size="small" @click="validateSpec" :disabled="selectedDocument.status !== 'valid'">
+                    <el-icon><Check /></el-icon>
                     验证
                   </el-button>
+                  <el-button type="primary" size="small" @click="convertToMCP" :disabled="selectedDocument.status !== 'valid'">
+                     <el-icon><Setting /></el-icon>
+                     转换为MCP
+                   </el-button>
                   <el-button 
-                    size="small"
-                    type="primary"
-                    :icon="DocumentChecked"
-                    @click="convertToMCP"
-                    :loading="converting"
+                    type="primary" 
+                    size="small" 
+                    @click="downloadSpec"
+                    :disabled="selectedDocument.status !== 'valid'"
                   >
-                    转换为MCP
-                  </el-button>
-                  <el-button 
-                    size="small"
-                    type="primary"
-                    :icon="DocumentChecked"
-                    @click="saveSpec"
-                    :loading="saving"
-                  >
-                    保存
+                    <el-icon><Download /></el-icon>
+                    下载
                   </el-button>
                 </div>
+              </div>
+              <div v-else class="empty-header">
+                <span>
+                  <el-icon><Document /></el-icon>
+                  请选择一个文档查看详情
+                </span>
               </div>
             </template>
-            
-            <!-- Monaco编辑器 -->
-            <div class="editor-container" v-show="editorMode === 'edit'">
-              <MonacoEditor
-                v-model="specContent"
-                language="yaml"
-                :height="600"
-                :options="editorOptions"
-                @change="handleContentChange"
-              />
-            </div>
-            
-            <!-- 预览面板 -->
-            <div class="preview-container" v-show="editorMode === 'preview'">
-              <SpecPreview :spec="selectedSpec" :content="specContent" />
-            </div>
-            
-            <!-- 接口列表 -->
-            <div class="apis-container" v-show="editorMode === 'apis'">
-              <div v-if="openApiStore.currentParsedResult" class="api-list">
-                <div class="api-summary">
-                  <el-alert
-                    type="success"
-                    :title="`共解析到 ${openApiStore.currentParsedResult.paths?.length || 0} 个接口`"
-                    :closable="false"
-                    style="margin-bottom: 16px;"
-                  />
-                </div>
-                
-                <el-table 
-                  :data="openApiStore.currentParsedResult.paths || []"
-                  stripe
-                  style="width: 100%"
-                  max-height="500"
-                >
-                  <el-table-column prop="method" label="方法" width="80">
-                    <template #default="{ row }">
-                      <el-tag 
-                        :type="getMethodTagType(row.method)"
-                        size="small"
-                      >
-                        {{ row.method.toUpperCase() }}
-                      </el-tag>
-                    </template>
-                  </el-table-column>
-                  
-                  <el-table-column prop="path" label="路径" min-width="200" />
-                  
-                  <el-table-column prop="summary" label="摘要" min-width="150" show-overflow-tooltip />
-                  
-                  <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-                  
-                  <el-table-column prop="tags" label="标签" width="120">
-                    <template #default="{ row }">
-                      <el-tag 
-                        v-for="tag in row.tags" 
-                        :key="tag"
-                        size="small"
-                        effect="plain"
-                        style="margin-right: 4px;"
-                      >
-                        {{ tag }}
-                      </el-tag>
-                    </template>
-                  </el-table-column>
-                  
-                  <el-table-column label="操作" width="100">
-                    <template #default="{ row }">
-                      <el-button 
-                        size="small"
-                        type="primary"
-                        text
-                        @click="viewApiDetail(row)"
-                      >
-                        详情
-                      </el-button>
-                    </template>
-                  </el-table-column>
-                </el-table>
-              </div>
-              
-              <el-empty 
-                v-else
-                description="暂无解析结果，请先导入OpenAPI文件"
-                :image-size="150"
-              >
-                <template #extra>
-                  <el-button type="primary" @click="showUploadDialog = true">
-                    上传文件
-                  </el-button>
-                </template>
+
+          <div class="detail-content" style="height: calc(100% - 60px); overflow: hidden;">
+            <!-- 空状态 -->
+            <div v-if="!selectedDocument" class="empty-state" style="height: 100%; display: flex; align-items: center; justify-content: center;">
+              <el-empty description="请选择一个文档查看详情" :image-size="150">
+                <el-button type="primary" @click="showUploadDialog = true" :icon="Upload">
+                  上传文档
+                </el-button>
               </el-empty>
             </div>
             
-            <!-- MCP工具预览 -->
-            <div class="tools-container" v-show="editorMode === 'tools'">
-              <MCPToolPreview 
-                :tools="mcpTools" 
-                :loading="converting"
-                @test-tool="handleTestTool"
-              />
+            <!-- 错误状态 -->
+            <div v-else-if="selectedDocument.status === 'error'" class="error-state" style="height: 100%; display: flex; align-items: center; justify-content: center;">
+              <el-result icon="error" title="文档解析失败" :sub-title="selectedDocument.errorMessage">
+                <template #extra>
+                  <el-button type="primary" @click="deleteDocument(selectedDocument.id)">
+                    删除文档
+                  </el-button>
+                </template>
+              </el-result>
             </div>
             
-            <!-- 验证结果 -->
-            <div class="validation-results" v-if="validationResults">
-              <el-alert
-                :type="validationResults.valid ? 'success' : 'error'"
-                :title="validationResults.valid ? '验证通过' : '验证失败'"
-                :closable="false"
-                style="margin-top: 16px;"
-              >
-                <div v-if="!validationResults.valid && validationResults.errors">
-                  <div 
-                    v-for="(error, index) in validationResults.errors" 
-                    :key="index"
-                    class="error-item"
-                  >
-                    <strong>{{ error.path }}</strong>: {{ error.message }}
-                  </div>
-                </div>
-              </el-alert>
+            <!-- 加载状态 -->
+            <div v-else-if="selectedDocument.status === 'loading'" class="loading-state" style="height: 100%; display: flex; align-items: center; justify-content: center;">
+              <div style="text-align: center;">
+                <el-icon size="48" class="is-loading" style="margin-bottom: 16px;">
+                  <Loading />
+                </el-icon>
+                <p style="color: #606266; margin: 0;">正在解析文档...</p>
+              </div>
             </div>
-          </el-card>
-          
-          <!-- 空状态 -->
-          <el-card class="empty-editor" v-else>
-            <el-empty 
-              description="请选择一个OpenAPI规范进行编辑"
-              :image-size="150"
-            >
-              <template #extra>
-                <el-button type="primary" @click="showCreateDialog = true">
-                  创建新规范
-                </el-button>
-              </template>
-            </el-empty>
+            
+            <!-- 正常状态 -->
+            <div v-else class="content-tabs" style="height: 100%;">
+              <div v-show="activeTab === 'editor'" class="editor-container" style="height: 100%;">
+                <MonacoEditor
+                  v-model="editorContent"
+                  language="yaml"
+                  :height="600"
+                  @change="handleContentChange"
+                />
+              </div>
+              
+              <div v-show="activeTab === 'preview'" class="preview-container" style="height: 100%; overflow-y: auto;">
+                <SpecPreview :content="selectedDocument.content" />
+              </div>
+              
+              <div v-show="activeTab === 'apis'" class="apis-container" style="height: 100%; overflow-y: auto;">
+                <el-empty v-if="!parsedApis.length" description="暂无解析结果，请先验证文档" />
+                <div v-else>
+                  <!-- API列表内容 -->
+                  <el-table 
+                    :data="parsedApis"
+                    stripe
+                    style="width: 100%"
+                    max-height="500"
+                  >
+                    <el-table-column prop="method" label="方法" width="80">
+                      <template #default="{ row }">
+                        <el-tag 
+                          :type="getMethodTagType(row.method)"
+                          size="small"
+                        >
+                          {{ row.method.toUpperCase() }}
+                        </el-tag>
+                      </template>
+                    </el-table-column>
+                    
+                    <el-table-column prop="path" label="路径" min-width="200" />
+                    
+                    <el-table-column prop="summary" label="摘要" min-width="150" show-overflow-tooltip />
+                    
+                    <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
+                    
+                    <el-table-column prop="tags" label="标签" width="120">
+                      <template #default="{ row }">
+                        <el-tag 
+                          v-for="tag in row.tags" 
+                          :key="tag"
+                          size="small"
+                          effect="plain"
+                          style="margin-right: 4px;"
+                        >
+                          {{ tag }}
+                        </el-tag>
+                      </template>
+                    </el-table-column>
+                    
+                    <el-table-column label="操作" width="100">
+                      <template #default="{ row }">
+                        <el-button 
+                          size="small"
+                          type="primary"
+                          text
+                          @click="viewApiDetail(row)"
+                        >
+                          详情
+                        </el-button>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                </div>
+              </div>
+              
+              <div v-show="activeTab === 'tools'" class="tools-container" style="height: 100%; overflow-y: auto;">
+                <MCPToolPreview :tools="mcpTools" />
+              </div>
+            </div>
+          </div>
           </el-card>
         </el-col>
       </el-row>
@@ -411,51 +350,81 @@
       </template>
     </el-dialog>
 
-    <!-- 文件上传对话框 -->
+    <!-- 上传对话框 -->
     <el-dialog
       v-model="showUploadDialog"
-      title="上传OpenAPI文件"
-      width="500px"
-      align-center
+      title="上传OpenAPI文档"
+      width="600px"
+      :before-close="handleUploadDialogClose"
     >
-      <el-upload
-        ref="uploadRef"
-        class="upload-area"
-        drag
-        :auto-upload="false"
-        :accept="'.yaml,.yml,.json'"
-        :limit="1"
-        :on-change="handleFileChange"
-        :file-list="uploadFileList"
-      >
-        <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
-        <div class="el-upload__text">
-          将文件拖拽到此处，或<em>点击上传</em>
-        </div>
-        <template #tip>
-          <div class="el-upload__tip">
-            支持 .yaml, .yml, .json 格式的文件，大小不超过 10MB
+      <div class="upload-container">
+        <el-upload
+          ref="uploadRef"
+          class="upload-demo"
+          drag
+          :auto-upload="false"
+          :on-change="handleFileChange"
+          :accept="'.json,.yaml,.yml'"
+          :limit="1"
+        >
+          <el-icon class="el-icon--upload" size="48" style="color: #409eff;"><UploadFilled /></el-icon>
+          <div class="el-upload__text" style="font-size: 16px; margin-top: 16px;">
+            拖拽文件到此处或 <em style="color: #409eff;">点击选择文件</em>
           </div>
-        </template>
-      </el-upload>
+          <template #tip>
+            <div class="el-upload__tip" style="margin-top: 12px; color: #909399;">
+              支持 JSON 和 YAML 格式的 OpenAPI 规范文档
+            </div>
+          </template>
+        </el-upload>
+        
+        <el-form 
+          v-if="uploadFile"
+          ref="uploadFormRef"
+          :model="uploadForm"
+          :rules="uploadRules"
+          label-width="100px"
+          class="upload-form"
+        >
+          <el-form-item label="文档名称" prop="name">
+            <el-input v-model="uploadForm.name" placeholder="请输入文档名称" size="large">
+              <template #prefix>
+                <el-icon><Document /></el-icon>
+              </template>
+            </el-input>
+          </el-form-item>
+          <el-form-item label="文档描述" prop="description">
+            <el-input 
+              v-model="uploadForm.description" 
+              type="textarea" 
+              :rows="3"
+              placeholder="请输入文档描述（可选）"
+              size="large"
+            />
+          </el-form-item>
+        </el-form>
+      </div>
       
       <template #footer>
-        <el-button @click="showUploadDialog = false">取消</el-button>
-        <el-button 
-          type="primary" 
-          @click="uploadFile"
-          :loading="uploading"
-          :disabled="uploadFileList.length === 0"
-        >
-          上传
-        </el-button>
+        <div class="dialog-footer">
+          <el-button @click="handleUploadDialogClose" size="large">取消</el-button>
+          <el-button 
+            type="primary" 
+            @click="confirmUpload" 
+            :disabled="!uploadFile"
+            size="large"
+            :loading="uploading"
+          >
+            {{ uploading ? '上传中...' : '确认上传' }}
+          </el-button>
+        </div>
       </template>
     </el-dialog>
 
     <!-- URL导入对话框 -->
     <el-dialog
       v-model="showUrlDialog"
-      title="从URL导入OpenAPI规范"
+      title="从URL导入OpenAPI文档"
       width="600px"
       align-center
     >
@@ -463,30 +432,46 @@
         ref="urlFormRef"
         :model="urlForm"
         :rules="urlFormRules"
-        label-width="80px"
+        label-width="100px"
       >
-        <el-form-item label="URL地址" prop="url">
+        <el-form-item label="文档URL" prop="url">
           <el-input 
             v-model="urlForm.url"
-            placeholder="请输入OpenAPI规范的URL地址"
+            placeholder="请输入OpenAPI文档的URL地址"
             clearable
-          />
+            size="large"
+          >
+            <template #prefix>
+              <el-icon><Link /></el-icon>
+            </template>
+          </el-input>
+          <div class="form-tip">
+            支持 HTTP/HTTPS 协议的 JSON 或 YAML 格式文档
+          </div>
         </el-form-item>
         
-        <el-form-item label="规范名称" prop="name">
+        <el-form-item label="文档名称" prop="name">
           <el-input 
             v-model="urlForm.name"
-            placeholder="请输入规范名称"
+            placeholder="请输入文档名称"
             clearable
-          />
+            size="large"
+          >
+            <template #prefix>
+              <el-icon><Edit /></el-icon>
+            </template>
+          </el-input>
+          <div class="form-tip">
+            如果不填写，将使用文档中的标题信息
+          </div>
         </el-form-item>
         
-        <el-form-item label="认证">
-          <el-radio-group v-model="urlForm.authType">
-            <el-radio label="none">无认证</el-radio>
-            <el-radio label="bearer">Bearer Token</el-radio>
-            <el-radio label="basic">Basic Auth</el-radio>
-          </el-radio-group>
+        <el-form-item label="认证方式">
+          <el-select v-model="urlForm.authType" placeholder="选择认证方式" size="large" style="width: 100%;">
+            <el-option label="无需认证" value="none" />
+            <el-option label="Bearer Token" value="bearer" />
+            <el-option label="Basic Auth" value="basic" />
+          </el-select>
         </el-form-item>
         
         <el-form-item v-if="urlForm.authType === 'bearer'" label="Token">
@@ -495,61 +480,760 @@
             type="password"
             placeholder="请输入Bearer Token"
             show-password
+            size="large"
           />
         </el-form-item>
         
-        <el-form-item v-if="urlForm.authType === 'basic'" label="用户名">
-          <el-input 
-            v-model="urlForm.username"
-            placeholder="请输入用户名"
-          />
-        </el-form-item>
-        
-        <el-form-item v-if="urlForm.authType === 'basic'" label="密码">
-          <el-input 
-            v-model="urlForm.password"
-            type="password"
-            placeholder="请输入密码"
-            show-password
-          />
-        </el-form-item>
+        <template v-if="urlForm.authType === 'basic'">
+          <el-form-item label="用户名">
+            <el-input 
+              v-model="urlForm.username"
+              placeholder="请输入用户名"
+              size="large"
+            />
+          </el-form-item>
+          
+          <el-form-item label="密码">
+            <el-input 
+              v-model="urlForm.password"
+              type="password"
+              placeholder="请输入密码"
+              show-password
+              size="large"
+            />
+          </el-form-item>
+        </template>
       </el-form>
       
       <template #footer>
-        <el-button @click="showUrlDialog = false">取消</el-button>
-        <el-button 
-          type="primary" 
-          @click="importFromUrl"
-          :loading="importing"
-        >
-          导入
-        </el-button>
+        <div class="dialog-footer">
+          <el-button @click="showUrlDialog = false" size="large">取消</el-button>
+          <el-button 
+            type="primary" 
+            @click="importFromUrl"
+            :loading="importing"
+            size="large"
+          >
+            {{ importing ? '导入中...' : '开始导入' }}
+          </el-button>
+        </div>
       </template>
     </el-dialog>
   </div>
 </template>
 
+<style scoped>
+.openapi-manager {
+  height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 顶部工具栏样式 */
+.manager-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 32px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(10px);
+}
+
+.header-left {
+  flex: 1;
+}
+
+.page-title {
+  margin: 0 0 8px 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.page-description {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.header-actions .el-button {
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.header-actions .el-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* 主要内容区域 */
+.manager-content {
+  flex: 1;
+  padding: 24px 32px;
+  overflow: hidden;
+}
+
+/* 左侧文档列表样式 */
+.document-list-card {
+  border: none;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.95);
+  overflow: hidden;
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  color: #303133;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.list-header span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+}
+
+.search-container {
+  margin: 16px;
+  margin-bottom: 16px;
+}
+
+.search-container .el-input {
+  border-radius: 12px;
+}
+
+.document-list {
+  height: calc(100vh - 280px);
+  overflow-y: auto;
+  padding: 0 16px 16px;
+}
+
+.document-items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.document-item {
+  padding: 20px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.document-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(64, 158, 255, 0.1) 0%, rgba(103, 58, 183, 0.1) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.document-item:hover {
+  border-color: #409eff;
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(64, 158, 255, 0.15);
+}
+
+.document-item:hover::before {
+  opacity: 1;
+}
+
+.document-item.active {
+  border-color: #409eff;
+  background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+  box-shadow: 0 8px 32px rgba(64, 158, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.document-item.active::before {
+  opacity: 1;
+}
+
+.document-info {
+  flex: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.document-name {
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 8px;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.document-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.upload-time {
+  font-size: 12px;
+  color: #909399;
+  background: rgba(144, 147, 153, 0.1);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.document-actions {
+  margin-left: 12px;
+  position: relative;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.document-item:hover .document-actions {
+  opacity: 1;
+}
+
+/* 右侧详情区域样式 */
+.detail-card {
+  border: none;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.95);
+  overflow: hidden;
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  color: #303133;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.detail-header span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+}
+
+.empty-header {
+  color: #909399;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-controls .el-button {
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.detail-controls .el-button:hover {
+  transform: translateY(-1px);
+}
+
+.detail-content {
+  height: calc(100vh - 200px);
+  overflow: hidden;
+}
+
+.empty-state {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 12px;
+  margin: 20px;
+}
+
+.error-state {
+  background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+  border-radius: 12px;
+  margin: 20px;
+}
+
+.loading-state {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border-radius: 12px;
+  margin: 20px;
+}
+
+.content-tabs {
+  height: 100%;
+}
+
+.editor-container {
+  height: 100%;
+  border: 1px solid #e4e7ed;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+}
+
+.preview-container,
+.apis-container,
+.tools-container {
+  height: 100%;
+  padding: 24px;
+  background: linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%);
+  border: 1px solid #e4e7ed;
+  border-radius: 12px;
+  overflow-y: auto;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* 上传对话框样式 */
+.upload-container {
+  padding: 20px 0;
+}
+
+.upload-demo {
+  margin-bottom: 20px;
+}
+
+.upload-demo .el-upload-dragger {
+  border: 2px dashed #d9d9d9;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.upload-demo .el-upload-dragger::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(64, 158, 255, 0.1) 0%, rgba(103, 58, 183, 0.1) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.upload-demo .el-upload-dragger:hover {
+  border-color: #409eff;
+  background: #f0f9ff;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(64, 158, 255, 0.15);
+}
+
+.upload-demo .el-upload-dragger:hover::before {
+  opacity: 1;
+}
+
+.upload-form {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e4e7ed;
+}
+
+/* 对话框样式 */
+.el-dialog {
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 16px 64px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(10px);
+}
+
+.el-dialog__header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 24px 32px;
+}
+
+.el-dialog__title {
+  color: white;
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.el-dialog__body {
+  padding: 32px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 0 32px 32px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+}
+
+/* 表单样式增强 */
+.el-form-item {
+  margin-bottom: 24px;
+}
+
+.el-input__wrapper {
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.el-input__wrapper:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.el-input__wrapper.is-focus {
+  box-shadow: 0 4px 16px rgba(64, 158, 255, 0.2);
+}
+
+.el-select {
+  width: 100%;
+}
+
+.el-select .el-input__wrapper {
+  border-radius: 12px;
+}
+
+.el-textarea__inner {
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.form-tip {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 6px;
+  line-height: 1.4;
+  background: rgba(144, 147, 153, 0.1);
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+/* 按钮样式增强 */
+.el-button {
+  border-radius: 10px;
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.el-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.el-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.el-button:hover::before {
+  opacity: 1;
+}
+
+.el-button--primary {
+  background: linear-gradient(135deg, #409eff 0%, #36a3f7 100%);
+  border: none;
+}
+
+.el-button--primary:hover {
+  background: linear-gradient(135deg, #36a3f7 0%, #2b85e4 100%);
+}
+
+.el-button.active {
+  background: linear-gradient(135deg, #409eff 0%, #36a3f7 100%);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 16px rgba(64, 158, 255, 0.3);
+}
+
+/* 标签样式 */
+.el-tag {
+  border-radius: 8px;
+  font-weight: 500;
+  backdrop-filter: blur(10px);
+  border: none;
+}
+
+.el-tag--success {
+  background: linear-gradient(135deg, rgba(103, 194, 58, 0.2) 0%, rgba(139, 195, 74, 0.2) 100%);
+  color: #67c23a;
+}
+
+.el-tag--danger {
+  background: linear-gradient(135deg, rgba(245, 108, 108, 0.2) 0%, rgba(244, 67, 54, 0.2) 100%);
+  color: #f56c6c;
+}
+
+.el-tag--warning {
+  background: linear-gradient(135deg, rgba(230, 162, 60, 0.2) 0%, rgba(255, 193, 7, 0.2) 100%);
+  color: #e6a23c;
+}
+
+/* API表格样式 */
+.el-table {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+}
+
+.el-table th {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  font-weight: 600;
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+  .manager-header {
+    padding: 16px 24px;
+  }
+  
+  .manager-content {
+    padding: 16px 24px;
+  }
+  
+  .page-title {
+    font-size: 24px;
+  }
+  
+  .el-col:first-child {
+    margin-bottom: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .manager-header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  
+  .header-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  
+  .el-col {
+    margin-bottom: 16px;
+  }
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: linear-gradient(135deg, #f1f1f1 0%, #e0e0e0 100%);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #c1c1c1 0%, #a8a8a8 100%);
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #a8a8a8 0%, #909090 100%);
+}
+
+/* 动画效果 */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.document-item {
+  animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.detail-card {
+  animation: slideInRight 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 卡片阴影效果 */
+.document-list-card,
+.detail-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.document-list-card:hover,
+.detail-card:hover {
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+/* API列表样式 */
+.api-list {
+  padding: 24px;
+}
+
+.api-summary {
+  margin-bottom: 24px;
+}
+
+.api-summary .el-alert {
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, rgba(103, 194, 58, 0.1) 0%, rgba(139, 195, 74, 0.1) 100%);
+}
+
+.error-item {
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #fef0f0 0%, #fde2e2 100%);
+  border-radius: 8px;
+  border-left: 4px solid #f56c6c;
+  font-size: 14px;
+  box-shadow: 0 2px 8px rgba(245, 108, 108, 0.1);
+}
+
+.validation-results {
+  margin-top: 20px;
+}
+
+.validation-results .el-alert {
+  border-radius: 12px;
+  border: none;
+}
+
+/* 文件列表样式 */
+.file-list {
+  max-height: 200px;
+  overflow-y: auto;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: white;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.file-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.file-name {
+  flex: 1;
+  font-weight: 500;
+  color: #303133;
+}
+
+.file-size {
+  color: #909399;
+  font-size: 12px;
+  background: rgba(144, 147, 153, 0.1);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+</style>
+
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { 
+import {
   Plus, Upload, Link, Document, Search, MoreFilled, Edit, 
   DocumentCopy, Download, Delete, Operation, Tools, Check, 
-  DocumentChecked, UploadFilled
+  DocumentChecked, UploadFilled, Folder, Setting
 } from '@element-plus/icons-vue'
 import type { UploadFile, FormInstance } from 'element-plus'
-import MonacoEditor from '@/shared/components/monaco/MonacoEditor.vue'
+import MonacoEditor from '../../shared/components/monaco/MonacoEditor.vue'
 import SpecPreview from './components/openapi/SpecPreview.vue'
 import MCPToolPreview from './components/openapi/MCPToolPreview.vue'
-import type { OpenAPISpec, ValidationResult, MCPTool } from '@/types'
-import { useOpenAPIStore } from '@/stores/openapi'
-import { parseOpenAPI, validateOpenAPI } from '@/utils/openapi'
+import type { OpenAPISpec, ValidationResult, MCPTool } from '../../types'
+import { useOpenAPIStore } from '../../stores/openapi'
+import { parseOpenAPI, validateOpenAPI } from '../../utils/openapi'
 
 // 导入全局功能
-import { useConfirmation } from '@/composables/useConfirmation'
-import { useFormValidation } from '@/composables/useFormValidation'
-import { usePerformanceMonitor } from '@/composables/usePerformance'
-import LoadingOverlay from '@/shared/components/ui/LoadingOverlay.vue'
+import { useConfirmation } from '../../composables/useConfirmation'
+import { useFormValidation } from '../../composables/useFormValidation'
+import { usePerformanceMonitor } from '../../composables/usePerformance'
+// import LoadingOverlay from '@/shared/components/ui/LoadingOverlay.vue' // 暂时注释掉，如果需要可以创建这个组件
 
 // 状态管理
 const openApiStore = useOpenAPIStore()
@@ -570,14 +1254,17 @@ const {
 // 响应式数据
 const specsLoading = ref(false)
 const searchQuery = ref('')
-const selectedSpecId = ref<string | null>(null)
-const editorMode = ref<'edit' | 'preview' | 'apis' | 'tools'>('edit')
-const specContent = ref('')
+const selectedDocument = ref<any>(null)
+const activeTab = ref<'editor' | 'preview' | 'apis' | 'tools'>('editor')
+const editorContent = ref('')
 const saving = ref(false)
 const validating = ref(false)
 const converting = ref(false)
 const validationResults = ref<ValidationResult | null>(null)
 const mcpTools = ref<any[]>([])  // MCP工具列表
+const documents = ref<any[]>([])  // 文档列表
+const parsedApis = ref<any[]>([])  // 解析的API列表
+const uploadFile = ref<File | null>(null)
 
 // 对话框状态
 const showCreateDialog = ref(false)
@@ -603,6 +1290,11 @@ const createForm = ref({
   template: ''
 })
 
+const uploadForm = ref({
+  name: '',
+  description: ''
+})
+
 const urlForm = ref({
   url: '',
   name: '',
@@ -619,8 +1311,14 @@ const createFormRules = {
     { min: 2, max: 50, message: '名称长度在 2 到 50 个字符', trigger: 'blur' }
   ],
   version: [
-    { required: true, message: '请输入版本号', trigger: 'blur' },
-    { pattern: /^\d+\.\d+\.\d+$/, message: '版本号格式不正确', trigger: 'blur' }
+    { required: true, message: '请输入版本号', trigger: 'blur' }
+  ]
+}
+
+const uploadRules = {
+  name: [
+    { required: true, message: '请输入文档名称', trigger: 'blur' },
+    { min: 2, max: 50, message: '名称长度在 2 到 50 个字符', trigger: 'blur' }
   ]
 }
 
@@ -646,19 +1344,14 @@ const editorOptions = {
 }
 
 // 计算属性
-const filteredSpecs = computed(() => {
-  if (!searchQuery.value) return openApiStore.specs
+const filteredDocuments = computed(() => {
+  if (!searchQuery.value) return documents.value
   
   const query = searchQuery.value.toLowerCase()
-  return openApiStore.specs.filter(spec =>
-    spec.name.toLowerCase().includes(query) ||
-    spec.description?.toLowerCase().includes(query) ||
-    spec.version.toLowerCase().includes(query)
+  return documents.value.filter(doc =>
+    doc.name.toLowerCase().includes(query) ||
+    doc.description?.toLowerCase().includes(query)
   )
-})
-
-const selectedSpec = computed(() => {
-  return openApiStore.specs.find(spec => spec.id === selectedSpecId.value) || null
 })
 
 // 方法
@@ -673,18 +1366,41 @@ const formatDate = (date: Date | string) => {
   }).format(dateObj)
 }
 
-const selectSpec = async (spec: OpenAPISpec) => {
-  selectedSpecId.value = spec.id
-  specContent.value = spec.content || ''
+const selectDocument = (doc: any) => {
+  selectedDocument.value = doc
+  editorContent.value = doc.content || ''
   validationResults.value = null
-  
-  // 加载规范内容
+  activeTab.value = 'editor'
+}
+
+const editDocument = (doc: any) => {
+  selectDocument(doc)
+  activeTab.value = 'editor'
+}
+
+const deleteDocument = async (docId: string) => {
   try {
-    const content = await openApiStore.getSpecContent(spec.id)
-    specContent.value = content
+    const confirmed = await globalConfirmDelete('此文档')
+    if (!confirmed) return
+    
+    documents.value = documents.value.filter(doc => doc.id !== docId)
+    if (selectedDocument.value?.id === docId) {
+      selectedDocument.value = null
+      editorContent.value = ''
+    }
+    ElMessage.success('文档删除成功')
   } catch (error) {
-    ElMessage.error(`加载规范内容失败: ${error}`)
+    ElMessage.error(`删除失败: ${error}`)
   }
+}
+
+const getStatusText = (status: string) => {
+  const statusMap: Record<string, string> = {
+    'valid': '有效',
+    'invalid': '无效',
+    'pending': '待验证'
+  }
+  return statusMap[status] || '未知'
 }
 
 const handleSpecAction = async (command: { action: string; spec: OpenAPISpec }) => {
@@ -692,8 +1408,12 @@ const handleSpecAction = async (command: { action: string; spec: OpenAPISpec }) 
   
   switch (action) {
     case 'edit':
-      await selectSpec(spec)
-      editorMode.value = 'edit'
+      // 选择文档进行编辑
+      const doc = documents.value.find(d => d.id === spec.id)
+      if (doc) {
+        selectDocument(doc)
+        activeTab.value = 'editor'
+      }
       break
       
     case 'duplicate':
@@ -718,10 +1438,13 @@ const handleSpecAction = async (command: { action: string; spec: OpenAPISpec }) 
           await openApiStore.deleteSpec(spec.id)
         })
         
-        if (selectedSpecId.value === spec.id) {
-          selectedSpecId.value = null
-          specContent.value = ''
+        // 如果删除的是当前选中的文档，清空选择
+        if (selectedDocument.value?.id === spec.id) {
+          selectedDocument.value = null
+          editorContent.value = ''
         }
+        // 从文档列表中移除
+        documents.value = documents.value.filter(doc => doc.id !== spec.id)
         ElMessage.success('规范删除成功')
       } catch (error) {
         ElMessage.error(`删除失败: ${error}`)
@@ -730,41 +1453,54 @@ const handleSpecAction = async (command: { action: string; spec: OpenAPISpec }) 
   }
 }
 
-const downloadSpec = (spec: OpenAPISpec) => {
-  const blob = new Blob([spec.content || ''], {
+const downloadSpec = (spec?: OpenAPISpec) => {
+  const content = spec?.content || editorContent.value
+  if (!content) {
+    ElMessage.warning('请先输入OpenAPI规范内容')
+    return
+  }
+  
+  const blob = new Blob([content], {
     type: 'application/yaml'
   })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `${spec.name}-${spec.version}.yaml`
+  link.download = spec ? `${spec.name}-${spec.version}.yaml` : `openapi-spec-${new Date().getTime()}.yaml`
   link.click()
   URL.revokeObjectURL(url)
-  ElMessage.success('下载开始')
+  ElMessage.success('下载成功')
 }
 
 const handleContentChange = (content: string) => {
-  specContent.value = content
+  editorContent.value = content
+  if (selectedDocument.value) {
+    selectedDocument.value.content = content
+  }
   validationResults.value = null
 }
 
 const validateSpec = async () => {
-  if (!specContent.value.trim()) {
-    ElMessage.warning('请输入规范内容')
+  if (!editorContent.value.trim()) {
+    ElMessage.warning('请先输入OpenAPI规范内容')
     return
   }
   
   validating.value = true
   try {
     const result = await measureFunction('validateSpec', async () => {
-      return await validateOpenAPI(specContent.value)
+      return await openApiStore.validateSpec(editorContent.value)
     })
     validationResults.value = result
     
-    if (result.valid) {
+    if (result.valid && selectedDocument.value) {
+      selectedDocument.value.status = 'valid'
       ElMessage.success('规范验证通过')
     } else {
-      ElMessage.error('规范验证失败，请查看详细错误信息')
+      if (selectedDocument.value) {
+        selectedDocument.value.status = 'invalid'
+      }
+      ElMessage.warning(`规范验证失败，发现 ${result.errors?.length || 0} 个错误`)
     }
   } catch (error) {
     ElMessage.error(`验证失败: ${error}`)
@@ -773,24 +1509,7 @@ const validateSpec = async () => {
   }
 }
 
-const saveSpec = async () => {
-  if (!selectedSpec.value) return
-  
-  const confirmed = await confirmSave('是否保存对规范的修改？')
-  if (!confirmed) return
-  
-  saving.value = true
-  try {
-    await measureFunction('saveSpec', async () => {
-      await openApiStore.updateSpecContent(selectedSpec.value!.id, specContent.value)
-    })
-    ElMessage.success('保存成功')
-  } catch (error) {
-    ElMessage.error(`保存失败: ${error}`)
-  } finally {
-    saving.value = false
-  }
-}
+// downloadSpec 函数已在上面定义，删除重复声明
 
 const createNewSpec = async () => {
   if (!createFormRef.value) return
@@ -799,15 +1518,18 @@ const createNewSpec = async () => {
     await createFormRef.value.validate()
     creating.value = true
     
-    const newSpec = await openApiStore.createSpec({
+    const newDoc = {
+      id: Date.now().toString(),
       name: createForm.value.name,
       version: createForm.value.version,
       description: createForm.value.description,
-      template: createForm.value.template
-    })
+      content: generateTemplateContent(createForm.value.template),
+      uploadTime: new Date(),
+      status: 'pending'
+    }
     
-    selectedSpecId.value = newSpec.id
-    specContent.value = newSpec.content || ''
+    documents.value.push(newDoc)
+    selectDocument(newDoc)
     showCreateDialog.value = false
     
     // 重置表单
@@ -818,7 +1540,7 @@ const createNewSpec = async () => {
       template: ''
     }
     
-    ElMessage.success('规范创建成功')
+    ElMessage.success('文档创建成功')
   } catch (error) {
     ElMessage.error(`创建失败: ${error}`)
   } finally {
@@ -826,41 +1548,142 @@ const createNewSpec = async () => {
   }
 }
 
-const handleFileChange = (file: UploadFile) => {
-  uploadFileList.value = [file]
+const generateTemplateContent = (template: string) => {
+  const templates: Record<string, string> = {
+    'blank': `openapi: 3.0.0
+info:
+  title: ${createForm.value.name}
+  version: ${createForm.value.version}
+  description: ${createForm.value.description}
+paths: {}
+`,
+    'basic-rest': `openapi: 3.0.0
+info:
+  title: ${createForm.value.name}
+  version: ${createForm.value.version}
+  description: ${createForm.value.description}
+paths:
+  /users:
+    get:
+      summary: 获取用户列表
+      responses:
+        '200':
+          description: 成功
+`,
+    'ecommerce': `openapi: 3.0.0
+info:
+  title: ${createForm.value.name}
+  version: ${createForm.value.version}
+  description: ${createForm.value.description}
+paths:
+  /products:
+    get:
+      summary: 获取商品列表
+      responses:
+        '200':
+          description: 成功
+`,
+    'user-management': `openapi: 3.0.0
+info:
+  title: ${createForm.value.name}
+  version: ${createForm.value.version}
+  description: ${createForm.value.description}
+paths:
+  /auth/login:
+    post:
+      summary: 用户登录
+      responses:
+        '200':
+          description: 登录成功
+`
+  }
+  return templates[template] || templates['blank']
 }
 
-const uploadFile = async () => {
-  if (uploadFileList.value.length === 0) return
+const handleFileChange = (file: UploadFile) => {
+  uploadFile.value = file.raw || null
+  if (uploadFile.value) {
+    uploadForm.value.name = uploadFile.value.name.replace(/\.[^/.]+$/, '')
+  }
+}
+
+const handleUploadDialogClose = () => {
+  showUploadDialog.value = false
+  uploadFile.value = null
+  uploadForm.value = { name: '', description: '' }
+}
+
+const confirmUpload = async () => {
+  if (!uploadFile.value) return
   
-  uploading.value = true
   try {
-    const file = uploadFileList.value[0]
-    const content = await readFileContent(file.raw!)
-    
-    // 首先使用后端 API 解析 OpenAPI 内容
-    const parseResult = await openApiStore.parseOpenAPIContent(content)
-    
-    // 创建规范并保存解析结果
-    const spec = await openApiStore.createSpecFromContent({
-      name: file.name.replace(/\.(yaml|yml|json)$/, ''),
+    const content = await readFileContent(uploadFile.value)
+    const newDoc = {
+      id: Date.now().toString(),
+      name: uploadForm.value.name,
+      description: uploadForm.value.description,
       content,
-      fileName: file.name
-    })
+      uploadTime: new Date(),
+      status: 'pending'
+    }
     
-    // 保存解析后的接口列表到 store
-    openApiStore.setCurrentParsedResult(parseResult)
+    documents.value.push(newDoc)
+    selectDocument(newDoc)
+    handleUploadDialogClose()
     
-    selectedSpecId.value = spec.id
-    specContent.value = spec.content || ''
-    showUploadDialog.value = false
-    uploadFileList.value = []
-    
-    ElMessage.success(`文件上传成功！解析到 ${parseResult.paths?.length || 0} 个接口`)
+    ElMessage.success('文档上传成功')
   } catch (error) {
     ElMessage.error(`上传失败: ${error}`)
+  }
+}
+
+
+
+
+
+// 工具函数
+// measureFunction 已在 usePerformanceMonitor() 中定义
+// globalConfirmDelete 已在 useConfirmation() 中定义
+
+const readFileContent = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      resolve(e.target?.result as string)
+    }
+    reader.onerror = () => {
+      reject(new Error('文件读取失败'))
+    }
+    reader.readAsText(file)
+  })
+}
+
+// MCP相关方法
+const convertToMCP = async () => {
+  if (!editorContent.value) {
+    ElMessage.warning('请先选择文档或输入OpenAPI规范内容')
+    return
+  }
+  
+  converting.value = true
+  try {
+    // 首先验证当前规范
+    const validation = await openApiStore.validateSpec(editorContent.value)
+    if (!validation.valid) {
+      ElMessage.error('当前规范验证失败，请先修复错误')
+      return
+    }
+    
+    // 解析内容并获取工具
+    const parseResult = await openApiStore.parseOpenAPIContent(editorContent.value)
+    mcpTools.value = parseResult.tools || []
+    activeTab.value = 'tools'
+    
+    ElMessage.success(`成功转换为 ${mcpTools.value.length} 个MCP工具`)
+  } catch (error) {
+    ElMessage.error(`转换失败: ${error instanceof Error ? error.message : error}`)
   } finally {
-    uploading.value = false
+    converting.value = false
   }
 }
 
@@ -880,24 +1703,23 @@ const importFromUrl = async () => {
       authHeaders['Authorization'] = `Basic ${credentials}`
     }
 
-    // 先解析 OpenAPI 内容
-    const parseResult = await openApiStore.parseOpenAPIFromUrl(urlForm.value.url, authHeaders)
+    const response = await fetch(urlForm.value.url, { headers: authHeaders })
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
     
-    // 然后导入规范
-    const spec = await openApiStore.importFromUrl({
-      url: urlForm.value.url,
-      name: urlForm.value.name,
-      authType: urlForm.value.authType as 'none' | 'bearer' | 'basic',
-      token: urlForm.value.token,
-      username: urlForm.value.username,
-      password: urlForm.value.password
-    })
+    const content = await response.text()
+    const newDoc = {
+      id: Date.now().toString(),
+      name: urlForm.value.name || 'imported_spec',
+      description: '从URL导入的文档',
+      content,
+      uploadTime: new Date(),
+      status: 'pending'
+    }
     
-    // 保存解析结果
-    openApiStore.setCurrentParsedResult(parseResult)
-    
-    selectedSpecId.value = spec.id
-    specContent.value = spec.content || ''
+    documents.value.push(newDoc)
+    selectDocument(newDoc)
     showUrlDialog.value = false
     
     // 重置表单
@@ -910,53 +1732,11 @@ const importFromUrl = async () => {
       password: ''
     }
     
-    ElMessage.success(`导入成功，解析到 ${parseResult.paths?.length || 0} 个接口`)
+    ElMessage.success('文档导入成功')
   } catch (error) {
     ElMessage.error(`导入失败: ${error}`)
   } finally {
     importing.value = false
-  }
-}
-
-const readFileContent = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      resolve(e.target?.result as string)
-    }
-    reader.onerror = () => {
-      reject(new Error('文件读取失败'))
-    }
-    reader.readAsText(file)
-  })
-}
-
-// MCP相关方法
-const convertToMCP = async () => {
-  if (!selectedSpec.value) {
-    ElMessage.warning('请先选择一个OpenAPI规范')
-    return
-  }
-  
-  converting.value = true
-  try {
-    // 首先验证当前规范
-    const validation = validateOpenAPI(specContent.value)
-    if (!validation.valid) {
-      ElMessage.error('当前规范验证失败，请先修复错误')
-      return
-    }
-    
-    // 调用转换API
-    const tools = await openApiStore.convertToMCP(selectedSpec.value)
-    mcpTools.value = tools
-    editorMode.value = 'tools'
-    
-    ElMessage.success(`成功转换为 ${tools.length} 个MCP工具`)
-  } catch (error) {
-    ElMessage.error(`转换失败: ${error instanceof Error ? error.message : error}`)
-  } finally {
-    converting.value = false
   }
 }
 
@@ -1004,13 +1784,7 @@ const viewApiDetail = (api: any) => {
 
 // 生命周期
 onMounted(async () => {
-  specsLoading.value = true
-  try {
-    await openApiStore.fetchSpecs()
-  } catch (error) {
-    ElMessage.error(`加载规范列表失败: ${error}`)
-  } finally {
-    specsLoading.value = false
-  }
+  // 暂时移除规范列表加载，直接使用解析功能
+  specsLoading.value = false
 })
 </script>
