@@ -1,36 +1,30 @@
 <template>
   <div class="openapi-manager">
-    <!-- 顶部工具栏 -->
-    <div class="manager-header">
-      <div class="header-left">
-        <h2 class="page-title">
+    <!-- 页面头部 -->
+    <div class="header-section">
+      <div class="header-content">
+        <h1>
           <el-icon><Document /></el-icon>
-          OpenAPI 管理器
-        </h2>
-        <p class="page-description">管理和转换您的 OpenAPI 规范文档</p>
+          OpenAPI 文档管理
+        </h1>
+        <p class="header-description">管理和编辑OpenAPI规范文档，支持文档上传、在线编辑和MCP工具转换</p>
       </div>
       <div class="header-actions">
-        <el-button 
-          type="primary" 
-          @click="showUploadDialog = true"
-          :icon="Upload"
-          size="large"
-        >
+        <el-button type="primary" @click="showUploadDialog = true" :icon="Upload">
           上传文档
         </el-button>
-        <el-button 
-          @click="showUrlDialog = true"
-          :icon="Link"
-          size="large"
-        >
+        <el-button type="success" @click="showUrlDialog = true" :icon="Link">
           从URL导入
+        </el-button>
+        <el-button @click="refreshDocuments" :loading="loading" :icon="Refresh">
+          刷新
         </el-button>
       </div>
     </div>
 
     <!-- 主要内容区域 -->
     <div class="manager-content">
-      <el-row :gutter="24" style="height: calc(100vh - 200px);">
+      <el-row :gutter="24" style="height: calc(100vh - 80px);">
         <!-- 左侧：文档列表 -->
         <el-col :span="8">
           <el-card shadow="always" class="document-list-card" style="height: 100%;">
@@ -145,7 +139,7 @@
                     </el-button>
                   </el-button-group>
                   <el-divider direction="vertical" />
-                  <el-button size="small" @click="validateSpec" :disabled="selectedDocument.status !== 'valid'">
+                  <el-button size="small" @click="validateSpec" :disabled="!selectedDocument || !editorContent.trim()">
                     <el-icon><Check /></el-icon>
                     验证
                   </el-button>
@@ -215,7 +209,12 @@
               </div>
               
               <div v-show="activeTab === 'preview'" class="preview-container" style="height: 100%; overflow-y: auto;">
-                <SpecPreview :content="selectedDocument.content" />
+                <SpecPreview 
+                  :spec="selectedDocument" 
+                  :validation-result="validationResults"
+                  :api-paths="parsedApis"
+                  :mcp-tools="mcpTools"
+                />
               </div>
               
               <div v-show="activeTab === 'apis'" class="apis-container" style="height: 100%; overflow-y: auto;">
@@ -525,65 +524,42 @@
 <style scoped>
 .openapi-manager {
   height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
 /* 顶部工具栏样式 */
-.manager-header {
+/* 页面头部样式 */
+.header-section {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 24px 32px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  backdrop-filter: blur(10px);
+  align-items: flex-start;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--el-border-color-light);
 }
 
-.header-left {
-  flex: 1;
-}
-
-.page-title {
+.header-content h1 {
   margin: 0 0 8px 0;
-  font-size: 28px;
-  font-weight: 700;
-  color: white;
+  color: var(--el-text-color-primary);
   display: flex;
   align-items: center;
-  gap: 12px;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  gap: 8px;
+  font-size: 24px;
+  font-weight: 600;
 }
 
-.page-description {
+.header-description {
   margin: 0;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--el-text-color-regular);
   font-size: 14px;
 }
 
 .header-actions {
   display: flex;
   gap: 12px;
-}
-
-.header-actions .el-button {
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  backdrop-filter: blur(10px);
-  transition: all 0.3s ease;
-  border-radius: 12px;
-  font-weight: 600;
-}
-
-.header-actions .el-button:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.5);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
 /* 主要内容区域 */
@@ -595,11 +571,11 @@
 
 /* 左侧文档列表样式 */
 .document-list-card {
-  border: none;
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow-light);
+  backdrop-filter: blur(20px) saturate(180%);
+  background: var(--bg-primary);
   overflow: hidden;
 }
 
@@ -608,10 +584,10 @@
   justify-content: space-between;
   align-items: center;
   font-weight: 600;
-  color: #303133;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  padding: var(--spacing-lg) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .list-header span {
@@ -627,11 +603,11 @@
 }
 
 .search-container .el-input {
-  border-radius: 12px;
+  border-radius: var(--radius-medium);
 }
 
 .document-list {
-  height: calc(100vh - 280px);
+  height: calc(100vh - 200px);
   overflow-y: auto;
   padding: 0 16px 16px;
 }
@@ -643,10 +619,10 @@
 }
 
 .document-item {
-  padding: 20px;
+  padding: var(--spacing-lg);
   border: 2px solid transparent;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  border-radius: var(--radius-medium);
+  background: var(--bg-primary);
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
@@ -663,15 +639,15 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, rgba(64, 158, 255, 0.1) 0%, rgba(103, 58, 183, 0.1) 100%);
+  background: linear-gradient(135deg, rgba(0, 122, 255, 0.1) 0%, rgba(0, 81, 208, 0.1) 100%);
   opacity: 0;
   transition: opacity 0.3s ease;
 }
 
 .document-item:hover {
-  border-color: #409eff;
-  transform: translateY(-4px);
-  box-shadow: 0 12px 40px rgba(64, 158, 255, 0.15);
+  border-color: var(--apple-blue);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-medium);
 }
 
 .document-item:hover::before {
@@ -679,10 +655,10 @@
 }
 
 .document-item.active {
-  border-color: #409eff;
-  background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
-  box-shadow: 0 8px 32px rgba(64, 158, 255, 0.2);
-  transform: translateY(-2px);
+  border-color: var(--apple-blue);
+  background: var(--bg-quaternary);
+  box-shadow: var(--shadow-light);
+  transform: translateY(-1px);
 }
 
 .document-item.active::before {
@@ -697,8 +673,8 @@
 
 .document-name {
   font-weight: 600;
-  color: #303133;
-  margin-bottom: 8px;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
   font-size: 15px;
   line-height: 1.4;
 }
@@ -712,10 +688,10 @@
 
 .upload-time {
   font-size: 12px;
-  color: #909399;
-  background: rgba(144, 147, 153, 0.1);
-  padding: 4px 8px;
-  border-radius: 6px;
+  color: var(--text-secondary);
+  background: var(--bg-quaternary);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-small);
 }
 
 .document-actions {
@@ -732,11 +708,11 @@
 
 /* 右侧详情区域样式 */
 .detail-card {
-  border: none;
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow-light);
+  backdrop-filter: blur(20px) saturate(180%);
+  background: var(--bg-primary);
   overflow: hidden;
 }
 
@@ -745,10 +721,10 @@
   justify-content: space-between;
   align-items: center;
   font-weight: 600;
-  color: #303133;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  padding: var(--spacing-lg) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .detail-header span {
@@ -759,11 +735,11 @@
 }
 
 .empty-header {
-  color: #909399;
+  color: var(--text-secondary);
   font-weight: 500;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .detail-controls {
@@ -773,9 +749,9 @@
 }
 
 .detail-controls .el-button {
-  border-radius: 8px;
+  border-radius: var(--radius-small);
   font-weight: 500;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .detail-controls .el-button:hover {
@@ -792,21 +768,22 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  border-radius: 12px;
-  margin: 20px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-medium);
+  margin: var(--spacing-lg);
 }
 
 .error-state {
-  background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
-  border-radius: 12px;
-  margin: 20px;
+  background: var(--bg-error);
+  border: 1px solid var(--border-error);
+  border-radius: var(--radius-medium);
+  margin: var(--spacing-lg);
 }
 
 .loading-state {
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-  border-radius: 12px;
-  margin: 20px;
+  background: var(--bg-quaternary);
+  border-radius: var(--radius-medium);
+  margin: var(--spacing-lg);
 }
 
 .content-tabs {
@@ -815,22 +792,22 @@
 
 .editor-container {
   height: 100%;
-  border: 1px solid #e4e7ed;
-  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-medium);
   overflow: hidden;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-light);
 }
 
 .preview-container,
 .apis-container,
 .tools-container {
   height: 100%;
-  padding: 24px;
-  background: linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%);
-  border: 1px solid #e4e7ed;
-  border-radius: 12px;
+  padding: var(--spacing-lg);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-medium);
   overflow-y: auto;
-  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-light);
 }
 
 /* 上传对话框样式 */
@@ -843,10 +820,10 @@
 }
 
 .upload-demo .el-upload-dragger {
-  border: 2px dashed #d9d9d9;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%);
-  transition: all 0.3s ease;
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-large);
+  background: var(--bg-secondary);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
 }
@@ -858,16 +835,16 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, rgba(64, 158, 255, 0.1) 0%, rgba(103, 58, 183, 0.1) 100%);
+  background: linear-gradient(135deg, rgba(0, 122, 255, 0.1) 0%, rgba(0, 81, 208, 0.1) 100%);
   opacity: 0;
   transition: opacity 0.3s ease;
 }
 
 .upload-demo .el-upload-dragger:hover {
-  border-color: #409eff;
-  background: #f0f9ff;
+  border-color: var(--apple-blue);
+  background: var(--bg-quaternary);
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(64, 158, 255, 0.15);
+  box-shadow: var(--shadow-medium);
 }
 
 .upload-demo .el-upload-dragger:hover::before {
@@ -875,23 +852,23 @@
 }
 
 .upload-form {
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid #e4e7ed;
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--border-color);
 }
 
 /* 对话框样式 */
 .el-dialog {
-  border-radius: 20px;
+  border-radius: var(--radius-xl);
   overflow: hidden;
-  box-shadow: 0 16px 64px rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-heavy);
+  backdrop-filter: blur(20px) saturate(180%);
 }
 
 .el-dialog__header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--apple-blue) 0%, var(--apple-blue-dark) 100%);
   color: white;
-  padding: 24px 32px;
+  padding: var(--spacing-lg) var(--spacing-xl);
 }
 
 .el-dialog__title {
@@ -901,31 +878,31 @@
 }
 
 .el-dialog__body {
-  padding: 32px;
-  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  padding: var(--spacing-xl);
+  background: var(--bg-primary);
 }
 
 .dialog-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  padding: 0 32px 32px;
-  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  gap: var(--spacing-md);
+  padding: 0 var(--spacing-xl) var(--spacing-xl);
+  background: var(--bg-primary);
 }
 
 /* 表单样式增强 */
 .el-form-item {
-  margin-bottom: 24px;
+  margin-bottom: var(--spacing-lg);
 }
 
 .el-input__wrapper {
-  border-radius: 12px;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border-radius: var(--radius-medium);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-light);
 }
 
 .el-input__wrapper:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-medium);
   transform: translateY(-1px);
 }
 
@@ -1253,6 +1230,7 @@ const {
 
 // 响应式数据
 const specsLoading = ref(false)
+const loading = ref(false)
 const searchQuery = ref('')
 const selectedDocument = ref<any>(null)
 const activeTab = ref<'editor' | 'preview' | 'apis' | 'tools'>('editor')
@@ -1394,6 +1372,19 @@ const deleteDocument = async (docId: string) => {
   }
 }
 
+const refreshDocuments = async () => {
+  try {
+    loading.value = true
+    await openApiStore.fetchSpecs()
+    // 这里可以添加从store获取文档列表的逻辑
+    ElMessage.success('文档列表刷新成功')
+  } catch (error) {
+    ElMessage.error(`刷新失败: ${error}`)
+  } finally {
+    loading.value = false
+  }
+}
+
 const getStatusText = (status: string) => {
   const statusMap: Record<string, string> = {
     'valid': '有效',
@@ -1491,19 +1482,45 @@ const validateSpec = async () => {
     const result = await measureFunction('validateSpec', async () => {
       return await openApiStore.validateSpec(editorContent.value)
     })
+    
+    // 更新验证结果
     validationResults.value = result
     
-    if (result.valid && selectedDocument.value) {
-      selectedDocument.value.status = 'valid'
-      ElMessage.success('规范验证通过')
-    } else {
-      if (selectedDocument.value) {
-        selectedDocument.value.status = 'invalid'
-      }
-      ElMessage.warning(`规范验证失败，发现 ${result.errors?.length || 0} 个错误`)
+    // 更新文档状态
+    if (selectedDocument.value) {
+      selectedDocument.value.status = result.valid ? 'valid' : 'invalid'
     }
+    
+    // 显示验证结果消息
+    if (result.valid) {
+      const warningCount = result.warnings?.length || 0
+      if (warningCount > 0) {
+        ElMessage.success(`规范验证通过，但有 ${warningCount} 个警告`)
+      } else {
+        ElMessage.success('规范验证通过，无错误和警告')
+      }
+    } else {
+      const errorCount = result.errors?.length || 0
+      const warningCount = result.warnings?.length || 0
+      let message = `规范验证失败，发现 ${errorCount} 个错误`
+      if (warningCount > 0) {
+        message += `，${warningCount} 个警告`
+      }
+      ElMessage.error(message)
+    }
+    
+    // 如果有验证结果，自动切换到预览标签页以显示详细信息
+    if (result.errors?.length > 0 || result.warnings?.length > 0) {
+      activeTab.value = 'preview'
+    }
+    
   } catch (error) {
-    ElMessage.error(`验证失败: ${error}`)
+    console.error('验证失败:', error)
+    ElMessage.error(`验证失败: ${error instanceof Error ? error.message : String(error)}`)
+    validationResults.value = null
+    if (selectedDocument.value) {
+      selectedDocument.value.status = 'invalid'
+    }
   } finally {
     validating.value = false
   }

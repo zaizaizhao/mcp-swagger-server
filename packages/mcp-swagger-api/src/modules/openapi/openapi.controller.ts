@@ -26,7 +26,7 @@ import { ConfigureOpenAPIDto } from './dto/configure-openapi.dto';
 import { OpenAPIResponseDto } from './dto/openapi-response.dto';
 
 @ApiTags('OpenAPI')
-@Controller('v1/openapi')
+@Controller('openapi')
 @UseGuards(JwtAuthGuard)
 @UseInterceptors(LoggingInterceptor)
 @ApiBearerAuth()
