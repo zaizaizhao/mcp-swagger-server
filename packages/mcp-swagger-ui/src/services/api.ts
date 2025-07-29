@@ -294,7 +294,12 @@ export const openApiAPI = {
 
   // 验证OpenAPI规范（支持字符串内容）
   async validateSpec(content: string): Promise<ApiResponse<{ valid: boolean; errors: any[]; warnings?: any[] }>> {
-    const response = await api.post('/openapi/validate', { content })
+    const response = await api.post('/openapi/validate', {
+      source: {
+        type: 'content',
+        content: content
+      }
+    })
     return response.data
   },
 
@@ -315,7 +320,7 @@ export const openApiAPI = {
     parsedAt: string;
     parseId?: string;
   }>> {
-    const response = await api.post('/v1/openapi/parse', {
+    const response = await api.post('/openapi/parse', {
       source: {
         type: 'content',
         content: content
@@ -335,7 +340,7 @@ export const openApiAPI = {
     parsedAt: string;
     parseId?: string;
   }>> {
-    const response = await api.post('/v1/openapi/parse', {
+    const response = await api.post('/openapi/parse', {
       source: {
         type: 'url',
         content: url
@@ -353,7 +358,7 @@ export const openApiAPI = {
     errors: string[];
     warnings: string[];
   }>> {
-    const response = await api.post('/v1/openapi/validate', {
+    const response = await api.post('/openapi/validate', {
       source: {
         type: 'content',
         content: content
