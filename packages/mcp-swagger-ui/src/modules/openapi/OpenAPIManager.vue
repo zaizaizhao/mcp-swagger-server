@@ -1510,7 +1510,7 @@ const validateSpec = async () => {
     }
     
     // 如果有验证结果，自动切换到预览标签页以显示详细信息
-    if (result.errors?.length > 0 || result.warnings?.length > 0) {
+    if ((result.errors?.length || 0) > 0 || (result.warnings?.length || 0) > 0) {
       activeTab.value = 'preview'
     }
     
@@ -1633,24 +1633,30 @@ const handleUploadDialogClose = () => {
 const confirmUpload = async () => {
   if (!uploadFile.value) return
   
+  uploading.value = true
   try {
-    const content = await readFileContent(uploadFile.value)
+    // 使用新的文件上传API
+    const parseResult = await openApiStore.uploadAndParseSpec(uploadFile.value)
+    
     const newDoc = {
       id: Date.now().toString(),
       name: uploadForm.value.name,
       description: uploadForm.value.description,
-      content,
+      content: JSON.stringify(parseResult, null, 2),
       uploadTime: new Date(),
-      status: 'pending'
+      status: 'valid',
+      parsedData: parseResult
     }
     
     documents.value.push(newDoc)
     selectDocument(newDoc)
     handleUploadDialogClose()
     
-    ElMessage.success('文档上传成功')
+    ElMessage.success(`文档上传成功，解析出 ${parseResult.paths?.length || 0} 个接口`)
   } catch (error) {
-    ElMessage.error(`上传失败: ${error}`)
+    ElMessage.error(`上传失败: ${error instanceof Error ? error.message : String(error)}`)
+  } finally {
+    uploading.value = false
   }
 }
 
@@ -1711,28 +1717,17 @@ const importFromUrl = async () => {
     await urlFormRef.value.validate()
     importing.value = true
     
-    const authHeaders: Record<string, string> = {}
+    // 使用新的后端URL解析API
+    const parseResult = await openApiStore.parseOpenAPIFromUrl(urlForm.value.url)
     
-    if (urlForm.value.authType === 'bearer' && urlForm.value.token) {
-      authHeaders['Authorization'] = `Bearer ${urlForm.value.token}`
-    } else if (urlForm.value.authType === 'basic' && urlForm.value.username && urlForm.value.password) {
-      const credentials = btoa(`${urlForm.value.username}:${urlForm.value.password}`)
-      authHeaders['Authorization'] = `Basic ${credentials}`
-    }
-
-    const response = await fetch(urlForm.value.url, { headers: authHeaders })
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-    }
-    
-    const content = await response.text()
     const newDoc = {
       id: Date.now().toString(),
-      name: urlForm.value.name || 'imported_spec',
-      description: '从URL导入的文档',
-      content,
+      name: urlForm.value.name || parseResult.info?.title || 'imported_spec',
+      description: parseResult.info?.description || '从URL导入的文档',
+      content: JSON.stringify(parseResult, null, 2),
       uploadTime: new Date(),
-      status: 'pending'
+      status: 'valid',
+      parsedData: parseResult
     }
     
     documents.value.push(newDoc)
@@ -1749,9 +1744,9 @@ const importFromUrl = async () => {
       password: ''
     }
     
-    ElMessage.success('文档导入成功')
+    ElMessage.success(`文档导入成功，解析出 ${parseResult.paths?.length || 0} 个接口`)
   } catch (error) {
-    ElMessage.error(`导入失败: ${error}`)
+    ElMessage.error(`导入失败: ${error instanceof Error ? error.message : String(error)}`)
   } finally {
     importing.value = false
   }

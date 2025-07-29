@@ -17,7 +17,8 @@ import type {
   ImportResult,
   AIAssistantType,
   ConfigTemplate,
-  ConfigOptions
+  ConfigOptions,
+  ValidationResult
 } from '@/types'
 import { normalizeAPIError, logAPIError, createRetryFunction, type APIError } from '@/utils/apiError'
 
@@ -293,7 +294,7 @@ export const openApiAPI = {
   },
 
   // 验证OpenAPI规范（支持字符串内容）
-  async validateSpec(content: string): Promise<ApiResponse<{ valid: boolean; errors: any[]; warnings?: any[] }>> {
+  async validateSpec(content: string): Promise<ApiResponse<ValidationResult>> {
     const response = await api.post('/openapi/validate', {
       source: {
         type: 'content',
@@ -301,6 +302,120 @@ export const openApiAPI = {
       }
     })
     return response.data
+  },
+
+  // 上传并解析OpenAPI文件
+  async uploadAndParseSpec(file: File): Promise<ApiResponse<{
+    info: any;
+    paths: any[];
+    tools: any[];
+    servers: any[];
+    openapi: string;
+    components: any;
+    parsedAt: string;
+    parseId?: string;
+  }>> {
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const response = await api.post('/openapi/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      // 后端直接返回OpenAPIResponseDto，需要包装成ApiResponse格式
+      return {
+        success: true,
+        data: response.data,
+        error: null
+      }
+    } catch (error: any) {
+      return {
+        success: false,
+        data: null,
+        error: error.response?.data?.message || error.message || '文件上传失败'
+      }
+    }
+  },
+
+  // 上传并验证OpenAPI文件
+  async uploadAndValidateSpec(file: File): Promise<ApiResponse<{
+    valid: boolean;
+    errors: string[];
+    warnings: string[];
+  }>> {
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const response = await api.post('/openapi/validate-upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      // 后端直接返回验证结果，需要包装成ApiResponse格式
+      return {
+        success: true,
+        data: response.data,
+        error: null
+      }
+    } catch (error: any) {
+      return {
+        success: false,
+        data: null,
+        error: error.response?.data?.message || error.message || '文件验证失败'
+      }
+    }
+  },
+
+  // 从URL验证OpenAPI规范
+  async validateSpecFromUrl(url: string): Promise<ApiResponse<{
+    valid: boolean;
+    errors: string[];
+    warnings: string[];
+  }>> {
+    try {
+      const response = await api.get('/openapi/validate-url', {
+        params: { url }
+      })
+      // 后端直接返回验证结果，需要包装成ApiResponse格式
+      return {
+        success: true,
+        data: response.data,
+        error: null
+      }
+    } catch (error: any) {
+      return {
+        success: false,
+        data: null,
+        error: error.response?.data?.message || error.message || 'URL验证失败'
+      }
+    }
+  },
+
+  // 从URL解析OpenAPI规范
+  async parseSpecFromUrl(url: string): Promise<ApiResponse<{
+    info: any;
+    paths: any[];
+    tools: any[];
+    servers: any[];
+    openapi: string;
+    components: any;
+    parsedAt: string;
+    parseId?: string;
+  }>> {
+    try {
+      const response = await api.get('/openapi/parse-url', {
+        params: { url }
+      })
+      // 后端直接返回OpenAPIResponseDto，需要包装成ApiResponse格式
+      return {
+        success: true,
+        data: response.data,
+        error: null
+      }
+    } catch (error: any) {
+      return {
+        success: false,
+        data: null,
+        error: error.response?.data?.message || error.message || 'URL解析失败'
+      }
+    }
   },
 
   // 转换为MCP工具
