@@ -46,7 +46,8 @@ export class OpenAPIService {
           contact: parsedSpec.info?.contact,
           license: parsedSpec.info?.license,
         },
-        paths: parsedSpec.paths || [],
+        paths: parsedSpec.paths || {},
+        endpoints: parsedSpec.endpoints || [],
         tools: tools || [],
         servers: parsedSpec.servers || [],
         openapi: parsedSpec.openapi || parsedSpec.swagger || '3.0.0',
@@ -55,7 +56,7 @@ export class OpenAPIService {
         parseId: this.generateParseId(),
       };
 
-      this.logger.log(`Successfully parsed OpenAPI specification with ${response.paths.length} paths and ${response.tools.length} tools`);
+      this.logger.log(`Successfully parsed OpenAPI specification with ${response.endpoints.length} endpoints and ${response.tools.length} tools`);
 
       return response;
     } catch (error) {
@@ -149,59 +150,12 @@ export class OpenAPIService {
     try {
       this.logger.log(`Loading OpenAPI specification from URL: ${url}`);
       
-      // Create abort controller for timeout
-      const timeoutMs = this.appConfigService.get('REQUEST_TIMEOUT') || 30000;
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      // Use ParserService to parse from URL directly
+      const result = await this.parserService.parseFromUrl(url);
       
-      const response = await fetch(url, {
-        signal: controller.signal,
-        headers: {
-          'Accept': 'application/json,application/yaml,text/yaml,text/plain',
-          'User-Agent': 'MCP-Swagger-API/1.0.0',
-        },
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const contentType = response.headers.get('content-type');
-      const text = await response.text();
-
-      // Check if the response is empty or null
-      if (!text || text.trim() === '' || text.trim() === 'null') {
-        throw new Error('Empty or null response from URL');
-      }
-
-      if (contentType?.includes('application/json')) {
-        try {
-          return JSON.parse(text);
-        } catch (error) {
-          throw new Error(`Invalid JSON response: ${error.message}`);
-        }
-      } else if (contentType?.includes('yaml') || contentType?.includes('yml')) {
-        // Parse YAML (we'll need to add yaml parsing support)
-        return this.parseYaml(text);
-      } else {
-        // Try to parse as JSON first, then YAML
-        try {
-          return JSON.parse(text);
-        } catch (jsonError) {
-          try {
-            return this.parseYaml(text);
-          } catch (yamlError) {
-            throw new Error(`Failed to parse response as JSON or YAML. JSON error: ${jsonError.message}, YAML error: ${yamlError.message}`);
-          }
-        }
-      }
+      return result.spec;
     } catch (error) {
       this.logger.error(`Failed to load OpenAPI specification from URL: ${error.message}`);
-      if (error.name === 'AbortError') {
-        throw new BadRequestException(`Request timeout: Failed to load from URL within ${this.appConfigService.get('REQUEST_TIMEOUT') || 30000}ms`);
-      }
       throw new BadRequestException(`Failed to load from URL: ${error.message}`);
     }
   }
@@ -210,9 +164,10 @@ export class OpenAPIService {
     try {
       this.logger.log(`Loading OpenAPI specification from file: ${filePath}`);
       
-      // For security, we'll need to implement file access restrictions
-      // For now, we'll throw an error as file access should be handled carefully
-      throw new BadRequestException('File loading not yet implemented for security reasons');
+      // Use ParserService to parse from file directly
+      const parseResult = await this.parserService.parseFromFile(filePath);
+      
+      return parseResult.spec;
     } catch (error) {
       this.logger.error(`Failed to load OpenAPI specification from file: ${error.message}`);
       throw new BadRequestException(`Failed to load from file: ${error.message}`);
@@ -223,23 +178,14 @@ export class OpenAPIService {
     try {
       this.logger.log(`Loading OpenAPI specification from content`);
       
-      // Try to parse as JSON first
-      try {
-        return JSON.parse(content);
-      } catch {
-        // Try to parse as YAML
-        return this.parseYaml(content);
-      }
+      // Use ParserService to parse from string directly
+      const parseResult = await this.parserService.parseFromString(content);
+      
+      return parseResult.spec;
     } catch (error) {
       this.logger.error(`Failed to load OpenAPI specification from content: ${error.message}`);
       throw new BadRequestException(`Failed to parse content: ${error.message}`);
     }
-  }
-
-  private parseYaml(yamlContent: string): any {
-    // TODO: Implement YAML parsing
-    // For now, we'll throw an error
-    throw new BadRequestException('YAML parsing not yet implemented');
   }
 
   private generateParseId(): string {

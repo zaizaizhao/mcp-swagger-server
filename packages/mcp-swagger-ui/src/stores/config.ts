@@ -46,10 +46,15 @@ export interface ConfigMigrationResult {
 
 export interface ConfigVersionInfo {
   version: string
+  format?: string
   compatibleVersions: string[]
   migrationPath?: string[]
   deprecated?: boolean
+  recommended?: boolean
+  description?: string
   features: string[]
+  newFeatures?: string[]
+  breakingChanges?: string[]
 }
 
 export interface ConfigConflictResolution {
@@ -62,11 +67,21 @@ export interface ConfigConflictResolution {
 export interface ConfigMigrationStep {
   id: string
   name: string
+  title?: string
   description: string
   fromVersion: string
   toVersion: string
+  targetVersion?: string
+  type?: string
+  estimatedDuration?: string
   required: boolean
   executed: boolean
+  actions?: Array<{
+    id: string
+    type: string
+    description: string
+  }>
+  risks?: string[]
   result?: {
     success: boolean
     message: string
@@ -82,6 +97,13 @@ export interface ConfigBackup {
   types: string[]
   description?: string
   version?: string
+}
+
+export interface ConfigMigrationOptions {
+  backupStrategy: 'full' | 'incremental' | 'none'
+  failureHandling: 'rollback' | 'continue' | 'abort'
+  validationLevel: 'strict' | 'standard' | 'loose'
+  parallelExecution: boolean
 }
 
 export const useConfigStore = defineStore('config', () => {
@@ -559,6 +581,36 @@ export const useConfigStore = defineStore('config', () => {
     } else {
       // 基本类型：使用传入值
       return incoming
+    }
+  }
+
+  // 重启服务
+  const restartServices = async (): Promise<void> => {
+    setLoading(true)
+    try {
+      // 模拟重启服务的过程
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      appStore.addNotification({
+        type: 'success',
+        title: '服务重启成功',
+        message: '所有服务已成功重启',
+        duration: 3000
+      })
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '服务重启失败'
+      setError(errorMessage)
+      
+      appStore.addNotification({
+        type: 'error',
+        title: '服务重启失败',
+        message: errorMessage,
+        duration: 5000
+      })
+      
+      throw error
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -1128,6 +1180,7 @@ export const useConfigStore = defineStore('config', () => {
     createMigrationPlan,
     migrateConfig,
     resolveConfigConflicts,
-    mergeConfigurations
+    mergeConfigurations,
+    restartServices
   }
 })

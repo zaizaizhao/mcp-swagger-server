@@ -59,11 +59,11 @@
               </div>
               <div class="detail-item">
                 <span class="label">温度:</span>
-                <span class="value">{{ currentMetrics.cpu.temperature.toFixed(1) }}°C</span>
+                <span class="value">{{ (currentMetrics.cpu.temperature || 0).toFixed(1) }}°C</span>
               </div>
               <div class="detail-item">
                 <span class="label">频率:</span>
-                <span class="value">{{ (currentMetrics.cpu.frequency || 2400).toFixed(0) }}MHz</span>
+                <span class="value">{{ ((currentMetrics.cpu as any).frequency || 2400).toFixed(0) }}MHz</span>
               </div>
             </div>
             <div class="mini-chart">

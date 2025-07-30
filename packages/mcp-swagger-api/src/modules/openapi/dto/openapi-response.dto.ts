@@ -241,10 +241,16 @@ export class OpenAPIResponseDto {
   info: ApiInfoDto;
 
   @ApiProperty({
-    description: '解析的API路径列表',
+    description: 'OpenAPI paths对象（符合OpenAPI规范）',
+    type: 'object',
+  })
+  paths: Record<string, any>;
+
+  @ApiProperty({
+    description: '解析的API端点列表（用于前端显示）',
     type: [ApiEndpointDto],
   })
-  paths: ApiEndpointDto[];
+  endpoints: ApiEndpointDto[];
 
   @ApiProperty({
     description: '生成的MCP工具列表',

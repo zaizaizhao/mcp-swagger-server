@@ -247,7 +247,7 @@
             >
               忽略
             </el-button>
-            <el-dropdown @command="(cmd) => handleAlertAction(alert.id, cmd)">
+            <el-dropdown @command="(cmd: string) => handleAlertAction(alert.id, cmd)">
               <el-button size="small" :icon="MoreFilled" />
               <template #dropdown>
                 <el-dropdown-menu>

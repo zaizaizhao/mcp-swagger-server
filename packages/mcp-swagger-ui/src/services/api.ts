@@ -307,7 +307,8 @@ export const openApiAPI = {
   // 上传并解析OpenAPI文件
   async uploadAndParseSpec(file: File): Promise<ApiResponse<{
     info: any;
-    paths: any[];
+    paths: Record<string, any>;
+    endpoints: any[];
     tools: any[];
     servers: any[];
     openapi: string;
@@ -325,12 +326,12 @@ export const openApiAPI = {
       return {
         success: true,
         data: response.data,
-        error: null
+        error: undefined
       }
     } catch (error: any) {
       return {
         success: false,
-        data: null,
+        data: undefined,
         error: error.response?.data?.message || error.message || '文件上传失败'
       }
     }
@@ -352,12 +353,12 @@ export const openApiAPI = {
       return {
         success: true,
         data: response.data,
-        error: null
+        error: undefined
       }
     } catch (error: any) {
       return {
         success: false,
-        data: null,
+        data: undefined,
         error: error.response?.data?.message || error.message || '文件验证失败'
       }
     }
@@ -377,12 +378,12 @@ export const openApiAPI = {
       return {
         success: true,
         data: response.data,
-        error: null
+        error: undefined
       }
     } catch (error: any) {
       return {
         success: false,
-        data: null,
+        data: undefined,
         error: error.response?.data?.message || error.message || 'URL验证失败'
       }
     }
@@ -391,7 +392,8 @@ export const openApiAPI = {
   // 从URL解析OpenAPI规范
   async parseSpecFromUrl(url: string): Promise<ApiResponse<{
     info: any;
-    paths: any[];
+    paths: Record<string, any>;
+    endpoints: any[];
     tools: any[];
     servers: any[];
     openapi: string;
@@ -407,12 +409,12 @@ export const openApiAPI = {
       return {
         success: true,
         data: response.data,
-        error: null
+        error: undefined
       }
     } catch (error: any) {
       return {
         success: false,
-        data: null,
+        data: undefined,
         error: error.response?.data?.message || error.message || 'URL解析失败'
       }
     }
@@ -427,7 +429,8 @@ export const openApiAPI = {
   // 新增：解析 OpenAPI JSON 内容
   async parseOpenAPIContent(content: string): Promise<ApiResponse<{
     info: any;
-    paths: any[];
+    paths: Record<string, any>;
+    endpoints: any[];
     tools: any[];
     servers: any[];
     openapi: string;
@@ -447,7 +450,8 @@ export const openApiAPI = {
   // 新增：从 URL 解析 OpenAPI
   async parseOpenAPIFromUrl(url: string, authHeaders?: Record<string, string>): Promise<ApiResponse<{
     info: any;
-    paths: any[];
+    paths: Record<string, any>;
+    endpoints: any[];
     tools: any[];
     servers: any[];
     openapi: string;

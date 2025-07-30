@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { validate as parserValidate, ValidationResult } from 'mcp-swagger-parser';
 
-export interface ValidationResult {
+// Keep local interface for backward compatibility
+export interface LocalValidationResult {
   valid: boolean;
   errors: string[];
   warnings: string[];
@@ -10,67 +12,41 @@ export interface ValidationResult {
 export class ValidatorService {
   private readonly logger = new Logger(ValidatorService.name);
 
-  async validateSpecification(spec: any): Promise<ValidationResult> {
-    const errors: string[] = [];
-    const warnings: string[] = [];
-
+  async validateSpecification(spec: any): Promise<LocalValidationResult> {
     try {
       this.logger.log('Starting OpenAPI specification validation');
 
-      // Basic structure validation
-      if (!spec) {
-        errors.push('OpenAPI specification is empty or null');
-        return { valid: false, errors, warnings };
-      }
+      // Use mcp-swagger-parser's validation functionality
+      const result = await parserValidate(spec);
 
-      if (typeof spec !== 'object') {
-        errors.push('OpenAPI specification must be an object');
-        return { valid: false, errors, warnings };
-      }
+      this.logger.log(`OpenAPI validation completed: ${result.valid ? 'valid' : 'invalid'} with ${result.errors.length} errors and ${result.warnings.length} warnings`);
 
-      // Check OpenAPI version
-      if (!spec.openapi && !spec.swagger) {
-        errors.push('Missing OpenAPI or Swagger version field');
-      } else if (spec.openapi) {
-        if (!this.isValidOpenAPIVersion(spec.openapi)) {
-          errors.push(`Unsupported OpenAPI version: ${spec.openapi}`);
-        }
-      } else if (spec.swagger) {
-        if (!this.isValidSwaggerVersion(spec.swagger)) {
-          errors.push(`Unsupported Swagger version: ${spec.swagger}`);
-        }
-      }
-
-      // Validate info object
-      this.validateInfo(spec.info, errors, warnings);
-
-      // Validate paths
-      this.validatePaths(spec.paths, errors, warnings);
-
-      // Validate servers (OpenAPI 3.x only)
-      if (spec.openapi && spec.servers) {
-        this.validateServers(spec.servers, errors, warnings);
-      }
-
-      // Validate components (OpenAPI 3.x only)
-      if (spec.openapi && spec.components) {
-        this.validateComponents(spec.components, errors, warnings);
-      }
-
-      // Validate definitions (Swagger 2.0 only)
-      if (spec.swagger && spec.definitions) {
-        this.validateDefinitions(spec.definitions, errors, warnings);
-      }
-
-      const valid = errors.length === 0;
-      this.logger.log(`OpenAPI validation completed: ${valid ? 'valid' : 'invalid'} with ${errors.length} errors and ${warnings.length} warnings`);
-
-      return { valid, errors, warnings };
+      // Convert ValidationError[] to string[] for compatibility
+      return {
+        valid: result.valid,
+        errors: result.errors.map(err => err.message),
+        warnings: result.warnings.map(warn => warn.message)
+      };
     } catch (error) {
       this.logger.error(`Error during OpenAPI validation: ${error.message}`, error.stack);
-      errors.push(`Validation error: ${error.message}`);
-      return { valid: false, errors, warnings };
+      return {
+        valid: false,
+        errors: [`Validation error: ${error.message}`],
+        warnings: []
+      };
     }
+  }
+
+  /**
+   * Legacy validation method for backward compatibility
+   */
+  async validateSpecificationLegacy(spec: any): Promise<LocalValidationResult> {
+    const result = await this.validateSpecification(spec);
+    return {
+      valid: result.valid,
+      errors: result.errors,
+      warnings: result.warnings
+    };
   }
 
   private isValidOpenAPIVersion(version: string): boolean {
@@ -131,6 +107,12 @@ export class ValidatorService {
 
     if (typeof paths !== 'object') {
       errors.push('"paths" must be an object');
+      return;
+    }
+
+    // Check if paths is an array (common mistake)
+    if (Array.isArray(paths)) {
+      errors.push('"paths" must be an object, not an array. Each path should be a property key (e.g., "/users", "/pets/{id}")');
       return;
     }
 

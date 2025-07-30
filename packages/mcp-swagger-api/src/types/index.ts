@@ -1,43 +1,18 @@
-// OpenAPI related types
-export interface OpenAPISpec {
-  openapi?: string;
-  swagger?: string;
-  info: {
-    title: string;
-    version: string;
-    description?: string;
-    termsOfService?: string;
-    contact?: any;
-    license?: any;
-  };
-  servers?: Array<{
-    url: string;
-    description?: string;
-    variables?: any;
-  }>;
-  paths: Record<string, any>;
-  components?: any;
-  security?: any[];
-  tags?: Array<{
-    name: string;
-    description?: string;
-    externalDocs?: any;
-  }>;
-  externalDocs?: any;
-}
+// Import types from mcp-swagger-parser
+export {
+  ParseResult,
+  ValidationResult,
+  ApiEndpoint,
+  ParsedApiSpec,
+  ParseMetadata,
+  ValidationError as ParserValidationError,
+  ValidationWarning,
+  OpenAPISpec,
+  HttpMethod
+} from 'mcp-swagger-parser';
 
-export interface ParsedEndpoint {
-  method: string;
-  path: string;
-  operationId: string;
-  summary?: string;
-  description?: string;
-  tags?: string[];
-  deprecated?: boolean;
-  parameters?: any[];
-  requestBody?: any;
-  responses?: Record<string, any>;
-}
+// Re-export ParsedEndpoint as alias for ApiEndpoint for backward compatibility
+export type ParsedEndpoint = import('mcp-swagger-parser').ApiEndpoint;
 
 export interface MCPTool {
   name: string;
@@ -81,7 +56,9 @@ export interface ApiResponse<T = any> {
   timestamp: string;
 }
 
-export interface ValidationResult {
+// ValidationResult is now imported from mcp-swagger-parser
+// Keep local ValidationResult for backward compatibility if needed
+export interface LocalValidationResult {
   valid: boolean;
   errors: string[];
   warnings: string[];

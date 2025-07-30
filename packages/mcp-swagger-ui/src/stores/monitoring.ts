@@ -7,6 +7,39 @@ import type {
   ChartSeries
 } from '@/types'
 
+// 日志相关类型定义
+interface LogEntry {
+  id: string
+  timestamp: Date
+  level: 'info' | 'warn' | 'error' | 'debug'
+  message: string
+  source?: string
+  data?: any
+}
+
+interface LogFilter {
+  level?: string
+  source?: string
+  search?: string
+  startTime?: Date
+  endTime?: Date
+}
+
+interface LogStats {
+  total: number
+  info: number
+  warn: number
+  error: number
+  debug: number
+}
+
+interface SystemHealth {
+  status: 'healthy' | 'warning' | 'critical' | 'unknown'
+  uptime: number
+  lastCheck: Date
+  issues: string[]
+}
+
 export const useMonitoringStore = defineStore('monitoring', () => {
   // 状态
   const metrics = ref<DetailedSystemMetrics[]>([])
@@ -26,6 +59,23 @@ export const useMonitoringStore = defineStore('monitoring', () => {
   const isConnected = ref(false)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  
+  // 新增状态
+  const systemMetrics = ref<DetailedSystemMetrics | null>(null)
+  const serverMetrics = ref<any>(null)
+  const systemHealth = ref<SystemHealth>({
+    status: 'unknown',
+    uptime: 0,
+    lastCheck: new Date(),
+    issues: []
+  })
+  const metricsHistory = ref<DetailedSystemMetrics[]>([])
+  const logs = ref<LogEntry[]>([])
+  const logFilter = ref<LogFilter>({})
+  const realTimeEnabled = ref(true)
+  const lastUpdate = ref<Date>(new Date())
+  const loading = ref(false)
+  const isMonitoring = ref(false)
 
   // 计算属性
   const cpuSeries = computed<ChartSeries>(() => ({
@@ -105,6 +155,52 @@ export const useMonitoringStore = defineStore('monitoring', () => {
     }
     
     return 'healthy'
+  })
+
+  // 新增计算属性
+  const filteredLogs = computed(() => {
+    let filtered = logs.value
+    
+    if (logFilter.value.level) {
+      filtered = filtered.filter(log => log.level === logFilter.value.level)
+    }
+    
+    if (logFilter.value.source) {
+      filtered = filtered.filter(log => log.source === logFilter.value.source)
+    }
+    
+    if (logFilter.value.search) {
+      const search = logFilter.value.search.toLowerCase()
+      filtered = filtered.filter(log => 
+        log.message.toLowerCase().includes(search)
+      )
+    }
+    
+    if (logFilter.value.startTime) {
+      filtered = filtered.filter(log => log.timestamp >= logFilter.value.startTime!)
+    }
+    
+    if (logFilter.value.endTime) {
+      filtered = filtered.filter(log => log.timestamp <= logFilter.value.endTime!)
+    }
+    
+    return filtered.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+  })
+
+  const logStats = computed<LogStats>(() => {
+    const stats = {
+      total: logs.value.length,
+      info: 0,
+      warn: 0,
+      error: 0,
+      debug: 0
+    }
+    
+    logs.value.forEach(log => {
+      stats[log.level]++
+    })
+    
+    return stats
   })
 
   // WebSocket连接
@@ -324,6 +420,166 @@ export const useMonitoringStore = defineStore('monitoring', () => {
     config.value = { ...config.value, ...newConfig }
   }
 
+  // 新增方法
+  const fetchSystemMetrics = async () => {
+    loading.value = true
+    try {
+      // 模拟获取系统指标
+      const mockMetrics = generateMockMetrics()
+      mockMetrics.memory.free = mockMetrics.memory.total - mockMetrics.memory.used
+      mockMetrics.memory.usage = (mockMetrics.memory.used / mockMetrics.memory.total) * 100
+      mockMetrics.disk.free = mockMetrics.disk.total - mockMetrics.disk.used
+      mockMetrics.disk.usage = (mockMetrics.disk.used / mockMetrics.disk.total) * 100
+      
+      systemMetrics.value = mockMetrics
+      metricsHistory.value.push(mockMetrics)
+      
+      // 保持最近1000个数据点
+      if (metricsHistory.value.length > 1000) {
+        metricsHistory.value = metricsHistory.value.slice(-1000)
+      }
+      
+      lastUpdate.value = new Date()
+      
+      // 更新系统健康状态
+      systemHealth.value = {
+        status: systemStatus.value as any,
+        uptime: Math.floor(Date.now() / 1000) - 86400,
+        lastCheck: new Date(),
+        issues: criticalAlerts.value.map(alert => alert.message)
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const fetchServerMetrics = async () => {
+    loading.value = true
+    try {
+      // 模拟获取服务器指标
+      serverMetrics.value = {
+        requests: Math.floor(Math.random() * 1000),
+        responses: Math.floor(Math.random() * 1000),
+        errors: Math.floor(Math.random() * 10),
+        avgResponseTime: Math.random() * 100,
+        activeConnections: Math.floor(Math.random() * 50)
+      }
+      lastUpdate.value = new Date()
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const fetchLogs = async (options?: { limit?: number; level?: string }) => {
+    loading.value = true
+    try {
+      // 模拟获取日志
+      const mockLogs: LogEntry[] = []
+      const levels: LogEntry['level'][] = ['info', 'warn', 'error', 'debug']
+      const sources = ['system', 'api', 'database', 'auth']
+      
+      for (let i = 0; i < (options?.limit || 50); i++) {
+        const level = options?.level as LogEntry['level'] || levels[Math.floor(Math.random() * levels.length)]
+        mockLogs.push({
+          id: `log-${Date.now()}-${i}`,
+          timestamp: new Date(Date.now() - Math.random() * 86400000),
+          level,
+          message: `Sample ${level} message ${i + 1}`,
+          source: sources[Math.floor(Math.random() * sources.length)],
+          data: level === 'error' ? { stack: 'Error stack trace...' } : undefined
+        })
+      }
+      
+      logs.value = [...mockLogs, ...logs.value].slice(0, 1000)
+      lastUpdate.value = new Date()
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const setLogFilter = (filter: Partial<LogFilter>) => {
+    logFilter.value = { ...logFilter.value, ...filter }
+  }
+
+  const clearLogFilter = () => {
+    logFilter.value = {}
+  }
+
+  const exportLogs = async (format: 'json' | 'csv' = 'json') => {
+    const logsToExport = filteredLogs.value
+    
+    if (format === 'json') {
+      const dataStr = JSON.stringify(logsToExport, null, 2)
+      const dataBlob = new Blob([dataStr], { type: 'application/json' })
+      const url = URL.createObjectURL(dataBlob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `logs-${new Date().toISOString().split('T')[0]}.json`
+      link.click()
+      URL.revokeObjectURL(url)
+    } else {
+      const csvHeader = 'Timestamp,Level,Source,Message\n'
+      const csvContent = logsToExport.map(log => 
+        `${log.timestamp.toISOString()},${log.level},${log.source || ''},"${log.message.replace(/"/g, '""')}"`
+      ).join('\n')
+      
+      const dataBlob = new Blob([csvHeader + csvContent], { type: 'text/csv' })
+      const url = URL.createObjectURL(dataBlob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `logs-${new Date().toISOString().split('T')[0]}.csv`
+      link.click()
+      URL.revokeObjectURL(url)
+    }
+  }
+
+  const clearLogs = () => {
+    logs.value = []
+  }
+
+  const toggleRealTime = () => {
+    realTimeEnabled.value = !realTimeEnabled.value
+  }
+
+  const refreshAll = async () => {
+    await Promise.all([
+      fetchSystemMetrics(),
+      fetchServerMetrics(),
+      fetchLogs({ limit: 20 })
+    ])
+  }
+
+  const updateServerMetrics = (serverId: string, metrics: any) => {
+    // Update server-specific metrics
+    if (serverMetrics.value[serverId]) {
+      serverMetrics.value[serverId] = { ...serverMetrics.value[serverId], ...metrics }
+    } else {
+      serverMetrics.value[serverId] = metrics
+    }
+    lastUpdate.value = new Date()
+  }
+
+  const addLogEntry = (entry: LogEntry) => {
+    logs.value.unshift(entry)
+    // Keep only the latest 1000 logs
+    if (logs.value.length > 1000) {
+      logs.value = logs.value.slice(0, 1000)
+    }
+  }
+
+  const addLogEntries = (entries: LogEntry[]) => {
+      logs.value.unshift(...entries)
+      // Keep only the latest 1000 logs
+      if (logs.value.length > 1000) {
+        logs.value = logs.value.slice(0, 1000)
+      }
+    }
+
+    const updateSystemMetrics = (metrics: any) => {
+      systemMetrics.value = { ...systemMetrics.value, ...metrics }
+      lastUpdate.value = new Date()
+    }
+
   // 模拟数据生成器（用于演示）
   const generateMockMetrics = (): DetailedSystemMetrics => {
     const now = new Date()
@@ -334,7 +590,8 @@ export const useMonitoringStore = defineStore('monitoring', () => {
       cpu: {
         usage: Math.max(0, Math.min(100, baseLoad * 100 + (Math.random() - 0.5) * 30)),
         cores: 8,
-        temperature: 45 + Math.random() * 20
+        temperature: 45 + Math.random() * 20,
+        frequency: 2400 + Math.random() * 800 // 2.4-3.2 GHz
       },
       memory: {
         total: 16 * 1024 * 1024 * 1024, // 16GB
@@ -391,6 +648,16 @@ export const useMonitoringStore = defineStore('monitoring', () => {
     isConnected,
     isLoading,
     error,
+    systemMetrics,
+    serverMetrics,
+    systemHealth,
+    metricsHistory,
+    logs,
+    logFilter,
+    realTimeEnabled,
+      lastUpdate,
+      loading,
+      isMonitoring,
     
     // 计算属性
     cpuSeries,
@@ -402,6 +669,8 @@ export const useMonitoringStore = defineStore('monitoring', () => {
     criticalAlerts,
     warningAlerts,
     systemStatus,
+    filteredLogs,
+    logStats,
     
     // 方法
     connectWebSocket,
@@ -415,6 +684,19 @@ export const useMonitoringStore = defineStore('monitoring', () => {
     startMonitoring,
     stopMonitoring,
     updateConfig,
-    startMockData
-  }
+    startMockData,
+    fetchSystemMetrics,
+    fetchServerMetrics,
+    fetchLogs,
+    setLogFilter,
+    clearLogFilter,
+    exportLogs,
+    clearLogs,
+    toggleRealTime,
+    refreshAll,
+      updateServerMetrics,
+      updateSystemMetrics,
+      addLogEntry,
+      addLogEntries
+    }
 })

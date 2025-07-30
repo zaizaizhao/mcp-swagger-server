@@ -17,7 +17,8 @@ export const useOpenAPIStore = defineStore('openapi', () => {
   // 新增：解析结果状态
   const currentParsedResult = ref<{
     info: any;
-    paths: any[];
+    paths: Record<string, any>;
+    endpoints: any[];
     tools: any[];
     servers: any[];
     openapi: string;
@@ -387,7 +388,7 @@ export const useOpenAPIStore = defineStore('openapi', () => {
         appStore.addNotification({
           type: 'success',
           title: '解析成功',
-          message: `成功解析 ${response.data.paths?.length || 0} 个接口`,
+          message: `成功解析 ${response.data.endpoints?.length || 0} 个接口`,
           duration: 3000
         })
         clearError()
@@ -415,7 +416,7 @@ export const useOpenAPIStore = defineStore('openapi', () => {
         appStore.addNotification({
           type: 'success',
           title: '解析成功',
-          message: `成功解析 ${response.data.paths?.length || 0} 个接口`,
+          message: `成功解析 ${response.data.endpoints?.length || 0} 个接口`,
           duration: 3000
         })
         clearError()
@@ -443,7 +444,7 @@ export const useOpenAPIStore = defineStore('openapi', () => {
         appStore.addNotification({
           type: 'success',
           title: '文件解析成功',
-          message: `成功解析 ${response.data.paths?.length || 0} 个接口`,
+          message: `成功解析 ${response.data.endpoints?.length || 0} 个接口`,
           duration: 3000
         })
         clearError()
