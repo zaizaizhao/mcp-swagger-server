@@ -1,15 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AppConfigService } from '../../../config/app-config.service';
-
-// 假设mcp-swagger-parser的类型定义
-interface ParseResult {
-  spec: any;
-  validation: {
-    valid: boolean;
-    errors: any[];
-    warnings: any[];
-  };
-}
+import {
+  parseFromUrl as parserParseFromUrl,
+  parseFromFile as parserParseFromFile,
+  parseFromString as parserParseFromString,
+  validate as parserValidate,
+  parseAndTransform as parserParseAndTransform,
+  ParseResult,
+  ValidationResult,
+  ApiEndpoint,
+  ParsedApiSpec
+} from 'mcp-swagger-parser';
 
 interface ParserOptions {
   strictMode?: boolean;
@@ -31,26 +32,10 @@ export class ParserService {
     try {
       this.logger.log(`Parsing OpenAPI spec from URL: ${url}`);
       
-      // TODO: 使用mcp-swagger-parser
-      // const { parseFromUrl } = await import('mcp-swagger-parser');
-      // return await parseFromUrl(url, options);
+      const result = await parserParseFromUrl(url, options);
       
-      // 临时模拟实现
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch OpenAPI spec: ${response.statusText}`);
-      }
-      
-      const spec = await response.json();
-      
-      return {
-        spec,
-        validation: {
-          valid: true,
-          errors: [],
-          warnings: [],
-        },
-      };
+      this.logger.log(`Successfully parsed OpenAPI spec from URL: ${url}`);
+      return result;
       
     } catch (error) {
       this.logger.error(`Failed to parse OpenAPI spec from URL: ${url}`, error);
@@ -65,23 +50,10 @@ export class ParserService {
     try {
       this.logger.log(`Parsing OpenAPI spec from file: ${filePath}`);
       
-      // TODO: 使用mcp-swagger-parser
-      // const { parseFromFile } = await import('mcp-swagger-parser');
-      // return await parseFromFile(filePath, options);
+      const result = await parserParseFromFile(filePath, options);
       
-      // 临时模拟实现
-      const fs = await import('fs');
-      const fileContent = fs.readFileSync(filePath, 'utf8');
-      const spec = JSON.parse(fileContent);
-      
-      return {
-        spec,
-        validation: {
-          valid: true,
-          errors: [],
-          warnings: [],
-        },
-      };
+      this.logger.log(`Successfully parsed OpenAPI spec from file: ${filePath}`);
+      return result;
       
     } catch (error) {
       this.logger.error(`Failed to parse OpenAPI spec from file: ${filePath}`, error);
@@ -96,21 +68,10 @@ export class ParserService {
     try {
       this.logger.log('Parsing OpenAPI spec from string content');
       
-      // TODO: 使用mcp-swagger-parser
-      // const { parseFromString } = await import('mcp-swagger-parser');
-      // return await parseFromString(content, options);
+      const result = await parserParseFromString(content, options);
       
-      // 临时模拟实现
-      const spec = JSON.parse(content);
-      
-      return {
-        spec,
-        validation: {
-          valid: true,
-          errors: [],
-          warnings: [],
-        },
-      };
+      this.logger.log('Successfully parsed OpenAPI spec from string content');
+      return result;
       
     } catch (error) {
       this.logger.error('Failed to parse OpenAPI spec from string', error);
@@ -121,39 +82,39 @@ export class ParserService {
   /**
    * 验证OpenAPI规范
    */
-  async validateSpec(spec: any): Promise<{ valid: boolean; errors: any[]; warnings: any[] }> {
+  async validateSpec(spec: any): Promise<ValidationResult> {
     try {
       this.logger.log('Validating OpenAPI specification');
       
-      // TODO: 使用mcp-swagger-parser的验证功能
-      // const { validateSpec } = await import('mcp-swagger-parser');
-      // return await validateSpec(spec);
+      const result = await parserValidate(spec);
       
-      // 临时简单验证
-      const errors = [];
-      const warnings = [];
-      
-      if (!spec.openapi && !spec.swagger) {
-        errors.push({ path: 'root', message: 'Missing openapi or swagger version' });
-      }
-      
-      if (!spec.info) {
-        errors.push({ path: 'info', message: 'Missing info object' });
-      }
-      
-      if (!spec.paths) {
-        errors.push({ path: 'paths', message: 'Missing paths object' });
-      }
-      
-      return {
-        valid: errors.length === 0,
-        errors,
-        warnings,
-      };
+      this.logger.log(`Validation completed: ${result.valid ? 'valid' : 'invalid'} (${result.errors.length} errors, ${result.warnings.length} warnings)`);
+      return result;
       
     } catch (error) {
       this.logger.error('Failed to validate OpenAPI spec', error);
       throw new Error(`Validation failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * 使用mcp-swagger-parser的高层解析和转换功能
+   */
+  async parseAndTransform(input: string, inputType: 'url' | 'file' | 'content', options?: ParserOptions): Promise<any> {
+    try {
+      this.logger.log(`Parsing and transforming OpenAPI spec from ${inputType}`);
+      
+      const result = await parserParseAndTransform(input, {
+        isString: inputType === 'content',
+        isUrl: inputType === 'url'
+      });
+      
+      this.logger.log(`Successfully parsed and transformed OpenAPI spec from ${inputType}`);
+      return result;
+      
+    } catch (error) {
+      this.logger.error(`Failed to parse and transform OpenAPI spec from ${inputType}`, error);
+      throw new Error(`Parse and transform failed: ${error.message}`);
     }
   }
 
@@ -176,8 +137,8 @@ export class ParserService {
   /**
    * 提取API端点信息
    */
-  extractEndpoints(spec: any): any[] {
-    const endpoints = [];
+  extractEndpoints(spec: any): ApiEndpoint[] {
+    const endpoints: ApiEndpoint[] = [];
     
     if (!spec.paths) {
       return endpoints;
@@ -194,16 +155,16 @@ export class ParserService {
         if (typeof operation !== 'object' || operation === null) continue;
         
         endpoints.push({
-          method: method.toUpperCase(),
+          method: method.toUpperCase() as any,
           path,
           operationId: operation.operationId || `${method}_${path.replace(/[^a-zA-Z0-9]/g, '_')}`,
           summary: operation.summary,
           description: operation.description,
-          tags: operation.tags,
+          tags: operation.tags || [],
           deprecated: operation.deprecated || false,
-          parameters: operation.parameters,
+          parameters: operation.parameters || [],
           requestBody: operation.requestBody,
-          responses: operation.responses,
+          responses: operation.responses || {},
         });
       }
     }
@@ -224,13 +185,16 @@ export class ParserService {
       // 提取基本信息
       const info = this.extractApiInfo(normalized);
       
-      // 提取端点
-      const paths = this.extractEndpoints(normalized);
+      // 提取端点（用于生成工具和统计）
+      const endpoints = this.extractEndpoints(normalized);
       
       return {
         ...normalized,
         info,
-        paths,
+        // 保持原始的paths对象格式，符合OpenAPI规范
+        paths: normalized.paths || {},
+        // 添加解析后的端点数组，用于前端显示和工具生成
+        endpoints,
         servers: normalized.servers || [],
         components: normalized.components || {},
         openapi: normalized.openapi || normalized.swagger || '3.0.0',
@@ -250,12 +214,12 @@ export class ParserService {
       
       const tools = [];
       
-      if (!parsedSpec.paths || !Array.isArray(parsedSpec.paths)) {
-        this.logger.warn('No paths found in parsed specification');
+      if (!parsedSpec.endpoints || !Array.isArray(parsedSpec.endpoints)) {
+        this.logger.warn('No endpoints found in parsed specification');
         return tools;
       }
       
-      for (const endpoint of parsedSpec.paths) {
+      for (const endpoint of parsedSpec.endpoints) {
         const tool = {
           name: endpoint.operationId || `${endpoint.method.toLowerCase()}_${endpoint.path.replace(/[^a-zA-Z0-9]/g, '_')}`,
           description: endpoint.summary || endpoint.description || `${endpoint.method} ${endpoint.path}`,

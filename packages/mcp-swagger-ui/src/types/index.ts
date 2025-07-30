@@ -224,6 +224,7 @@ export interface User {
   id: string
   username: string
   email: string
+  avatar?: string
   status: 'active' | 'pending' | 'locked'
   emailVerified: boolean
   createdAt: string
@@ -418,6 +419,7 @@ export interface DetailedSystemMetrics {
     usage: number // 百分比
     cores: number
     temperature?: number
+    frequency?: number // MHz
   }
   memory: {
     total: number // bytes

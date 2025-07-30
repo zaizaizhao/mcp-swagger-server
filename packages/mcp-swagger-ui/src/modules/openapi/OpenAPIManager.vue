@@ -1196,7 +1196,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Plus, Upload, Link, Document, Search, MoreFilled, Edit, 
   DocumentCopy, Download, Delete, Operation, Tools, Check, 
-  DocumentChecked, UploadFilled, Folder, Setting
+  DocumentChecked, UploadFilled, Folder, Setting, Refresh
 } from '@element-plus/icons-vue'
 import type { UploadFile, FormInstance } from 'element-plus'
 import MonacoEditor from '../../shared/components/monaco/MonacoEditor.vue'
@@ -1652,7 +1652,7 @@ const confirmUpload = async () => {
     selectDocument(newDoc)
     handleUploadDialogClose()
     
-    ElMessage.success(`文档上传成功，解析出 ${parseResult.paths?.length || 0} 个接口`)
+    ElMessage.success(`文档上传成功，解析出 ${parseResult.endpoints?.length || 0} 个接口`)
   } catch (error) {
     ElMessage.error(`上传失败: ${error instanceof Error ? error.message : String(error)}`)
   } finally {
@@ -1744,7 +1744,7 @@ const importFromUrl = async () => {
       password: ''
     }
     
-    ElMessage.success(`文档导入成功，解析出 ${parseResult.paths?.length || 0} 个接口`)
+    ElMessage.success(`文档导入成功，解析出 ${parseResult.endpoints?.length || 0} 个接口`)
   } catch (error) {
     ElMessage.error(`导入失败: ${error instanceof Error ? error.message : String(error)}`)
   } finally {
