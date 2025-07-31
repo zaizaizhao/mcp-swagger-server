@@ -65,12 +65,8 @@ export const useServerStore = defineStore('server', () => {
     setLoading(true)
     try {
       const response = await serverAPI.getServers()
-      if (response.success && response.data) {
-        servers.value = response.data
-        clearError()
-      } else {
-        throw new Error(response.error || '获取服务器列表失败')
-      }
+      servers.value = response
+      clearError()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '获取服务器列表失败'
       setError(errorMessage)
@@ -85,19 +81,15 @@ export const useServerStore = defineStore('server', () => {
     setLoading(true)
     try {
       const response = await serverAPI.createServer(config)
-      if (response.success && response.data) {
-        servers.value.push(response.data)
-        appStore.addNotification({
-          type: 'success',
-          title: '服务器创建成功',
-          message: `服务器 "${config.name}" 已成功创建`,
-          duration: 3000
-        })
-        clearError()
-        return true
-      } else {
-        throw new Error(response.error || '创建服务器失败')
-      }
+      servers.value.push(response)
+      appStore.addNotification({
+        type: 'success',
+        title: '服务器创建成功',
+        message: `服务器 "${config.name}" 已成功创建`,
+        duration: 3000
+      })
+      clearError()
+      return true
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '创建服务器失败'
       setError(errorMessage)
@@ -113,22 +105,18 @@ export const useServerStore = defineStore('server', () => {
     setLoading(true)
     try {
       const response = await serverAPI.updateServer(id, config)
-      if (response.success && response.data) {
-        const index = servers.value.findIndex(s => s.id === id)
-        if (index > -1) {
-          servers.value[index] = response.data
-        }
-        appStore.addNotification({
-          type: 'success',
-          title: '服务器更新成功',
-          message: `服务器配置已更新`,
-          duration: 3000
-        })
-        clearError()
-        return true
-      } else {
-        throw new Error(response.error || '更新服务器失败')
+      const index = servers.value.findIndex(s => s.id === id)
+      if (index > -1) {
+        servers.value[index] = response
       }
+      appStore.addNotification({
+        type: 'success',
+        title: '服务器更新成功',
+        message: `服务器配置已更新`,
+        duration: 3000
+      })
+      clearError()
+      return true
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '更新服务器失败'
       setError(errorMessage)
@@ -144,29 +132,25 @@ export const useServerStore = defineStore('server', () => {
     setLoading(true)
     try {
       const response = await serverAPI.deleteServer(id)
-      if (response.success) {
-        const index = servers.value.findIndex(s => s.id === id)
-        if (index > -1) {
-          const serverName = servers.value[index].name
-          servers.value.splice(index, 1)
-          
-          // 如果删除的是当前选中的服务器，清除选择
-          if (selectedServerId.value === id) {
-            selectedServerId.value = null
-          }
-          
-          appStore.addNotification({
-            type: 'success',
-            title: '服务器删除成功',
-            message: `服务器 "${serverName}" 已删除`,
-            duration: 3000
-          })
+      const index = servers.value.findIndex(s => s.id === id)
+      if (index > -1) {
+        const serverName = servers.value[index].name
+        servers.value.splice(index, 1)
+        
+        // 如果删除的是当前选中的服务器，清除选择
+        if (selectedServerId.value === id) {
+          selectedServerId.value = null
         }
-        clearError()
-        return true
-      } else {
-        throw new Error(response.error || '删除服务器失败')
+        
+        appStore.addNotification({
+          type: 'success',
+          title: '服务器删除成功',
+          message: `服务器 "${serverName}" 已删除`,
+          duration: 3000
+        })
       }
+      clearError()
+      return true
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '删除服务器失败'
       setError(errorMessage)
@@ -182,24 +166,20 @@ export const useServerStore = defineStore('server', () => {
     setLoading(true)
     try {
       const response = await serverAPI.toggleServer(id, enabled)
-      if (response.success && response.data) {
-        const index = servers.value.findIndex(s => s.id === id)
-        if (index > -1) {
-          servers.value[index] = response.data
-        }
-        
-        const action = enabled ? '启动' : '停止'
-        appStore.addNotification({
-          type: 'success',
-          title: `服务器${action}成功`,
-          message: `服务器已${action}`,
-          duration: 3000
-        })
-        clearError()
-        return true
-      } else {
-        throw new Error(response.error || `${enabled ? '启动' : '停止'}服务器失败`)
+      const index = servers.value.findIndex(s => s.id === id)
+      if (index > -1) {
+        servers.value[index] = response
       }
+      
+      const action = enabled ? '启动' : '停止'
+      appStore.addNotification({
+        type: 'success',
+        title: `服务器${action}成功`,
+        message: `服务器已${action}`,
+        duration: 3000
+      })
+      clearError()
+      return true
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : `${enabled ? '启动' : '停止'}服务器失败`
       setError(errorMessage)
@@ -214,16 +194,12 @@ export const useServerStore = defineStore('server', () => {
   const fetchServerDetails = async (id: string): Promise<MCPServer | null> => {
     try {
       const response = await serverAPI.getServerDetails(id)
-      if (response.success && response.data) {
-        // 更新本地服务器数据
-        const index = servers.value.findIndex(s => s.id === id)
-        if (index > -1) {
-          servers.value[index] = response.data
-        }
-        return response.data
-      } else {
-        throw new Error(response.error || '获取服务器详情失败')
+      // 更新本地服务器数据
+      const index = servers.value.findIndex(s => s.id === id)
+      if (index > -1) {
+        servers.value[index] = response
       }
+      return response
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '获取服务器详情失败'
       setError(errorMessage)

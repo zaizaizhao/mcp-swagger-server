@@ -54,5 +54,8 @@ export default defineConfig({
   define: {
     // Monaco Editor 需要的全局变量
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV)
+  },
+  worker: {
+    format: 'es'
   }
 })

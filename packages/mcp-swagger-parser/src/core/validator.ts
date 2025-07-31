@@ -75,18 +75,28 @@ export class Validator {
     errors: ValidationError[],
     warnings: ValidationWarning[]
   ): void {
-    // Check required fields
-    if (!spec.openapi) {
+    // Check required fields - support both OpenAPI 3.x and Swagger 2.0
+    const hasOpenAPI = spec.openapi;
+    const hasSwagger = (spec as any).swagger;
+    
+    if (!hasOpenAPI && !hasSwagger) {
       errors.push({
-        path: 'openapi',
-        message: 'Missing required field: openapi',
+        path: 'openapi/swagger',
+        message: 'Missing required field: either "openapi" (for OpenAPI 3.x) or "swagger" (for Swagger 2.0) must be present',
         code: 'MISSING_REQUIRED_FIELD',
         severity: 'error'
       });
-    } else if (!spec.openapi.startsWith('3.')) {
+    } else if (hasOpenAPI && !hasOpenAPI.startsWith('3.')) {
       warnings.push({
         path: 'openapi',
         message: 'Only OpenAPI 3.x is fully supported',
+        code: 'UNSUPPORTED_VERSION',
+        severity: 'warning'
+      });
+    } else if (hasSwagger && hasSwagger !== '2.0') {
+      warnings.push({
+        path: 'swagger',
+        message: 'Only Swagger 2.0 is supported for legacy specifications',
         code: 'UNSUPPORTED_VERSION',
         severity: 'warning'
       });

@@ -58,7 +58,7 @@ api.interceptors.request.use(
 
 // 响应拦截器
 api.interceptors.response.use(
-  (response: AxiosResponse) => {
+  (response: AxiosResponse<any>):any => {
     // 计算请求耗时
     const endTime = Date.now()
     const startTime = (response.config as any).metadata?.startTime || endTime
@@ -74,10 +74,11 @@ api.interceptors.response.use(
       response.data._metadata = {
         requestId: response.config.headers['X-Request-ID'],
         duration,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        success:true
       }
     }
-    
+    // 返回 response.data 而不是完整的 response 对象
     return response
   },
   (error) => {
@@ -172,37 +173,37 @@ api.interceptors.response.use(
 
 export const serverAPI = {
   // 获取所有服务器
-  async getServers(): Promise<ApiResponse<MCPServer[]>> {
+  async getServers(): Promise<MCPServer[]> {
     const response = await api.get('/servers')
     return response.data
   },
 
   // 创建服务器
-  async createServer(config: ServerConfig): Promise<ApiResponse<MCPServer>> {
+  async createServer(config: ServerConfig): Promise<MCPServer> {
     const response = await api.post('/servers', config)
     return response.data
   },
 
   // 更新服务器
-  async updateServer(id: string, config: Partial<ServerConfig>): Promise<ApiResponse<MCPServer>> {
+  async updateServer(id: string, config: Partial<ServerConfig>): Promise<MCPServer> {
     const response = await api.put(`/servers/${id}`, config)
     return response.data
   },
 
   // 删除服务器
-  async deleteServer(id: string): Promise<ApiResponse<void>> {
+  async deleteServer(id: string): Promise<void> {
     const response = await api.delete(`/servers/${id}`)
     return response.data
   },
 
   // 启动/停止服务器
-  async toggleServer(id: string, enabled: boolean): Promise<ApiResponse<MCPServer>> {
+  async toggleServer(id: string, enabled: boolean): Promise<MCPServer> {
     const response = await api.post(`/servers/${id}/toggle`, { enabled })
     return response.data
   },
 
   // 获取服务器详情
-  async getServerDetails(id: string): Promise<ApiResponse<MCPServer>> {
+  async getServerDetails(id: string): Promise<MCPServer> {
     const response = await api.get(`/servers/${id}`)
     return response.data
   }
@@ -214,7 +215,7 @@ export const serverAPI = {
 
 export const openApiAPI = {
   // 获取所有规范
-  async getSpecs(): Promise<ApiResponse<OpenAPISpec[]>> {
+  async getSpecs(): Promise<OpenAPISpec[]> {
     const response = await api.get('/openapi/specs')
     return response.data
   },
@@ -225,7 +226,7 @@ export const openApiAPI = {
     version: string
     description?: string
     template?: string
-  }): Promise<ApiResponse<OpenAPISpec>> {
+  }): Promise<OpenAPISpec> {
     const response = await api.post('/openapi/specs', config)
     return response.data
   },
@@ -235,7 +236,7 @@ export const openApiAPI = {
     name: string
     content: string
     fileName?: string
-  }): Promise<ApiResponse<OpenAPISpec>> {
+  }): Promise<OpenAPISpec> {
     const response = await api.post('/openapi/specs/content', config)
     return response.data
   },
@@ -248,37 +249,37 @@ export const openApiAPI = {
     token?: string
     username?: string
     password?: string
-  }): Promise<ApiResponse<OpenAPISpec>> {
+  }): Promise<OpenAPISpec> {
     const response = await api.post('/openapi/specs/import', config)
     return response.data
   },
 
   // 获取规范内容
-  async getSpecContent(id: string): Promise<ApiResponse<string>> {
+  async getSpecContent(id: string): Promise<string> {
     const response = await api.get(`/openapi/specs/${id}/content`)
     return response.data
   },
 
   // 更新规范内容
-  async updateSpecContent(id: string, content: string): Promise<ApiResponse<OpenAPISpec>> {
+  async updateSpecContent(id: string, content: string): Promise<OpenAPISpec> {
     const response = await api.put(`/openapi/specs/${id}/content`, { content })
     return response.data
   },
 
   // 复制规范
-  async duplicateSpec(id: string): Promise<ApiResponse<OpenAPISpec>> {
+  async duplicateSpec(id: string): Promise<OpenAPISpec> {
     const response = await api.post(`/openapi/specs/${id}/duplicate`)
     return response.data
   },
 
   // 删除规范
-  async deleteSpec(id: string): Promise<ApiResponse<void>> {
+  async deleteSpec(id: string): Promise<void> {
     const response = await api.delete(`/openapi/specs/${id}`)
     return response.data
   },
 
   // 上传OpenAPI文件
-  async uploadSpec(file: File): Promise<ApiResponse<OpenAPISpec>> {
+  async uploadSpec(file: File): Promise<OpenAPISpec> {
     const formData = new FormData()
     formData.append('file', file)
     const response = await api.post('/openapi/upload', formData, {
@@ -288,13 +289,13 @@ export const openApiAPI = {
   },
 
   // 从URL获取OpenAPI规范
-  async fetchFromUrl(url: string): Promise<ApiResponse<OpenAPISpec>> {
+  async fetchFromUrl(url: string): Promise<OpenAPISpec> {
     const response = await api.post('/openapi/url', { url })
     return response.data
   },
 
   // 验证OpenAPI规范（支持字符串内容）
-  async validateSpec(content: string): Promise<ApiResponse<ValidationResult>> {
+  async validateSpec(content: string): Promise<ValidationResult> {
     const response = await api.post('/openapi/validate', {
       source: {
         type: 'content',
@@ -305,129 +306,129 @@ export const openApiAPI = {
   },
 
   // 上传并解析OpenAPI文件
-  async uploadAndParseSpec(file: File): Promise<ApiResponse<{
-    info: any;
-    paths: Record<string, any>;
-    endpoints: any[];
-    tools: any[];
-    servers: any[];
-    openapi: string;
-    components: any;
-    parsedAt: string;
-    parseId?: string;
-  }>> {
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      const response = await api.post('/openapi/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      })
-      // 后端直接返回OpenAPIResponseDto，需要包装成ApiResponse格式
-      return {
-        success: true,
-        data: response.data,
-        error: undefined
-      }
-    } catch (error: any) {
-      return {
-        success: false,
-        data: undefined,
-        error: error.response?.data?.message || error.message || '文件上传失败'
-      }
-    }
-  },
+  // async uploadAndParseSpec(file: File): Promise<{
+  //   info: any;
+  //   paths: Record<string, any>;
+  //   endpoints: any[];
+  //   tools: any[];
+  //   servers: any[];
+  //   openapi: string;
+  //   components: any;
+  //   parsedAt: string;
+  //   parseId?: string;
+  //   success?:boolean
+  // }> {
+  //   try {
+  //     const formData = new FormData()
+  //     formData.append('file', file)
+  //     const response = await api.post('/openapi/upload', formData, {
+  //       headers: { 'Content-Type': 'multipart/form-data' }
+  //     })
+  //     // 后端直接返回OpenAPIResponseDto，需要包装成ApiResponse格式
+  //     return {
+  //       success: true,
+  //         ...response
+  //     }
+  //   } catch (error: any) {
+  //     return {
+  //       success: false,
+  //       data: undefined,
+  //       error: error.response?.data?.message || error.message || '文件上传失败'
+  //     }
+  //   }
+  // },
 
   // 上传并验证OpenAPI文件
-  async uploadAndValidateSpec(file: File): Promise<ApiResponse<{
-    valid: boolean;
-    errors: string[];
-    warnings: string[];
-  }>> {
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      const response = await api.post('/openapi/validate-upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      })
-      // 后端直接返回验证结果，需要包装成ApiResponse格式
-      return {
-        success: true,
-        data: response.data,
-        error: undefined
-      }
-    } catch (error: any) {
-      return {
-        success: false,
-        data: undefined,
-        error: error.response?.data?.message || error.message || '文件验证失败'
-      }
-    }
-  },
+  // async uploadAndValidateSpec(file: File): Promise<{
+  //   valid: boolean;
+  //   errors: string[];
+  //   warnings: string[];
+  // }> {
+  //   try {
+  //     const formData = new FormData()
+  //     formData.append('file', file)
+  //     const response = await api.post('/openapi/validate-upload', formData, {
+  //       headers: { 'Content-Type': 'multipart/form-data' }
+  //     })
+  //     // 后端直接返回验证结果，需要包装成ApiResponse格式
+  //     return {
+  //       success: response.data.success,
+  //       data: response.data,
+  //       error: undefined
+  //     }
+  //   } catch (error: any) {
+  //     return {
+  //       success: false,
+  //       data: undefined,
+  //       error: error.response?.data?.message || error.message || '文件验证失败'
+  //     }
+  //   }
+  // },
 
   // 从URL验证OpenAPI规范
-  async validateSpecFromUrl(url: string): Promise<ApiResponse<{
-    valid: boolean;
-    errors: string[];
-    warnings: string[];
-  }>> {
-    try {
-      const response = await api.get('/openapi/validate-url', {
-        params: { url }
-      })
-      // 后端直接返回验证结果，需要包装成ApiResponse格式
-      return {
-        success: true,
-        data: response.data,
-        error: undefined
-      }
-    } catch (error: any) {
-      return {
-        success: false,
-        data: undefined,
-        error: error.response?.data?.message || error.message || 'URL验证失败'
-      }
-    }
-  },
+  // async validateSpecFromUrl(url: string): Promise<{
+  //   valid: boolean;
+  //   errors: string[];
+  //   warnings: string[];
+  // }> {
+  //   try {
+  //     const response = await api.get('/openapi/validate-url', {
+  //       params: { url }
+  //     })
+  //     // 后端直接返回验证结果，需要包装成ApiResponse格式
+  //     return {
+  //       success: true,
+  //       data: response.data,
+  //       error: undefined
+  //     }
+  //   } catch (error: any) {
+  //     return {
+  //       success: false,
+  //       data: undefined,
+  //       error: error.response?.data?.message || error.message || 'URL验证失败'
+  //     }
+  //   }
+  // },
 
   // 从URL解析OpenAPI规范
-  async parseSpecFromUrl(url: string): Promise<ApiResponse<{
-    info: any;
-    paths: Record<string, any>;
-    endpoints: any[];
-    tools: any[];
-    servers: any[];
-    openapi: string;
-    components: any;
-    parsedAt: string;
-    parseId?: string;
-  }>> {
-    try {
-      const response = await api.get('/openapi/parse-url', {
-        params: { url }
-      })
-      // 后端直接返回OpenAPIResponseDto，需要包装成ApiResponse格式
-      return {
-        success: true,
-        data: response.data,
-        error: undefined
-      }
-    } catch (error: any) {
-      return {
-        success: false,
-        data: undefined,
-        error: error.response?.data?.message || error.message || 'URL解析失败'
-      }
-    }
-  },
+  // async parseSpecFromUrl(url: string): Promise<{
+  //   info: any;
+  //   paths: Record<string, any>;
+  //   endpoints: any[];
+  //   tools: any[];
+  //   servers: any[];
+  //   openapi: string;
+  //   components: any;
+  //   parsedAt: string;
+  //   parseId?: string;
+  // }> {
+  //   try {
+  //     const response = await api.get('/openapi/parse-url', {
+  //       params: { url }
+  //     })
+  //     // 后端直接返回OpenAPIResponseDto，需要包装成ApiResponse格式
+  //     return {
+  //       success: true,
+  //       data: response.data,
+  //       error: undefined
+  //     }
+  //   } catch (error: any) {
+  //     return {
+  //       success: false,
+  //       data: undefined,
+  //       error: error.response?.data?.message || error.message || 'URL解析失败'
+  //     }
+  //   }
+  // },
 
   // 转换为MCP工具
-  async convertToMCP(spec: OpenAPISpec): Promise<ApiResponse<MCPTool[]>> {
-    const response = await api.post('/openapi/convert', spec)
+  async convertToMCP(id: string): Promise<MCPTool[]> {
+    const response = await api.post(`/openapi/specs/${id}/convert`)
     return response.data
   },
 
   // 新增：解析 OpenAPI JSON 内容
-  async parseOpenAPIContent(content: string): Promise<ApiResponse<{
+  async parseOpenAPIContent(content: string): Promise<{
     info: any;
     paths: Record<string, any>;
     endpoints: any[];
@@ -437,18 +438,18 @@ export const openApiAPI = {
     components: any;
     parsedAt: string;
     parseId?: string;
-  }>> {
+  }> {
     const response = await api.post('/openapi/parse', {
       source: {
         type: 'content',
-        content: content
+        content: JSON.stringify(content)
       }
     })
     return response.data
   },
 
   // 新增：从 URL 解析 OpenAPI
-  async parseOpenAPIFromUrl(url: string, authHeaders?: Record<string, string>): Promise<ApiResponse<{
+  async parseOpenAPIFromUrl(url: string, authHeaders?: Record<string, string>): Promise<{
     info: any;
     paths: Record<string, any>;
     endpoints: any[];
@@ -458,7 +459,7 @@ export const openApiAPI = {
     components: any;
     parsedAt: string;
     parseId?: string;
-  }>> {
+  }> {
     const response = await api.post('/openapi/parse', {
       source: {
         type: 'url',
@@ -472,17 +473,51 @@ export const openApiAPI = {
   },
 
   // 新增：验证 OpenAPI 规范
-  async validateOpenAPIContent(content: string): Promise<ApiResponse<{
-    valid: boolean;
-    errors: string[];
-    warnings: string[];
-  }>> {
+  async validateOpenAPIContent(content: string): Promise<ValidationResult> {
     const response = await api.post('/openapi/validate', {
       source: {
         type: 'content',
         content: content
       }
     })
+    console.log("respomse",response);
+    
+    return response.data
+  },
+
+  // 上传并解析OpenAPI文件
+  async uploadAndParseSpec(file: File): Promise<{
+    info: any;
+    paths: Record<string, any>;
+    endpoints: any[];
+    tools: any[];
+    servers: any[];
+    openapi: string;
+    components: any;
+    parsedAt: string;
+    parseId?: string;
+  }> {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await api.post('/openapi/upload-parse', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    return response.data
+  },
+
+  // 上传并验证OpenAPI文件
+  async uploadAndValidateSpec(file: File): Promise<ValidationResult> {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await api.post('/openapi/upload-validate', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    return response.data
+  },
+
+  // 从URL验证OpenAPI规范
+  async validateSpecFromUrl(url: string): Promise<ValidationResult> {
+    const response = await api.post('/openapi/validate-url', { url })
     return response.data
   }
 }
@@ -493,13 +528,13 @@ export const openApiAPI = {
 
 export const monitoringAPI = {
   // 获取系统指标
-  async getMetrics(): Promise<ApiResponse<SystemMetrics>> {
+  async getMetrics(): Promise<SystemMetrics> {
     const response = await api.get('/metrics')
     return response.data
   },
 
   // 获取服务器指标
-  async getServerMetrics(serverId: string): Promise<ApiResponse<SystemMetrics>> {
+  async getServerMetrics(serverId: string): Promise<SystemMetrics> {
     const response = await api.get(`/metrics/servers/${serverId}`)
     return response.data
   }
@@ -511,25 +546,25 @@ export const monitoringAPI = {
 
 export const testingAPI = {
   // 执行工具调用
-  async executeTool(toolId: string, parameters: any): Promise<ApiResponse<ToolResult>> {
+  async executeTool(toolId: string, parameters: any): Promise<ToolResult> {
     const response = await api.post(`/tools/${toolId}/execute`, { parameters })
     return response.data
   },
 
   // 获取测试用例
-  async getTestCases(): Promise<ApiResponse<TestCase[]>> {
+  async getTestCases(): Promise<TestCase[]> {
     const response = await api.get('/test-cases')
     return response.data
   },
 
   // 保存测试用例
-  async saveTestCase(testCase: Omit<TestCase, 'id' | 'createdAt' | 'updatedAt'>): Promise<ApiResponse<TestCase>> {
+  async saveTestCase(testCase: Omit<TestCase, 'id' | 'createdAt' | 'updatedAt'>): Promise<TestCase> {
     const response = await api.post('/test-cases', testCase)
     return response.data
   },
 
   // 删除测试用例
-  async deleteTestCase(id: string): Promise<ApiResponse<void>> {
+  async deleteTestCase(id: string): Promise<void> {
     const response = await api.delete(`/test-cases/${id}`)
     return response.data
   }
@@ -541,49 +576,49 @@ export const testingAPI = {
 
 export const userAuthAPI = {
   // 用户登录
-  async login(credentials: { username: string; password: string }): Promise<ApiResponse<{ accessToken: string; refreshToken: string; user: any }>> {
+  async login(credentials: { username: string; password: string }): Promise<{ accessToken: string; refreshToken: string; user: any }> {
     const response = await api.post('/auth/login', credentials)
     return response.data
   },
 
   // 用户注册
-  async register(userData: { username: string; email: string; password: string }): Promise<ApiResponse<{ user: any; message: string }>> {
+  async register(userData: { username: string; email: string; password: string }): Promise<{ user: any; message: string }> {
     const response = await api.post('/auth/register', userData)
     return response.data
   },
 
   // 获取当前用户信息
-  async getCurrentUser(): Promise<ApiResponse<any>> {
+  async getCurrentUser(): Promise<any> {
     const response = await api.get('/auth/me')
     return response.data
   },
 
   // 刷新token
-  async refreshToken(refreshToken: string): Promise<ApiResponse<{ accessToken: string; refreshToken: string }>> {
+  async refreshToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
     const response = await api.post('/auth/refresh', { refreshToken })
     return response.data
   },
 
   // 用户登出
-  async logout(): Promise<ApiResponse<void>> {
+  async logout(): Promise<void> {
     const response = await api.post('/auth/logout')
     return response.data
   },
 
   // 邮箱验证
-  async verifyEmail(token: string): Promise<ApiResponse<{ message: string }>> {
+  async verifyEmail(token: string): Promise<{ message: string }> {
     const response = await api.post('/auth/verify-email', { token })
     return response.data
   },
 
   // 重置密码请求
-  async requestPasswordReset(email: string): Promise<ApiResponse<{ message: string }>> {
+  async requestPasswordReset(email: string): Promise<{ message: string }> {
     const response = await api.post('/auth/forgot-password', { email })
     return response.data
   },
 
   // 重置密码
-  async resetPassword(token: string, newPassword: string): Promise<ApiResponse<{ message: string }>> {
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
     const response = await api.post('/auth/reset-password', { token, newPassword })
     return response.data
   }
@@ -595,25 +630,25 @@ export const userAuthAPI = {
 
 export const authAPI = {
   // 验证认证配置
-  async validateAuth(config: AuthConfig): Promise<ApiResponse<{ valid: boolean; message: string }>> {
+  async validateAuth(config: AuthConfig): Promise<{ valid: boolean; message: string }> {
     const response = await api.post('/auth/validate', config)
     return response.data
   },
 
   // 测试认证连接
-  async testAuth(config: AuthConfig): Promise<ApiResponse<AuthTestResult>> {
+  async testAuth(config: AuthConfig): Promise<AuthTestResult> {
     const response = await api.post('/auth/test', config)
     return response.data
   },
 
   // 加密凭据
-  async encryptCredentials(credentials: any): Promise<ApiResponse<string>> {
+  async encryptCredentials(credentials: any): Promise<string> {
     const response = await api.post('/auth/encrypt', { credentials })
     return response.data
   },
 
   // 清除认证信息
-  async clearCredentials(serverId: string): Promise<ApiResponse<void>> {
+  async clearCredentials(serverId: string): Promise<void> {
     const response = await api.delete(`/auth/credentials/${serverId}`)
     return response.data
   }
@@ -625,13 +660,13 @@ export const authAPI = {
 
 export const configAPI = {
   // 导出配置
-  async exportConfig(options: ExportOptions): Promise<ApiResponse<ConfigFile>> {
+  async exportConfig(options: ExportOptions): Promise<ConfigFile> {
     const response = await api.post('/config/export', options)
     return response.data
   },
 
   // 导入配置
-  async importConfig(file: File): Promise<ApiResponse<ImportResult>> {
+  async importConfig(file: File): Promise<ImportResult> {
     const formData = new FormData()
     formData.append('file', file)
     const response = await api.post('/config/import', formData, {
@@ -641,7 +676,7 @@ export const configAPI = {
   },
 
   // 验证配置
-  async validateConfig(config: any): Promise<ApiResponse<{ valid: boolean; errors: any[] }>> {
+  async validateConfig(config: any): Promise<{ valid: boolean; errors: any[] }> {
     const response = await api.post('/config/validate', config)
     return response.data
   }
@@ -653,13 +688,13 @@ export const configAPI = {
 
 export const logsAPI = {
   // 获取日志
-  async getLogs(filter?: LogFilter): Promise<ApiResponse<LogEntry[]>> {
+  async getLogs(filter?: LogFilter): Promise<LogEntry[]> {
     const response = await api.get('/logs', { params: filter })
     return response.data
   },
 
   // 导出日志
-  async exportLogs(filter?: LogFilter): Promise<ApiResponse<Blob>> {
+  async exportLogs(filter?: LogFilter): Promise<Blob> {
     const response = await api.get('/logs/export', { 
       params: filter,
       responseType: 'blob'
@@ -674,25 +709,25 @@ export const logsAPI = {
 
 export const aiAPI = {
   // 获取AI助手类型
-  async getAssistantTypes(): Promise<ApiResponse<AIAssistantType[]>> {
+  async getAssistantTypes(): Promise<AIAssistantType[]> {
     const response = await api.get('/ai/assistants')
     return response.data
   },
 
   // 生成配置
-  async generateConfig(type: string, options: ConfigOptions): Promise<ApiResponse<string>> {
+  async generateConfig(type: string, options: ConfigOptions): Promise<string> {
     const response = await api.post('/ai/generate-config', { type, options })
     return response.data
   },
 
   // 获取配置模板
-  async getTemplates(): Promise<ApiResponse<ConfigTemplate[]>> {
+  async getTemplates(): Promise<ConfigTemplate[]> {
     const response = await api.get('/ai/templates')
     return response.data
   },
 
   // 保存配置模板
-  async saveTemplate(template: Omit<ConfigTemplate, 'id' | 'createdAt'>): Promise<ApiResponse<ConfigTemplate>> {
+  async saveTemplate(template: Omit<ConfigTemplate, 'id' | 'createdAt'>): Promise<ConfigTemplate> {
     const response = await api.post('/ai/templates', template)
     return response.data
   }
