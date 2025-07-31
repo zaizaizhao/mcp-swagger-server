@@ -61,14 +61,8 @@ export class AuthController {
     const ipAddress = this.getClientIp(req);
     const userAgent = req.get('User-Agent') || '';
 
-    const result = await this.authService.login(loginDto, ipAddress, userAgent);
-    
-    return {
-      success: true,
-      data: result,
-      message: '登录成功',
-      timestamp: new Date().toISOString()
-    };
+    return await this.authService.login(loginDto, ipAddress, userAgent);
+
   }
 
   @Public()
@@ -113,14 +107,8 @@ export class AuthController {
     const ipAddress = this.getClientIp(req);
     const userAgent = req.get('User-Agent') || '';
 
-    const result = await this.authService.refreshToken(refreshToken, ipAddress, userAgent);
+    return await this.authService.refreshToken(refreshToken, ipAddress, userAgent);
     
-    return {
-      success: true,
-      data: result,
-      message: '令牌刷新成功',
-      timestamp: new Date().toISOString()
-    };
   }
 
   @Post('logout')
@@ -136,16 +124,11 @@ export class AuthController {
     @CurrentUser() user: User,
     @Body('refreshToken') refreshToken: string,
     @Req() req: Request,
-  ): Promise<OperationResultDto> {
+  ): Promise<any> {
     const ipAddress = this.getClientIp(req);
     const userAgent = req.get('User-Agent') || '';
 
-    await this.authService.logout(user.id, refreshToken, ipAddress, userAgent);
-
-    return {
-      success: true,
-      message: '登出成功',
-    };
+    return this.authService.logout(user.id, refreshToken, ipAddress, userAgent);
   }
 
   @Public()
@@ -160,15 +143,11 @@ export class AuthController {
   async forgotPassword(
     @Body() forgotPasswordDto: ForgotPasswordDto,
     @Req() req: Request,
-  ): Promise<OperationResultDto> {
+  ): Promise<any> {
     const ipAddress = this.getClientIp(req);
 
-    await this.authService.forgotPassword(forgotPasswordDto, ipAddress);
+    return this.authService.forgotPassword(forgotPasswordDto, ipAddress);
 
-    return {
-      success: true,
-      message: '如果邮箱存在，密码重置邮件已发送',
-    };
   }
 
   @Public()
@@ -186,15 +165,10 @@ export class AuthController {
   async verifyEmail(
     @Query('token') token: string,
     @Req() req: Request,
-  ): Promise<OperationResultDto> {
+  ): Promise<any> {
     const ipAddress = this.getClientIp(req);
 
-    await this.authService.verifyEmail(token, ipAddress);
-
-    return {
-      success: true,
-      message: '邮箱验证成功',
-    };
+    return this.authService.verifyEmail(token, ipAddress);
   }
 
   @Get('me')
@@ -209,14 +183,8 @@ export class AuthController {
   async getCurrentUser(
     @CurrentUser() user: User,
   ): Promise<any> {
-    const userData = await this.authService.getCurrentUser(user.id);
-    
-    return {
-      success: true,
-      data: userData,
-      message: '获取用户信息成功',
-      timestamp: new Date().toISOString()
-    };
+    return await this.authService.getCurrentUser(user.id);
+  
   }
 
   @Get('check-permission')

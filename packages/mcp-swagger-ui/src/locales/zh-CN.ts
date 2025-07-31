@@ -567,6 +567,9 @@ export default {
       accountDisabled: '账户已被禁用',
       sessionExpired: '会话已过期，请重新登录'
     },
+    messages: {
+      loginSuccess:"登录成功"
+    },
 
     // 注册页面
     register: {

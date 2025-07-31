@@ -144,6 +144,29 @@ export interface OpenAPISpec {
   validationErrors?: ValidationError[]
 }
 
+export interface ParsedOpenAPISpec {
+  info: any
+  paths: Record<string, any>
+  endpoints: any[]
+  tools: any[]
+  servers: any[]
+  openapi: string
+  components: any
+  parsedAt: string
+  parseId?: string
+}
+
+export interface MCPConfig {
+  name: string
+  version: string
+  description?: string
+  tools: MCPTool[]
+  servers: any[]
+  transport?: 'streamable' | 'sse' | 'stdio'
+  port?: number
+  metadata?: Record<string, any>
+}
+
 // ============================================================================
 // MCP 工具相关类型
 // ============================================================================

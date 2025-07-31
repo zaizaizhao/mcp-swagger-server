@@ -186,7 +186,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
@@ -265,11 +265,20 @@ const handleSubmit = async () => {
     username: form.value.username,
     password: form.value.password
   })
+  console.log("success",success);
   
   if (success) {
-    // 登录成功，跳转到首页或之前访问的页面
-    const redirect = router.currentRoute.value.query.redirect as string
-    router.push(redirect || '/dashboard')
+    // 登录成功，等待一个tick确保状态完全更新后再跳转
+    await nextTick()
+    console.log(authStore.isAuthenticated);
+    
+    // 再次确认认证状态
+    if (authStore.isAuthenticated) {
+      const redirect = router.currentRoute.value.query.redirect as string
+      router.push(redirect || '/dashboard')
+    } else {
+      console.warn('登录成功但认证状态未正确设置')
+    }
   }
 }
 

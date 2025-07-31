@@ -202,8 +202,9 @@
               <div v-show="activeTab === 'editor'" class="editor-container" style="height: 100%;">
                 <MonacoEditor
                   v-model="editorContent"
-                  language="yaml"
+                  :language="detectLanguage(editorContent)"
                   :height="600"
+                  :options="editorOptions"
                   @change="handleContentChange"
                 />
               </div>
@@ -1311,14 +1312,39 @@ const urlFormRules = {
 }
 
 // Monaco编辑器选项
-const editorOptions = {
+const editorOptions: any = {
   theme: 'vs-dark',
   fontSize: 14,
   minimap: { enabled: false },
   scrollBeyondLastLine: false,
   automaticLayout: true,
   tabSize: 2,
-  wordWrap: 'on' as const
+  wordWrap: 'on' as const,
+  // 支持大型文件
+  largeFileOptimizations: false,
+  // 大幅增加内容长度限制 - 提升到更大的值
+  maxTokenizationLineLength: 500000,
+  // 提高渲染性能
+  renderValidationDecorations: 'on',
+  // 支持更多行数渲染 - 大幅提升行数限制
+  stopRenderingLineAfter: 200000,
+  // 禁用语法检查以提高性能
+  validate: false,
+  // 增加滚动性能
+  smoothScrolling: true,
+  // 禁用不必要的功能以提高性能
+  folding: false,
+  lineNumbers: 'on',
+  // 增加更多大文件支持配置
+  scrollbar: {
+    vertical: 'auto',
+    horizontal: 'auto',
+    handleMouseWheel: true
+  },
+  // 禁用代码折叠以提高性能
+  glyphMargin: false,
+  // 优化大文件渲染
+  renderLineHighlight: 'none'
 }
 
 // 计算属性
@@ -1333,6 +1359,17 @@ const filteredDocuments = computed(() => {
 })
 
 // 方法
+const detectLanguage = (content: string) => {
+  if (!content.trim()) return 'yaml'
+  
+  try {
+    JSON.parse(content)
+    return 'json'
+  } catch {
+    return 'yaml'
+  }
+}
+
 const formatDate = (date: Date | string) => {
   const dateObj = typeof date === 'string' ? new Date(date) : date
   return new Intl.DateTimeFormat('zh-CN', {
@@ -1526,8 +1563,6 @@ const validateSpec = async () => {
   }
 }
 
-// downloadSpec 函数已在上面定义，删除重复声明
-
 const createNewSpec = async () => {
   if (!createFormRef.value) return
   
@@ -1620,6 +1655,8 @@ paths:
 const handleFileChange = (file: UploadFile) => {
   uploadFile.value = file.raw || null
   if (uploadFile.value) {
+    console.log("uploadFile.value", uploadFile.value);
+    
     uploadForm.value.name = uploadFile.value.name.replace(/\.[^/.]+$/, '')
   }
 }
@@ -1635,24 +1672,23 @@ const confirmUpload = async () => {
   
   uploading.value = true
   try {
-    // 使用新的文件上传API
-    const parseResult = await openApiStore.uploadAndParseSpec(uploadFile.value)
+    // 直接读取文件内容，不调用后端接口
+    const rawContent = await readFileContent(uploadFile.value)
     
     const newDoc = {
       id: Date.now().toString(),
       name: uploadForm.value.name,
       description: uploadForm.value.description,
-      content: JSON.stringify(parseResult, null, 2),
+      content: rawContent,
       uploadTime: new Date(),
-      status: 'valid',
-      parsedData: parseResult
+      status: 'pending' // 设置为待验证状态
     }
     
     documents.value.push(newDoc)
     selectDocument(newDoc)
     handleUploadDialogClose()
     
-    ElMessage.success(`文档上传成功，解析出 ${parseResult.endpoints?.length || 0} 个接口`)
+    ElMessage.success('文档上传成功，请点击验证按钮进行验证')
   } catch (error) {
     ElMessage.error(`上传失败: ${error instanceof Error ? error.message : String(error)}`)
   } finally {
@@ -1696,7 +1732,6 @@ const convertToMCP = async () => {
       ElMessage.error('当前规范验证失败，请先修复错误')
       return
     }
-    
     // 解析内容并获取工具
     const parseResult = await openApiStore.parseOpenAPIContent(editorContent.value)
     mcpTools.value = parseResult.tools || []
@@ -1717,17 +1752,29 @@ const importFromUrl = async () => {
     await urlFormRef.value.validate()
     importing.value = true
     
-    // 使用新的后端URL解析API
-    const parseResult = await openApiStore.parseOpenAPIFromUrl(urlForm.value.url)
+    // 直接获取URL内容，不调用后端解析接口
+    const rawContentResponse = await fetch(urlForm.value.url)
+    if (!rawContentResponse.ok) {
+      throw new Error(`HTTP ${rawContentResponse.status}: ${rawContentResponse.statusText}`)
+    }
+    let rawContent = await rawContentResponse.text()
+    
+    // 尝试格式化JSON内容
+    try {
+      const jsonContent = JSON.parse(rawContent)
+      rawContent = JSON.stringify(jsonContent, null, 2)
+    } catch (e) {
+      // 如果不是JSON格式，保持原样（可能是YAML）
+      console.log('Content is not JSON, keeping original format')
+    }
     
     const newDoc = {
       id: Date.now().toString(),
-      name: urlForm.value.name || parseResult.info?.title || 'imported_spec',
-      description: parseResult.info?.description || '从URL导入的文档',
-      content: JSON.stringify(parseResult, null, 2),
+      name: urlForm.value.name || 'imported_spec',
+      description: '从URL导入的文档',
+      content: rawContent,
       uploadTime: new Date(),
-      status: 'valid',
-      parsedData: parseResult
+      status: 'pending' // 设置为待验证状态
     }
     
     documents.value.push(newDoc)
@@ -1744,7 +1791,7 @@ const importFromUrl = async () => {
       password: ''
     }
     
-    ElMessage.success(`文档导入成功，解析出 ${parseResult.endpoints?.length || 0} 个接口`)
+    ElMessage.success('文档导入成功，请点击验证按钮进行验证')
   } catch (error) {
     ElMessage.error(`导入失败: ${error instanceof Error ? error.message : String(error)}`)
   } finally {

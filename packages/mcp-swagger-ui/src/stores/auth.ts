@@ -100,26 +100,22 @@ export const useAuthStore = defineStore('auth', () => {
     
     try {
       const response = await userAuthAPI.login(credentials)
+      console.log("login response ",response);
       
-      if (response.success && response.data) {
-        setTokens({
-          accessToken: response.data.accessToken,
-          refreshToken: response.data.refreshToken
-        })
-        currentUser.value = response.data.user
-        
-        appStore.addNotification({
-          type: 'success',
-          title: t('userAuth.messages.loginSuccess'),
-          message: t('userAuth.messages.welcomeBack', { username: response.data.user.username }),
-          duration: 3000
-        })
-        
-        return true
-      } else {
-        setAuthError(response.error || t('userAuth.errors.loginFailed'))
-        return false
-      }
+      setTokens({
+        accessToken: response.accessToken,
+        refreshToken: response.refreshToken
+      })
+      currentUser.value = response.user
+      
+      appStore.addNotification({
+        type: 'success',
+        title: t('userAuth.messages.loginSuccess'),
+        message: t('userAuth.messages.welcomeBack', { username: response.user.username }),
+        duration: 3000
+      })
+      
+      return true
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : t('userAuth.errors.loginFailed')
       setAuthError(errorMessage)
@@ -137,19 +133,14 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await userAuthAPI.register(userData)
       
-      if (response.success && response.data) {
-        appStore.addNotification({
-          type: 'success',
-          title: t('userAuth.messages.registerSuccess'),
-          message: response.data.message || t('userAuth.messages.checkEmailVerification'),
-          duration: 5000
-        })
-        
-        return true
-      } else {
-        setAuthError(response.error || t('userAuth.errors.registerFailed'))
-        return false
-      }
+      appStore.addNotification({
+        type: 'success',
+        title: t('userAuth.messages.registerSuccess'),
+        message: response.message || t('userAuth.messages.checkEmailVerification'),
+        duration: 5000
+      })
+      
+      return true
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : t('userAuth.errors.registerFailed')
       setAuthError(errorMessage)
@@ -183,17 +174,9 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await userAuthAPI.getCurrentUser()
       
-      if (response.success && response.data) {
-        currentUser.value = response.data
-        console.log('获取用户信息成功:', response.data.username)
-        return true
-      } else {
-        console.log('获取用户信息失败，响应无效')
-        if (clearOnFailure) {
-          clearTokens()
-        }
-        return false
-      }
+      currentUser.value = response
+      console.log('获取用户信息成功:', response.username)
+      return true
     } catch (error) {
       console.error('获取用户信息异常:', error)
       if (clearOnFailure) {
@@ -210,16 +193,11 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await userAuthAPI.refreshToken(refreshToken.value)
       
-      if (response.success && response.data) {
-        setTokens({
-          accessToken: response.data.accessToken,
-          refreshToken: response.data.refreshToken
-        })
-        return true
-      } else {
-        clearTokens()
-        return false
-      }
+      setTokens({
+        accessToken: response.accessToken,
+        refreshToken: response.refreshToken
+      })
+      return true
     } catch (error) {
       clearTokens()
       return false

@@ -66,6 +66,23 @@ const initMonaco = async () => {
     multiCursorModifier: 'ctrlCmd',
     formatOnPaste: true,
     formatOnType: true,
+    // 大文件支持配置
+    largeFileOptimizations: false,
+    maxTokenizationLineLength: 100000,
+    stopRenderingLineAfter: 50000,
+    // 禁用一些性能消耗大的功能
+    renderValidationDecorations: 'off',
+    // 提高滚动性能
+    fastScrollSensitivity: 5,
+    scrollbar: {
+      useShadows: false,
+      verticalHasArrows: false,
+      horizontalHasArrows: false,
+      vertical: 'visible',
+      horizontal: 'visible',
+      verticalScrollbarSize: 10,
+      horizontalScrollbarSize: 10
+    },
     ...props.options
   }
 

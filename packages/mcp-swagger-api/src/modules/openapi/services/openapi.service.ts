@@ -5,6 +5,8 @@ import { ParserService } from './parser.service';
 import { ValidatorService } from './validator.service';
 import { ConfigureOpenAPIDto } from '../dto/configure-openapi.dto';
 import { OpenAPIResponseDto } from '../dto/openapi-response.dto';
+import { UrlParser, FileParser, TextParser } from 'mcp-swagger-parser';
+import { log } from 'util';
 
 @Injectable()
 export class OpenAPIService {
@@ -15,22 +17,15 @@ export class OpenAPIService {
     private readonly appConfigService: AppConfigService,
     private readonly parserService: ParserService,
     private readonly validatorService: ValidatorService,
-  ) {}
+  ) { }
 
   async parseOpenAPI(configDto: ConfigureOpenAPIDto): Promise<OpenAPIResponseDto> {
     try {
       this.logger.log(`Starting OpenAPI parsing for source type: ${configDto.source.type}`);
 
-      // 1. Load OpenAPI specification
+      // 1. Load raw OpenAPI specification (without parsing)
       const spec = await this.loadOpenAPISpec(configDto);
-
-      // 2. Validate the specification
-      const validationResult = await this.validatorService.validateSpecification(spec);
-      if (!validationResult.valid) {
-        throw new BadRequestException(`Invalid OpenAPI specification: ${validationResult.errors.join(', ')}`);
-      }
-
-      // 3. Parse the specification
+      // 3. Parse the validated specification
       const parsedSpec = await this.parserService.parseSpecification(spec, configDto.options);
 
       // 4. Generate MCP tools from parsed specification
@@ -61,11 +56,11 @@ export class OpenAPIService {
       return response;
     } catch (error) {
       this.logger.error(`Failed to parse OpenAPI specification: ${error.message}`, error.stack);
-      
+
       if (error instanceof BadRequestException) {
         throw error;
       }
-      
+
       throw new InternalServerErrorException(`OpenAPI parsing failed: ${error.message}`);
     }
   }
@@ -78,18 +73,29 @@ export class OpenAPIService {
     try {
       this.logger.log(`Starting OpenAPI validation for source type: ${configDto.source.type}`);
 
-      // Load OpenAPI specification
-      const spec = await this.loadOpenAPISpec(configDto);
+      // Check if content is empty
+      if (configDto.source.content == "") {
+        throw new Error("验证文档不能为空")
+      } else {
+        try {
+          const content = JSON.parse(configDto.source.content)
+          // 传入的就是原始的编辑器中的openapi规范
+          //const spec = await this.loadOpenAPISpec(configDto);
+          console.log("Loaded spec for validation:", content);
 
-      // Validate the specification
-      const result = await this.validatorService.validateSpecification(spec);
+          // Validate the parsed specification
+          const result = await this.validatorService.validateSpecification(content);
 
-      this.logger.log(`OpenAPI validation completed: ${result.valid ? 'valid' : 'invalid'} with ${result.errors.length} errors and ${result.warnings.length} warnings`);
+          this.logger.log(`OpenAPI validation completed: ${result.valid ? 'valid' : 'invalid'} with ${result.errors.length} errors and ${result.warnings.length} warnings`);
 
-      return result;
+          return result;
+        } catch (e) {
+
+        }
+      }
     } catch (error) {
       this.logger.error(`Failed to validate OpenAPI specification: ${error.message}`, error.stack);
-      
+
       return {
         valid: false,
         errors: [error.message],
@@ -134,13 +140,13 @@ export class OpenAPIService {
     switch (source.type) {
       case 'url':
         return this.loadFromUrl(source.content);
-      
+
       case 'file':
         return this.loadFromFile(source.content);
-      
+
       case 'content':
         return this.loadFromContent(source.content);
-      
+
       default:
         throw new BadRequestException(`Unsupported source type: ${source.type}`);
     }
@@ -149,10 +155,10 @@ export class OpenAPIService {
   private async loadFromUrl(url: string): Promise<any> {
     try {
       this.logger.log(`Loading OpenAPI specification from URL: ${url}`);
-      
+
       // Use ParserService to parse from URL directly
       const result = await this.parserService.parseFromUrl(url);
-      
+
       return result.spec;
     } catch (error) {
       this.logger.error(`Failed to load OpenAPI specification from URL: ${error.message}`);
@@ -163,10 +169,10 @@ export class OpenAPIService {
   private async loadFromFile(filePath: string): Promise<any> {
     try {
       this.logger.log(`Loading OpenAPI specification from file: ${filePath}`);
-      
+
       // Use ParserService to parse from file directly
       const parseResult = await this.parserService.parseFromFile(filePath);
-      
+
       return parseResult.spec;
     } catch (error) {
       this.logger.error(`Failed to load OpenAPI specification from file: ${error.message}`);
@@ -177,10 +183,10 @@ export class OpenAPIService {
   private async loadFromContent(content: string): Promise<any> {
     try {
       this.logger.log(`Loading OpenAPI specification from content`);
-      
+
       // Use ParserService to parse from string directly
       const parseResult = await this.parserService.parseFromString(content);
-      
+
       return parseResult.spec;
     } catch (error) {
       this.logger.error(`Failed to load OpenAPI specification from content: ${error.message}`);

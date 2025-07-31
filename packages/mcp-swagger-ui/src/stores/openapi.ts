@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { OpenAPISpec, ValidationResult, MCPTool } from '@/types'
+import type { OpenAPISpec, ValidationResult, MCPTool, ParsedOpenAPISpec, MCPConfig } from '@/types'
 import { openApiAPI } from '@/services/api'
 import { useAppStore } from './app'
 import { convertOpenAPIToMCPTools } from '@/utils/openapi'
@@ -15,17 +15,7 @@ export const useOpenAPIStore = defineStore('openapi', () => {
   const error = ref<string | null>(null)
   
   // 新增：解析结果状态
-  const currentParsedResult = ref<{
-    info: any;
-    paths: Record<string, any>;
-    endpoints: any[];
-    tools: any[];
-    servers: any[];
-    openapi: string;
-    components: any;
-    parsedAt: string;
-    parseId?: string;
-  } | null>(null)
+  const currentParsedResult = ref<ParsedOpenAPISpec | null>(null)
   const parsing = ref(false)
 
   // 计算属性
@@ -69,12 +59,8 @@ export const useOpenAPIStore = defineStore('openapi', () => {
     setLoading(true)
     try {
       const response = await openApiAPI.getSpecs()
-      if (response.success && response.data) {
-        specs.value = response.data
-        clearError()
-      } else {
-        throw new Error(response.error || '获取规范列表失败')
-      }
+      specs.value = response
+      clearError()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '获取规范列表失败'
       setError(errorMessage)
@@ -94,19 +80,15 @@ export const useOpenAPIStore = defineStore('openapi', () => {
     setLoading(true)
     try {
       const response = await openApiAPI.createSpec(config)
-      if (response.success && response.data) {
-        specs.value.push(response.data)
-        appStore.addNotification({
-          type: 'success',
-          title: '规范创建成功',
-          message: `OpenAPI规范 "${config.name}" 已创建`,
-          duration: 3000
-        })
-        clearError()
-        return response.data
-      } else {
-        throw new Error(response.error || '创建规范失败')
-      }
+      specs.value.push(response)
+      appStore.addNotification({
+        type: 'success',
+        title: '规范创建成功',
+        message: `OpenAPI规范 "${config.name}" 已创建`,
+        duration: 3000
+      })
+      clearError()
+      return response
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '创建规范失败'
       setError(errorMessage)
@@ -126,19 +108,15 @@ export const useOpenAPIStore = defineStore('openapi', () => {
     setLoading(true)
     try {
       const response = await openApiAPI.createSpecFromContent(config)
-      if (response.success && response.data) {
-        specs.value.push(response.data)
-        appStore.addNotification({
-          type: 'success',
-          title: '规范上传成功',
-          message: `OpenAPI规范 "${config.name}" 已上传`,
-          duration: 3000
-        })
-        clearError()
-        return response.data
-      } else {
-        throw new Error(response.error || '上传规范失败')
-      }
+      specs.value.push(response)
+      appStore.addNotification({
+        type: 'success',
+        title: '规范上传成功',
+        message: `OpenAPI规范 "${config.name}" 已上传`,
+        duration: 3000
+      })
+      clearError()
+      return response
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '上传规范失败'
       setError(errorMessage)
@@ -161,19 +139,15 @@ export const useOpenAPIStore = defineStore('openapi', () => {
     setLoading(true)
     try {
       const response = await openApiAPI.importFromUrl(config)
-      if (response.success && response.data) {
-        specs.value.push(response.data)
-        appStore.addNotification({
-          type: 'success',
-          title: '规范导入成功',
-          message: `OpenAPI规范 "${config.name}" 已从URL导入`,
-          duration: 3000
-        })
-        clearError()
-        return response.data
-      } else {
-        throw new Error(response.error || '导入规范失败')
-      }
+      specs.value.push(response)
+      appStore.addNotification({
+        type: 'success',
+        title: '规范导入成功',
+        message: `OpenAPI规范 "${config.name}" 已从URL导入`,
+        duration: 3000
+      })
+      clearError()
+      return response
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '导入规范失败'
       setError(errorMessage)
@@ -189,22 +163,18 @@ export const useOpenAPIStore = defineStore('openapi', () => {
     setLoading(true)
     try {
       const response = await openApiAPI.updateSpecContent(id, content)
-      if (response.success && response.data) {
-        const index = specs.value.findIndex(s => s.id === id)
-        if (index > -1) {
-          specs.value[index] = response.data
-        }
-        appStore.addNotification({
-          type: 'success',
-          title: '规范保存成功',
-          message: '规范内容已更新',
-          duration: 3000
-        })
-        clearError()
-        return true
-      } else {
-        throw new Error(response.error || '更新规范失败')
+      const index = specs.value.findIndex(s => s.id === id)
+      if (index > -1) {
+        specs.value[index] = response
       }
+      appStore.addNotification({
+        type: 'success',
+        title: '规范保存成功',
+        message: '规范内容已更新',
+        duration: 3000
+      })
+      clearError()
+      return true
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '更新规范失败'
       setError(errorMessage)
@@ -217,18 +187,18 @@ export const useOpenAPIStore = defineStore('openapi', () => {
 
   // 获取规范内容
   const getSpecContent = async (id: string): Promise<string> => {
+    setLoading(true)
     try {
       const response = await openApiAPI.getSpecContent(id)
-      if (response.success && response.data) {
-        return response.data
-      } else {
-        throw new Error(response.error || '获取规范内容失败')
-      }
+      clearError()
+      return response
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '获取规范内容失败'
       setError(errorMessage)
       console.error('Failed to get spec content:', err)
       throw err
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -237,19 +207,15 @@ export const useOpenAPIStore = defineStore('openapi', () => {
     setLoading(true)
     try {
       const response = await openApiAPI.duplicateSpec(id)
-      if (response.success && response.data) {
-        specs.value.push(response.data)
-        appStore.addNotification({
-          type: 'success',
-          title: '规范复制成功',
-          message: `规范已复制为 "${response.data.name}"`,
-          duration: 3000
-        })
-        clearError()
-        return response.data
-      } else {
-        throw new Error(response.error || '复制规范失败')
-      }
+      specs.value.push(response)
+      appStore.addNotification({
+        type: 'success',
+        title: '规范复制成功',
+        message: `规范 "${response.name}" 已成功复制`,
+        duration: 3000
+      })
+      clearError()
+      return response
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '复制规范失败'
       setError(errorMessage)
@@ -265,29 +231,25 @@ export const useOpenAPIStore = defineStore('openapi', () => {
     setLoading(true)
     try {
       const response = await openApiAPI.deleteSpec(id)
-      if (response.success) {
-        const index = specs.value.findIndex(s => s.id === id)
-        if (index > -1) {
-          const specName = specs.value[index].name
-          specs.value.splice(index, 1)
-          
-          // 如果删除的是当前选中的规范，清除选择
-          if (selectedSpecId.value === id) {
-            selectedSpecId.value = null
-          }
-          
-          appStore.addNotification({
-            type: 'success',
-            title: '规范删除成功',
-            message: `规范 "${specName}" 已删除`,
-            duration: 3000
-          })
+      const index = specs.value.findIndex(s => s.id === id)
+      if (index > -1) {
+        const specName = specs.value[index].name
+        specs.value.splice(index, 1)
+        
+        // 如果删除的是当前选中的规范，清除选择
+        if (selectedSpecId.value === id) {
+          selectedSpecId.value = null
         }
-        clearError()
-        return true
-      } else {
-        throw new Error(response.error || '删除规范失败')
+        
+        appStore.addNotification({
+          type: 'success',
+          title: '规范删除成功',
+          message: `规范 "${specName}" 已删除`,
+          duration: 3000
+        })
       }
+      clearError()
+      return true
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '删除规范失败'
       setError(errorMessage)
@@ -299,72 +261,37 @@ export const useOpenAPIStore = defineStore('openapi', () => {
   }
 
   // 验证规范
-  const validateSpec = async (content: string): Promise<ValidationResult> => {
+  const validateSpec = async (id: string): Promise<ValidationResult> => {
+    setLoading(true)
     try {
-      const result = await openApiAPI.validateSpec(content);
-      console.log(result);
-      
-      // 确保返回符合ValidationResult接口的数据
-      if (result.success && result.data) {
-        return {
-          valid: result.data.valid,
-          errors: result.data.errors || [],
-          warnings: result.data.warnings || []
-        };
-      } else {
-        return {
-          valid: false,
-          errors: [{
-            path: '',
-            message: result.error || '验证失败',
-            severity: 'error',
-            code: 'VALIDATION_ERROR'
-          }],
-          warnings: []
-        };
-      }
+      const response = await openApiAPI.validateSpec(id)
+      clearError()
+      return response
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '验证规范失败'
       setError(errorMessage)
       console.error('Failed to validate spec:', err)
       throw err
+    } finally {
+      setLoading(false)
     }
   }
 
-  // 转换为MCP工具
-  const convertToMCP = async (spec: OpenAPISpec): Promise<MCPTool[]> => {
+  // 转换为MCP配置
+  const convertToMCP = async (id: string): Promise<MCPTool[]> => {
     setLoading(true)
     try {
-      // 首先尝试使用本地转换函数
-      const localTools = convertOpenAPIToMCPTools(spec.content || JSON.stringify(spec))
-      
-      if (localTools.length > 0) {
-        appStore.addNotification({
-          type: 'success',
-          title: '转换成功',
-          message: `成功转换为 ${localTools.length} 个MCP工具`,
-          duration: 3000
-        })
-        clearError()
-        return localTools
-      }
-      
-      // 如果本地转换失败，尝试使用API
-      const response = await openApiAPI.convertToMCP(spec)
-      if (response.success && response.data) {
-        appStore.addNotification({
-          type: 'success',
-          title: '转换成功',
-          message: `成功转换为 ${response.data.length} 个MCP工具`,
-          duration: 3000
-        })
-        clearError()
-        return response.data
-      } else {
-        throw new Error(response.error || '转换失败')
-      }
+      const response = await openApiAPI.convertToMCP(id)
+      appStore.addNotification({
+        type: 'success',
+        title: 'MCP转换成功',
+        message: '规范已成功转换为MCP配置',
+        duration: 3000
+      })
+      clearError()
+      return response
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '转换失败'
+      const errorMessage = err instanceof Error ? err.message : 'MCP转换失败'
       setError(errorMessage)
       console.error('Failed to convert to MCP:', err)
       throw err
@@ -378,59 +305,56 @@ export const useOpenAPIStore = defineStore('openapi', () => {
     selectedSpecId.value = id
   }
 
-  // 新增：解析 OpenAPI 内容
-  const parseOpenAPIContent = async (content: string) => {
-    parsing.value = true
+  // 验证OpenAPI内容
+  const validateOpenAPIContent = async (content: string): Promise<ValidationResult> => {
+    setLoading(true)
+    try {
+      const response = await openApiAPI.validateOpenAPIContent(content)
+      clearError()
+      return response
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : '验证OpenAPI内容失败'
+      setError(errorMessage)
+      console.error('Failed to validate OpenAPI content:', err)
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 解析OpenAPI内容
+  const parseOpenAPIContent = async (content: string): Promise<ParsedOpenAPISpec> => {
+    setLoading(true)
     try {
       const response = await openApiAPI.parseOpenAPIContent(content)
-      if (response.success && response.data) {
-        currentParsedResult.value = response.data
-        appStore.addNotification({
-          type: 'success',
-          title: '解析成功',
-          message: `成功解析 ${response.data.endpoints?.length || 0} 个接口`,
-          duration: 3000
-        })
-        clearError()
-        return response.data
-      } else {
-        throw new Error(response.error || '解析失败')
-      }
+      currentParsedResult.value = response
+      clearError()
+      return response
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '解析失败'
+      const errorMessage = err instanceof Error ? err.message : '解析OpenAPI内容失败'
       setError(errorMessage)
       console.error('Failed to parse OpenAPI content:', err)
       throw err
     } finally {
-      parsing.value = false
+      setLoading(false)
     }
   }
 
-  // 新增：从 URL 解析 OpenAPI
-  const parseOpenAPIFromUrl = async (url: string, authHeaders?: Record<string, string>) => {
-    parsing.value = true
+  // 从URL解析OpenAPI
+  const parseOpenAPIFromUrl = async (url: string): Promise<ParsedOpenAPISpec> => {
+    setLoading(true)
     try {
-      const response = await openApiAPI.parseSpecFromUrl(url)
-      if (response.success && response.data) {
-        currentParsedResult.value = response.data
-        appStore.addNotification({
-          type: 'success',
-          title: '解析成功',
-          message: `成功解析 ${response.data.endpoints?.length || 0} 个接口`,
-          duration: 3000
-        })
-        clearError()
-        return response.data
-      } else {
-        throw new Error(response.error || '解析失败')
-      }
+      const response = await openApiAPI.parseOpenAPIFromUrl(url)
+      currentParsedResult.value = response
+      clearError()
+      return response
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '解析失败'
+      const errorMessage = err instanceof Error ? err.message : '从URL解析OpenAPI失败'
       setError(errorMessage)
       console.error('Failed to parse OpenAPI from URL:', err)
       throw err
     } finally {
-      parsing.value = false
+      setLoading(false)
     }
   }
 
@@ -439,19 +363,15 @@ export const useOpenAPIStore = defineStore('openapi', () => {
     parsing.value = true
     try {
       const response = await openApiAPI.uploadAndParseSpec(file)
-      if (response.success && response.data) {
-        currentParsedResult.value = response.data
-        appStore.addNotification({
-          type: 'success',
-          title: '文件解析成功',
-          message: `成功解析 ${response.data.endpoints?.length || 0} 个接口`,
-          duration: 3000
-        })
-        clearError()
-        return response.data
-      } else {
-        throw new Error(response.error || '文件解析失败')
-      }
+      currentParsedResult.value = response
+      appStore.addNotification({
+        type: 'success',
+        title: '文件解析成功',
+        message: `成功解析 ${response.endpoints?.length || 0} 个接口`,
+        duration: 3000
+      })
+      clearError()
+      return response
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '文件解析失败'
       setError(errorMessage)
@@ -464,81 +384,35 @@ export const useOpenAPIStore = defineStore('openapi', () => {
 
   // 新增：上传并验证 OpenAPI 文件
   const uploadAndValidateSpec = async (file: File): Promise<ValidationResult> => {
+    setLoading(true)
     try {
       const response = await openApiAPI.uploadAndValidateSpec(file)
-      if (response.success && response.data) {
-        return {
-          valid: response.data.valid,
-          errors: response.data.errors.map(error => ({
-            path: '',
-            message: error,
-            severity: 'error' as const,
-            code: 'VALIDATION_ERROR'
-          })),
-          warnings: response.data.warnings.map(warning => ({
-            path: '',
-            message: warning,
-            severity: 'warning' as const,
-            code: 'VALIDATION_WARNING'
-          }))
-        }
-      } else {
-        return {
-          valid: false,
-          errors: [{
-            path: '',
-            message: response.error || '文件验证失败',
-            severity: 'error',
-            code: 'VALIDATION_ERROR'
-          }],
-          warnings: []
-        }
-      }
+      clearError()
+      return response
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '文件验证失败'
       setError(errorMessage)
       console.error('Failed to upload and validate spec:', err)
       throw err
+    } finally {
+      setLoading(false)
     }
   }
 
   // 新增：从URL验证 OpenAPI 规范
   const validateSpecFromUrl = async (url: string): Promise<ValidationResult> => {
+    setLoading(true)
     try {
       const response = await openApiAPI.validateSpecFromUrl(url)
-      if (response.success && response.data) {
-        return {
-          valid: response.data.valid,
-          errors: response.data.errors.map(error => ({
-            path: '',
-            message: error,
-            severity: 'error' as const,
-            code: 'VALIDATION_ERROR'
-          })),
-          warnings: response.data.warnings.map(warning => ({
-            path: '',
-            message: warning,
-            severity: 'warning' as const,
-            code: 'VALIDATION_WARNING'
-          }))
-        }
-      } else {
-        return {
-          valid: false,
-          errors: [{
-            path: '',
-            message: response.error || 'URL验证失败',
-            severity: 'error',
-            code: 'VALIDATION_ERROR'
-          }],
-          warnings: []
-        }
-      }
+      clearError()
+      return response
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'URL验证失败'
       setError(errorMessage)
       console.error('Failed to validate spec from URL:', err)
       throw err
+    } finally {
+      setLoading(false)
     }
   }
 

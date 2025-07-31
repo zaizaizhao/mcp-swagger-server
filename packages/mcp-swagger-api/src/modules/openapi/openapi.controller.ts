@@ -82,7 +82,7 @@ export class OpenAPIController {
         hasContent: !!configureDto.source.content,
         options: configureDto.options ? Object.keys(configureDto.options) : [],
       })}`);
-
+      configureDto.source.content = JSON.parse(configureDto.source.content)
       const result = await this.openApiService.parseOpenAPI(configureDto);
 
       this.logger.log(`Successfully parsed OpenAPI specification with ${result.paths?.length || 0} endpoints`);
