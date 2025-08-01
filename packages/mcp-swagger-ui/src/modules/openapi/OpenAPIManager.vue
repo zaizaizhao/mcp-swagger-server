@@ -276,7 +276,7 @@
               </div>
               
               <div v-show="activeTab === 'tools'" class="tools-container" style="height: 100%; overflow-y: auto;">
-                <MCPToolPreview :tools="mcpTools" />
+                <MCPToolPreview :tools="mcpTools" :serverUrl="mcpServerUrl" />
               </div>
             </div>
           </div>
@@ -521,6 +521,670 @@
     </el-dialog>
   </div>
 </template>
+
+
+
+<script setup lang="ts">
+import { ref, computed, onMounted, nextTick } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  Plus, Upload, Link, Document, Search, MoreFilled, Edit, 
+  DocumentCopy, Download, Delete, Operation, Tools, Check, 
+  DocumentChecked, UploadFilled, Folder, Setting, Refresh
+} from '@element-plus/icons-vue'
+import type { UploadFile, FormInstance } from 'element-plus'
+import MonacoEditor from '../../shared/components/monaco/MonacoEditor.vue'
+import SpecPreview from './components/openapi/SpecPreview.vue'
+import MCPToolPreview from './components/openapi/MCPToolPreview.vue'
+import type { OpenAPISpec, ValidationResult, MCPTool } from '../../types'
+import { useOpenAPIStore } from '../../stores/openapi'
+import { parseOpenAPI, validateOpenAPI } from '../../utils/openapi'
+
+// 导入全局功能
+import { useConfirmation } from '../../composables/useConfirmation'
+import { useFormValidation } from '../../composables/useFormValidation'
+import { usePerformanceMonitor } from '../../composables/usePerformance'
+// import LoadingOverlay from '@/shared/components/ui/LoadingOverlay.vue' // 暂时注释掉，如果需要可以创建这个组件
+
+// 状态管理
+const openApiStore = useOpenAPIStore()
+
+// 全局功能
+const { 
+  confirmDelete: globalConfirmDelete, 
+  confirmDangerousAction,
+  confirmSave 
+} = useConfirmation()
+
+const { 
+  startMonitoring,
+  stopMonitoring,
+  measureFunction 
+} = usePerformanceMonitor()
+
+// 响应式数据
+const specsLoading = ref(false)
+const loading = ref(false)
+const searchQuery = ref('')
+const selectedDocument = ref<any>(null)
+const activeTab = ref<'editor' | 'preview' | 'apis' | 'tools'>('editor')
+const editorContent = ref('')
+const saving = ref(false)
+const validating = ref(false)
+const converting = ref(false)
+const validationResults = ref<ValidationResult | null>(null)
+const mcpTools = ref<any[]>([])  // MCP工具列表
+const mcpServerUrl = ref('')
+const documents = ref<any[]>([])  // 文档列表
+const parsedApis = ref<any[]>([])  // 解析的API列表
+const uploadFile = ref<File | null>(null)
+
+// 对话框状态
+const showCreateDialog = ref(false)
+const showUploadDialog = ref(false)
+const showUrlDialog = ref(false)
+const creating = ref(false)
+const uploading = ref(false)
+const importing = ref(false)
+
+// 表单引用
+const createFormRef = ref<FormInstance>()
+const urlFormRef = ref<FormInstance>()
+const uploadRef = ref()
+
+// 上传文件列表
+const uploadFileList = ref<UploadFile[]>([])
+
+// 表单数据
+const createForm = ref({
+  name: '',
+  version: '1.0.0',
+  description: '',
+  template: ''
+})
+
+const uploadForm = ref({
+  name: '',
+  description: ''
+})
+
+const urlForm = ref({
+  url: '',
+  name: '',
+  authType: 'none',
+  token: '',
+  username: '',
+  password: ''
+})
+
+// 表单验证规则
+const createFormRules = {
+  name: [
+    { required: true, message: '请输入规范名称', trigger: 'blur' },
+    { min: 2, max: 50, message: '名称长度在 2 到 50 个字符', trigger: 'blur' }
+  ],
+  version: [
+    { required: true, message: '请输入版本号', trigger: 'blur' }
+  ]
+}
+
+const uploadRules = {
+  name: [
+    { required: true, message: '请输入文档名称', trigger: 'blur' },
+    { min: 2, max: 50, message: '名称长度在 2 到 50 个字符', trigger: 'blur' }
+  ]
+}
+
+const urlFormRules = {
+  url: [
+    { required: true, message: '请输入URL地址', trigger: 'blur' },
+    { type: 'url', message: '请输入有效的URL地址', trigger: 'blur' }
+  ],
+  name: [
+    { required: true, message: '请输入规范名称', trigger: 'blur' }
+  ]
+}
+
+// Monaco编辑器选项
+const editorOptions: any = {
+  theme: 'vs-dark',
+  fontSize: 14,
+  minimap: { enabled: false },
+  scrollBeyondLastLine: false,
+  automaticLayout: true,
+  tabSize: 2,
+  wordWrap: 'on' as const,
+  // 支持大型文件
+  largeFileOptimizations: false,
+  // 大幅增加内容长度限制 - 提升到更大的值
+  maxTokenizationLineLength: 500000,
+  // 提高渲染性能
+  renderValidationDecorations: 'on',
+  // 支持更多行数渲染 - 大幅提升行数限制
+  stopRenderingLineAfter: 200000,
+  // 禁用语法检查以提高性能
+  validate: false,
+  // 增加滚动性能
+  smoothScrolling: true,
+  // 禁用不必要的功能以提高性能
+  folding: false,
+  lineNumbers: 'on',
+  // 增加更多大文件支持配置
+  scrollbar: {
+    vertical: 'auto',
+    horizontal: 'auto',
+    handleMouseWheel: true
+  },
+  // 禁用代码折叠以提高性能
+  glyphMargin: false,
+  // 优化大文件渲染
+  renderLineHighlight: 'none'
+}
+
+// 计算属性
+const filteredDocuments = computed(() => {
+  if (!searchQuery.value) return documents.value
+  
+  const query = searchQuery.value.toLowerCase()
+  return documents.value.filter(doc =>
+    doc.name.toLowerCase().includes(query) ||
+    doc.description?.toLowerCase().includes(query)
+  )
+})
+
+// 方法
+const detectLanguage = (content: string) => {
+  if (!content.trim()) return 'yaml'
+  
+  try {
+    JSON.parse(content)
+    return 'json'
+  } catch {
+    return 'yaml'
+  }
+}
+
+const formatDate = (date: Date | string) => {
+  const dateObj = typeof date === 'string' ? new Date(date) : date
+  return new Intl.DateTimeFormat('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(dateObj)
+}
+
+const selectDocument = (doc: any) => {
+  selectedDocument.value = doc
+  editorContent.value = doc.content || ''
+  validationResults.value = null
+  activeTab.value = 'editor'
+}
+
+const editDocument = (doc: any) => {
+  selectDocument(doc)
+  activeTab.value = 'editor'
+}
+
+const deleteDocument = async (docId: string) => {
+  try {
+    console.log(docId);
+    
+    const confirmed = await globalConfirmDelete('此文档')
+    if (!confirmed) return
+    
+    documents.value = documents.value.filter(doc => doc.id !== docId)
+    if (selectedDocument.value?.id === docId) {
+      selectedDocument.value = null
+      editorContent.value = ''
+    }
+    ElMessage.success('文档删除成功')
+  } catch (error) {
+    ElMessage.error(`删除失败: ${error}`)
+  }
+}
+
+const refreshDocuments = async () => {
+  try {
+    loading.value = true
+    await openApiStore.fetchSpecs()
+    // 这里可以添加从store获取文档列表的逻辑
+    ElMessage.success('文档列表刷新成功')
+  } catch (error) {
+    ElMessage.error(`刷新失败: ${error}`)
+  } finally {
+    loading.value = false
+  }
+}
+
+const getStatusText = (status: string) => {
+  const statusMap: Record<string, string> = {
+    'valid': '有效',
+    'invalid': '无效',
+    'pending': '待验证'
+  }
+  return statusMap[status] || '未知'
+}
+
+const handleSpecAction = async (command: { action: string; spec: OpenAPISpec }) => {
+  const { action, spec } = command
+  
+  switch (action) {
+    case 'edit':
+      // 选择文档进行编辑
+      const doc = documents.value.find(d => d.id === spec.id)
+      if (doc) {
+        selectDocument(doc)
+        activeTab.value = 'editor'
+      }
+      break
+      
+    case 'duplicate':
+      try {
+        await openApiStore.duplicateSpec(spec.id)
+        ElMessage.success('规范复制成功')
+      } catch (error) {
+        ElMessage.error(`复制失败: ${error}`)
+      }
+      break
+      
+    case 'download':
+      downloadSpec(spec)
+      break
+      
+    case 'delete':
+      try {
+        const confirmed = await globalConfirmDelete(spec.name)
+        if (!confirmed) break
+        
+        await measureFunction('deleteSpec', async () => {
+          await openApiStore.deleteSpec(spec.id)
+        })
+        
+        // 如果删除的是当前选中的文档，清空选择
+        if (selectedDocument.value?.id === spec.id) {
+          selectedDocument.value = null
+          editorContent.value = ''
+        }
+        // 从文档列表中移除
+        documents.value = documents.value.filter(doc => doc.id !== spec.id)
+        ElMessage.success('规范删除成功')
+      } catch (error) {
+        ElMessage.error(`删除失败: ${error}`)
+      }
+      break
+  }
+}
+
+const downloadSpec = (spec?: OpenAPISpec) => {
+  const content = spec?.content || editorContent.value
+  if (!content) {
+    ElMessage.warning('请先输入OpenAPI规范内容')
+    return
+  }
+  
+  const blob = new Blob([content], {
+    type: 'application/yaml'
+  })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = spec ? `${spec.name}-${spec.version}.yaml` : `openapi-spec-${new Date().getTime()}.yaml`
+  link.click()
+  URL.revokeObjectURL(url)
+  ElMessage.success('下载成功')
+}
+
+const handleContentChange = (content: string) => {
+  editorContent.value = content
+  if (selectedDocument.value) {
+    selectedDocument.value.content = content
+  }
+  validationResults.value = null
+}
+
+const validateSpec = async () => {
+  if (!editorContent.value.trim()) {
+    ElMessage.warning('请先输入OpenAPI规范内容')
+    return
+  }
+  
+  validating.value = true
+  try {
+    const result = await measureFunction('validateSpec', async () => {
+      return await openApiStore.validateSpec(editorContent.value)
+    })
+    
+    // 更新验证结果
+    validationResults.value = result
+    
+    // 更新文档状态
+    if (selectedDocument.value) {
+      selectedDocument.value.status = result.valid ? 'valid' : 'invalid'
+    }
+    
+    // 显示验证结果消息
+    if (result.valid) {
+      const warningCount = result.warnings?.length || 0
+      if (warningCount > 0) {
+        ElMessage.success(`规范验证通过，但有 ${warningCount} 个警告`)
+      } else {
+        ElMessage.success('规范验证通过，无错误和警告')
+      }
+    } else {
+      const errorCount = result.errors?.length || 0
+      const warningCount = result.warnings?.length || 0
+      let message = `规范验证失败，发现 ${errorCount} 个错误`
+      if (warningCount > 0) {
+        message += `，${warningCount} 个警告`
+      }
+      ElMessage.error(message)
+    }
+    
+    // 如果有验证结果，自动切换到预览标签页以显示详细信息
+    if ((result.errors?.length || 0) > 0 || (result.warnings?.length || 0) > 0) {
+      activeTab.value = 'preview'
+    }
+    
+  } catch (error) {
+    console.error('验证失败:', error)
+    ElMessage.error(`验证失败: ${error instanceof Error ? error.message : String(error)}`)
+    validationResults.value = null
+    if (selectedDocument.value) {
+      selectedDocument.value.status = 'invalid'
+    }
+  } finally {
+    validating.value = false
+  }
+}
+
+const createNewSpec = async () => {
+  if (!createFormRef.value) return
+  
+  try {
+    await createFormRef.value.validate()
+    creating.value = true
+    
+    const newDoc = {
+      id: Date.now().toString(),
+      name: createForm.value.name,
+      version: createForm.value.version,
+      description: createForm.value.description,
+      content: generateTemplateContent(createForm.value.template),
+      uploadTime: new Date(),
+      status: 'pending'
+    }
+    
+    documents.value.push(newDoc)
+    selectDocument(newDoc)
+    showCreateDialog.value = false
+    
+    // 重置表单
+    createForm.value = {
+      name: '',
+      version: '1.0.0',
+      description: '',
+      template: ''
+    }
+    
+    ElMessage.success('文档创建成功')
+  } catch (error) {
+    ElMessage.error(`创建失败: ${error}`)
+  } finally {
+    creating.value = false
+  }
+}
+
+const generateTemplateContent = (template: string) => {
+  const templates: Record<string, string> = {
+    'blank': `openapi: 3.0.0
+info:
+  title: ${createForm.value.name}
+  version: ${createForm.value.version}
+  description: ${createForm.value.description}
+paths: {}
+`,
+    'basic-rest': `openapi: 3.0.0
+info:
+  title: ${createForm.value.name}
+  version: ${createForm.value.version}
+  description: ${createForm.value.description}
+paths:
+  /users:
+    get:
+      summary: 获取用户列表
+      responses:
+        '200':
+          description: 成功
+`,
+    'ecommerce': `openapi: 3.0.0
+info:
+  title: ${createForm.value.name}
+  version: ${createForm.value.version}
+  description: ${createForm.value.description}
+paths:
+  /products:
+    get:
+      summary: 获取商品列表
+      responses:
+        '200':
+          description: 成功
+`,
+    'user-management': `openapi: 3.0.0
+info:
+  title: ${createForm.value.name}
+  version: ${createForm.value.version}
+  description: ${createForm.value.description}
+paths:
+  /auth/login:
+    post:
+      summary: 用户登录
+      responses:
+        '200':
+          description: 登录成功
+`
+  }
+  return templates[template] || templates['blank']
+}
+
+const handleFileChange = (file: UploadFile) => {
+  uploadFile.value = file.raw || null
+  if (uploadFile.value) {
+    console.log("uploadFile.value", uploadFile.value);
+    
+    uploadForm.value.name = uploadFile.value.name.replace(/\.[^/.]+$/, '')
+  }
+}
+
+const handleUploadDialogClose = () => {
+  showUploadDialog.value = false
+  uploadFile.value = null
+  uploadForm.value = { name: '', description: '' }
+}
+
+const confirmUpload = async () => {
+  if (!uploadFile.value) return
+  
+  uploading.value = true
+  try {
+    // 直接读取文件内容，不调用后端接口
+    const rawContent = await readFileContent(uploadFile.value)
+    
+    const newDoc = {
+      id: Date.now().toString(),
+      name: uploadForm.value.name,
+      description: uploadForm.value.description,
+      content: rawContent,
+      uploadTime: new Date(),
+      status: 'pending' // 设置为待验证状态
+    }
+    
+    documents.value.push(newDoc)
+    selectDocument(newDoc)
+    handleUploadDialogClose()
+    
+    ElMessage.success('文档上传成功，请点击验证按钮进行验证')
+  } catch (error) {
+    ElMessage.error(`上传失败: ${error instanceof Error ? error.message : String(error)}`)
+  } finally {
+    uploading.value = false
+  }
+}
+
+
+
+
+
+// 工具函数
+// measureFunction 已在 usePerformanceMonitor() 中定义
+// globalConfirmDelete 已在 useConfirmation() 中定义
+
+const readFileContent = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      resolve(e.target?.result as string)
+    }
+    reader.onerror = () => {
+      reject(new Error('文件读取失败'))
+    }
+    reader.readAsText(file)
+  })
+}
+
+// MCP相关方法
+const convertToMCP = async () => {
+  if (!editorContent.value) {
+    ElMessage.warning('请先选择文档或输入OpenAPI规范内容')
+    return
+  }
+  
+  converting.value = true
+  try {
+    // 首先验证当前规范
+    const validation = await openApiStore.validateSpec(editorContent.value)
+    if (!validation.valid) {
+      ElMessage.error('当前规范验证失败，请先修复错误')
+      return
+    }
+
+    // 解析内容并获取工具
+    const parseResult = await openApiStore.parseOpenAPIContent(editorContent.value)
+    mcpTools.value = parseResult.tools || []
+    mcpServerUrl.value = parseResult.servers[0]?.url || ''
+    activeTab.value = 'tools'
+    
+    ElMessage.success(`成功转换为 ${mcpTools.value.length} 个MCP工具`)
+  } catch (error) {
+    ElMessage.error(`转换失败: ${error instanceof Error ? error.message : error}`)
+  } finally {
+    converting.value = false
+  }
+}
+
+const importFromUrl = async () => {
+  if (!urlFormRef.value) return
+  
+  try {
+    await urlFormRef.value.validate()
+    importing.value = true
+    
+    // 直接获取URL内容，不调用后端解析接口
+    const rawContentResponse = await fetch(urlForm.value.url)
+    if (!rawContentResponse.ok) {
+      throw new Error(`HTTP ${rawContentResponse.status}: ${rawContentResponse.statusText}`)
+    }
+    let rawContent = await rawContentResponse.text()
+    
+    // 尝试格式化JSON内容
+    try {
+      const jsonContent = JSON.parse(rawContent)
+      rawContent = JSON.stringify(jsonContent, null, 2)
+    } catch (e) {
+      // 如果不是JSON格式，保持原样（可能是YAML）
+      console.log('Content is not JSON, keeping original format')
+    }
+    
+    const newDoc = {
+      id: Date.now().toString(),
+      name: urlForm.value.name || 'imported_spec',
+      description: '从URL导入的文档',
+      content: rawContent,
+      uploadTime: new Date(),
+      status: 'pending' // 设置为待验证状态
+    }
+    
+    documents.value.push(newDoc)
+    selectDocument(newDoc)
+    showUrlDialog.value = false
+    
+    // 重置表单
+    urlForm.value = {
+      url: '',
+      name: '',
+      authType: 'none',
+      token: '',
+      username: '',
+      password: ''
+    }
+    
+    ElMessage.success('文档导入成功，请点击验证按钮进行验证')
+  } catch (error) {
+    ElMessage.error(`导入失败: ${error instanceof Error ? error.message : String(error)}`)
+  } finally {
+    importing.value = false
+  }
+}
+
+const handleTestTool = async (tool: MCPTool, params: Record<string, any>) => {
+  try {
+    ElMessage.info(`正在测试工具: ${tool.name}`)
+    // 这里可以集成实际的工具测试逻辑
+    console.log('Testing tool:', tool, 'with params:', params)
+  } catch (error) {
+    ElMessage.error(`工具测试失败: ${error instanceof Error ? error.message : error}`)
+  }
+}
+
+// 接口相关方法
+const getMethodTagType = (method: string) => {
+  const methodMap: Record<string, string> = {
+    'get': 'success',
+    'post': 'primary',
+    'put': 'warning',
+    'delete': 'danger',
+    'patch': 'info',
+    'head': '',
+    'options': ''
+  }
+  return methodMap[method.toLowerCase()] || ''
+}
+
+const viewApiDetail = (api: any) => {
+  ElMessageBox.alert(
+    `<div>
+      <p><strong>路径:</strong> ${api.path}</p>
+      <p><strong>方法:</strong> ${api.method.toUpperCase()}</p>
+      <p><strong>摘要:</strong> ${api.summary || '无'}</p>
+      <p><strong>描述:</strong> ${api.description || '无'}</p>
+      <p><strong>操作ID:</strong> ${api.operationId || '无'}</p>
+      <p><strong>标签:</strong> ${api.tags?.join(', ') || '无'}</p>
+    </div>`,
+    '接口详情',
+    {
+      dangerouslyUseHTMLString: true,
+      confirmButtonText: '确定'
+    }
+  )
+}
+
+// 生命周期
+onMounted(async () => {
+  // 暂时移除规范列表加载，直接使用解析功能
+  specsLoading.value = false
+})
+</script>
 
 <style scoped>
 .openapi-manager {
@@ -1190,660 +1854,3 @@
   border-radius: 6px;
 }
 </style>
-
-<script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import {
-  Plus, Upload, Link, Document, Search, MoreFilled, Edit, 
-  DocumentCopy, Download, Delete, Operation, Tools, Check, 
-  DocumentChecked, UploadFilled, Folder, Setting, Refresh
-} from '@element-plus/icons-vue'
-import type { UploadFile, FormInstance } from 'element-plus'
-import MonacoEditor from '../../shared/components/monaco/MonacoEditor.vue'
-import SpecPreview from './components/openapi/SpecPreview.vue'
-import MCPToolPreview from './components/openapi/MCPToolPreview.vue'
-import type { OpenAPISpec, ValidationResult, MCPTool } from '../../types'
-import { useOpenAPIStore } from '../../stores/openapi'
-import { parseOpenAPI, validateOpenAPI } from '../../utils/openapi'
-
-// 导入全局功能
-import { useConfirmation } from '../../composables/useConfirmation'
-import { useFormValidation } from '../../composables/useFormValidation'
-import { usePerformanceMonitor } from '../../composables/usePerformance'
-// import LoadingOverlay from '@/shared/components/ui/LoadingOverlay.vue' // 暂时注释掉，如果需要可以创建这个组件
-
-// 状态管理
-const openApiStore = useOpenAPIStore()
-
-// 全局功能
-const { 
-  confirmDelete: globalConfirmDelete, 
-  confirmDangerousAction,
-  confirmSave 
-} = useConfirmation()
-
-const { 
-  startMonitoring,
-  stopMonitoring,
-  measureFunction 
-} = usePerformanceMonitor()
-
-// 响应式数据
-const specsLoading = ref(false)
-const loading = ref(false)
-const searchQuery = ref('')
-const selectedDocument = ref<any>(null)
-const activeTab = ref<'editor' | 'preview' | 'apis' | 'tools'>('editor')
-const editorContent = ref('')
-const saving = ref(false)
-const validating = ref(false)
-const converting = ref(false)
-const validationResults = ref<ValidationResult | null>(null)
-const mcpTools = ref<any[]>([])  // MCP工具列表
-const documents = ref<any[]>([])  // 文档列表
-const parsedApis = ref<any[]>([])  // 解析的API列表
-const uploadFile = ref<File | null>(null)
-
-// 对话框状态
-const showCreateDialog = ref(false)
-const showUploadDialog = ref(false)
-const showUrlDialog = ref(false)
-const creating = ref(false)
-const uploading = ref(false)
-const importing = ref(false)
-
-// 表单引用
-const createFormRef = ref<FormInstance>()
-const urlFormRef = ref<FormInstance>()
-const uploadRef = ref()
-
-// 上传文件列表
-const uploadFileList = ref<UploadFile[]>([])
-
-// 表单数据
-const createForm = ref({
-  name: '',
-  version: '1.0.0',
-  description: '',
-  template: ''
-})
-
-const uploadForm = ref({
-  name: '',
-  description: ''
-})
-
-const urlForm = ref({
-  url: '',
-  name: '',
-  authType: 'none',
-  token: '',
-  username: '',
-  password: ''
-})
-
-// 表单验证规则
-const createFormRules = {
-  name: [
-    { required: true, message: '请输入规范名称', trigger: 'blur' },
-    { min: 2, max: 50, message: '名称长度在 2 到 50 个字符', trigger: 'blur' }
-  ],
-  version: [
-    { required: true, message: '请输入版本号', trigger: 'blur' }
-  ]
-}
-
-const uploadRules = {
-  name: [
-    { required: true, message: '请输入文档名称', trigger: 'blur' },
-    { min: 2, max: 50, message: '名称长度在 2 到 50 个字符', trigger: 'blur' }
-  ]
-}
-
-const urlFormRules = {
-  url: [
-    { required: true, message: '请输入URL地址', trigger: 'blur' },
-    { type: 'url', message: '请输入有效的URL地址', trigger: 'blur' }
-  ],
-  name: [
-    { required: true, message: '请输入规范名称', trigger: 'blur' }
-  ]
-}
-
-// Monaco编辑器选项
-const editorOptions: any = {
-  theme: 'vs-dark',
-  fontSize: 14,
-  minimap: { enabled: false },
-  scrollBeyondLastLine: false,
-  automaticLayout: true,
-  tabSize: 2,
-  wordWrap: 'on' as const,
-  // 支持大型文件
-  largeFileOptimizations: false,
-  // 大幅增加内容长度限制 - 提升到更大的值
-  maxTokenizationLineLength: 500000,
-  // 提高渲染性能
-  renderValidationDecorations: 'on',
-  // 支持更多行数渲染 - 大幅提升行数限制
-  stopRenderingLineAfter: 200000,
-  // 禁用语法检查以提高性能
-  validate: false,
-  // 增加滚动性能
-  smoothScrolling: true,
-  // 禁用不必要的功能以提高性能
-  folding: false,
-  lineNumbers: 'on',
-  // 增加更多大文件支持配置
-  scrollbar: {
-    vertical: 'auto',
-    horizontal: 'auto',
-    handleMouseWheel: true
-  },
-  // 禁用代码折叠以提高性能
-  glyphMargin: false,
-  // 优化大文件渲染
-  renderLineHighlight: 'none'
-}
-
-// 计算属性
-const filteredDocuments = computed(() => {
-  if (!searchQuery.value) return documents.value
-  
-  const query = searchQuery.value.toLowerCase()
-  return documents.value.filter(doc =>
-    doc.name.toLowerCase().includes(query) ||
-    doc.description?.toLowerCase().includes(query)
-  )
-})
-
-// 方法
-const detectLanguage = (content: string) => {
-  if (!content.trim()) return 'yaml'
-  
-  try {
-    JSON.parse(content)
-    return 'json'
-  } catch {
-    return 'yaml'
-  }
-}
-
-const formatDate = (date: Date | string) => {
-  const dateObj = typeof date === 'string' ? new Date(date) : date
-  return new Intl.DateTimeFormat('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  }).format(dateObj)
-}
-
-const selectDocument = (doc: any) => {
-  selectedDocument.value = doc
-  editorContent.value = doc.content || ''
-  validationResults.value = null
-  activeTab.value = 'editor'
-}
-
-const editDocument = (doc: any) => {
-  selectDocument(doc)
-  activeTab.value = 'editor'
-}
-
-const deleteDocument = async (docId: string) => {
-  try {
-    const confirmed = await globalConfirmDelete('此文档')
-    if (!confirmed) return
-    
-    documents.value = documents.value.filter(doc => doc.id !== docId)
-    if (selectedDocument.value?.id === docId) {
-      selectedDocument.value = null
-      editorContent.value = ''
-    }
-    ElMessage.success('文档删除成功')
-  } catch (error) {
-    ElMessage.error(`删除失败: ${error}`)
-  }
-}
-
-const refreshDocuments = async () => {
-  try {
-    loading.value = true
-    await openApiStore.fetchSpecs()
-    // 这里可以添加从store获取文档列表的逻辑
-    ElMessage.success('文档列表刷新成功')
-  } catch (error) {
-    ElMessage.error(`刷新失败: ${error}`)
-  } finally {
-    loading.value = false
-  }
-}
-
-const getStatusText = (status: string) => {
-  const statusMap: Record<string, string> = {
-    'valid': '有效',
-    'invalid': '无效',
-    'pending': '待验证'
-  }
-  return statusMap[status] || '未知'
-}
-
-const handleSpecAction = async (command: { action: string; spec: OpenAPISpec }) => {
-  const { action, spec } = command
-  
-  switch (action) {
-    case 'edit':
-      // 选择文档进行编辑
-      const doc = documents.value.find(d => d.id === spec.id)
-      if (doc) {
-        selectDocument(doc)
-        activeTab.value = 'editor'
-      }
-      break
-      
-    case 'duplicate':
-      try {
-        await openApiStore.duplicateSpec(spec.id)
-        ElMessage.success('规范复制成功')
-      } catch (error) {
-        ElMessage.error(`复制失败: ${error}`)
-      }
-      break
-      
-    case 'download':
-      downloadSpec(spec)
-      break
-      
-    case 'delete':
-      try {
-        const confirmed = await globalConfirmDelete(spec.name)
-        if (!confirmed) break
-        
-        await measureFunction('deleteSpec', async () => {
-          await openApiStore.deleteSpec(spec.id)
-        })
-        
-        // 如果删除的是当前选中的文档，清空选择
-        if (selectedDocument.value?.id === spec.id) {
-          selectedDocument.value = null
-          editorContent.value = ''
-        }
-        // 从文档列表中移除
-        documents.value = documents.value.filter(doc => doc.id !== spec.id)
-        ElMessage.success('规范删除成功')
-      } catch (error) {
-        ElMessage.error(`删除失败: ${error}`)
-      }
-      break
-  }
-}
-
-const downloadSpec = (spec?: OpenAPISpec) => {
-  const content = spec?.content || editorContent.value
-  if (!content) {
-    ElMessage.warning('请先输入OpenAPI规范内容')
-    return
-  }
-  
-  const blob = new Blob([content], {
-    type: 'application/yaml'
-  })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = spec ? `${spec.name}-${spec.version}.yaml` : `openapi-spec-${new Date().getTime()}.yaml`
-  link.click()
-  URL.revokeObjectURL(url)
-  ElMessage.success('下载成功')
-}
-
-const handleContentChange = (content: string) => {
-  editorContent.value = content
-  if (selectedDocument.value) {
-    selectedDocument.value.content = content
-  }
-  validationResults.value = null
-}
-
-const validateSpec = async () => {
-  if (!editorContent.value.trim()) {
-    ElMessage.warning('请先输入OpenAPI规范内容')
-    return
-  }
-  
-  validating.value = true
-  try {
-    const result = await measureFunction('validateSpec', async () => {
-      return await openApiStore.validateSpec(editorContent.value)
-    })
-    
-    // 更新验证结果
-    validationResults.value = result
-    
-    // 更新文档状态
-    if (selectedDocument.value) {
-      selectedDocument.value.status = result.valid ? 'valid' : 'invalid'
-    }
-    
-    // 显示验证结果消息
-    if (result.valid) {
-      const warningCount = result.warnings?.length || 0
-      if (warningCount > 0) {
-        ElMessage.success(`规范验证通过，但有 ${warningCount} 个警告`)
-      } else {
-        ElMessage.success('规范验证通过，无错误和警告')
-      }
-    } else {
-      const errorCount = result.errors?.length || 0
-      const warningCount = result.warnings?.length || 0
-      let message = `规范验证失败，发现 ${errorCount} 个错误`
-      if (warningCount > 0) {
-        message += `，${warningCount} 个警告`
-      }
-      ElMessage.error(message)
-    }
-    
-    // 如果有验证结果，自动切换到预览标签页以显示详细信息
-    if ((result.errors?.length || 0) > 0 || (result.warnings?.length || 0) > 0) {
-      activeTab.value = 'preview'
-    }
-    
-  } catch (error) {
-    console.error('验证失败:', error)
-    ElMessage.error(`验证失败: ${error instanceof Error ? error.message : String(error)}`)
-    validationResults.value = null
-    if (selectedDocument.value) {
-      selectedDocument.value.status = 'invalid'
-    }
-  } finally {
-    validating.value = false
-  }
-}
-
-const createNewSpec = async () => {
-  if (!createFormRef.value) return
-  
-  try {
-    await createFormRef.value.validate()
-    creating.value = true
-    
-    const newDoc = {
-      id: Date.now().toString(),
-      name: createForm.value.name,
-      version: createForm.value.version,
-      description: createForm.value.description,
-      content: generateTemplateContent(createForm.value.template),
-      uploadTime: new Date(),
-      status: 'pending'
-    }
-    
-    documents.value.push(newDoc)
-    selectDocument(newDoc)
-    showCreateDialog.value = false
-    
-    // 重置表单
-    createForm.value = {
-      name: '',
-      version: '1.0.0',
-      description: '',
-      template: ''
-    }
-    
-    ElMessage.success('文档创建成功')
-  } catch (error) {
-    ElMessage.error(`创建失败: ${error}`)
-  } finally {
-    creating.value = false
-  }
-}
-
-const generateTemplateContent = (template: string) => {
-  const templates: Record<string, string> = {
-    'blank': `openapi: 3.0.0
-info:
-  title: ${createForm.value.name}
-  version: ${createForm.value.version}
-  description: ${createForm.value.description}
-paths: {}
-`,
-    'basic-rest': `openapi: 3.0.0
-info:
-  title: ${createForm.value.name}
-  version: ${createForm.value.version}
-  description: ${createForm.value.description}
-paths:
-  /users:
-    get:
-      summary: 获取用户列表
-      responses:
-        '200':
-          description: 成功
-`,
-    'ecommerce': `openapi: 3.0.0
-info:
-  title: ${createForm.value.name}
-  version: ${createForm.value.version}
-  description: ${createForm.value.description}
-paths:
-  /products:
-    get:
-      summary: 获取商品列表
-      responses:
-        '200':
-          description: 成功
-`,
-    'user-management': `openapi: 3.0.0
-info:
-  title: ${createForm.value.name}
-  version: ${createForm.value.version}
-  description: ${createForm.value.description}
-paths:
-  /auth/login:
-    post:
-      summary: 用户登录
-      responses:
-        '200':
-          description: 登录成功
-`
-  }
-  return templates[template] || templates['blank']
-}
-
-const handleFileChange = (file: UploadFile) => {
-  uploadFile.value = file.raw || null
-  if (uploadFile.value) {
-    console.log("uploadFile.value", uploadFile.value);
-    
-    uploadForm.value.name = uploadFile.value.name.replace(/\.[^/.]+$/, '')
-  }
-}
-
-const handleUploadDialogClose = () => {
-  showUploadDialog.value = false
-  uploadFile.value = null
-  uploadForm.value = { name: '', description: '' }
-}
-
-const confirmUpload = async () => {
-  if (!uploadFile.value) return
-  
-  uploading.value = true
-  try {
-    // 直接读取文件内容，不调用后端接口
-    const rawContent = await readFileContent(uploadFile.value)
-    
-    const newDoc = {
-      id: Date.now().toString(),
-      name: uploadForm.value.name,
-      description: uploadForm.value.description,
-      content: rawContent,
-      uploadTime: new Date(),
-      status: 'pending' // 设置为待验证状态
-    }
-    
-    documents.value.push(newDoc)
-    selectDocument(newDoc)
-    handleUploadDialogClose()
-    
-    ElMessage.success('文档上传成功，请点击验证按钮进行验证')
-  } catch (error) {
-    ElMessage.error(`上传失败: ${error instanceof Error ? error.message : String(error)}`)
-  } finally {
-    uploading.value = false
-  }
-}
-
-
-
-
-
-// 工具函数
-// measureFunction 已在 usePerformanceMonitor() 中定义
-// globalConfirmDelete 已在 useConfirmation() 中定义
-
-const readFileContent = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      resolve(e.target?.result as string)
-    }
-    reader.onerror = () => {
-      reject(new Error('文件读取失败'))
-    }
-    reader.readAsText(file)
-  })
-}
-
-// MCP相关方法
-const convertToMCP = async () => {
-  if (!editorContent.value) {
-    ElMessage.warning('请先选择文档或输入OpenAPI规范内容')
-    return
-  }
-  
-  converting.value = true
-  try {
-    // 首先验证当前规范
-    const validation = await openApiStore.validateSpec(editorContent.value)
-    if (!validation.valid) {
-      ElMessage.error('当前规范验证失败，请先修复错误')
-      return
-    }
-    // 解析内容并获取工具
-    const parseResult = await openApiStore.parseOpenAPIContent(editorContent.value)
-    mcpTools.value = parseResult.tools || []
-    activeTab.value = 'tools'
-    
-    ElMessage.success(`成功转换为 ${mcpTools.value.length} 个MCP工具`)
-  } catch (error) {
-    ElMessage.error(`转换失败: ${error instanceof Error ? error.message : error}`)
-  } finally {
-    converting.value = false
-  }
-}
-
-const importFromUrl = async () => {
-  if (!urlFormRef.value) return
-  
-  try {
-    await urlFormRef.value.validate()
-    importing.value = true
-    
-    // 直接获取URL内容，不调用后端解析接口
-    const rawContentResponse = await fetch(urlForm.value.url)
-    if (!rawContentResponse.ok) {
-      throw new Error(`HTTP ${rawContentResponse.status}: ${rawContentResponse.statusText}`)
-    }
-    let rawContent = await rawContentResponse.text()
-    
-    // 尝试格式化JSON内容
-    try {
-      const jsonContent = JSON.parse(rawContent)
-      rawContent = JSON.stringify(jsonContent, null, 2)
-    } catch (e) {
-      // 如果不是JSON格式，保持原样（可能是YAML）
-      console.log('Content is not JSON, keeping original format')
-    }
-    
-    const newDoc = {
-      id: Date.now().toString(),
-      name: urlForm.value.name || 'imported_spec',
-      description: '从URL导入的文档',
-      content: rawContent,
-      uploadTime: new Date(),
-      status: 'pending' // 设置为待验证状态
-    }
-    
-    documents.value.push(newDoc)
-    selectDocument(newDoc)
-    showUrlDialog.value = false
-    
-    // 重置表单
-    urlForm.value = {
-      url: '',
-      name: '',
-      authType: 'none',
-      token: '',
-      username: '',
-      password: ''
-    }
-    
-    ElMessage.success('文档导入成功，请点击验证按钮进行验证')
-  } catch (error) {
-    ElMessage.error(`导入失败: ${error instanceof Error ? error.message : String(error)}`)
-  } finally {
-    importing.value = false
-  }
-}
-
-const handleTestTool = async (tool: MCPTool, params: Record<string, any>) => {
-  try {
-    ElMessage.info(`正在测试工具: ${tool.name}`)
-    // 这里可以集成实际的工具测试逻辑
-    console.log('Testing tool:', tool, 'with params:', params)
-  } catch (error) {
-    ElMessage.error(`工具测试失败: ${error instanceof Error ? error.message : error}`)
-  }
-}
-
-// 接口相关方法
-const getMethodTagType = (method: string) => {
-  const methodMap: Record<string, string> = {
-    'get': 'success',
-    'post': 'primary',
-    'put': 'warning',
-    'delete': 'danger',
-    'patch': 'info',
-    'head': '',
-    'options': ''
-  }
-  return methodMap[method.toLowerCase()] || ''
-}
-
-const viewApiDetail = (api: any) => {
-  ElMessageBox.alert(
-    `<div>
-      <p><strong>路径:</strong> ${api.path}</p>
-      <p><strong>方法:</strong> ${api.method.toUpperCase()}</p>
-      <p><strong>摘要:</strong> ${api.summary || '无'}</p>
-      <p><strong>描述:</strong> ${api.description || '无'}</p>
-      <p><strong>操作ID:</strong> ${api.operationId || '无'}</p>
-      <p><strong>标签:</strong> ${api.tags?.join(', ') || '无'}</p>
-    </div>`,
-    '接口详情',
-    {
-      dangerouslyUseHTMLString: true,
-      confirmButtonText: '确定'
-    }
-  )
-}
-
-// 生命周期
-onMounted(async () => {
-  // 暂时移除规范列表加载，直接使用解析功能
-  specsLoading.value = false
-})
-</script>

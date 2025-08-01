@@ -91,8 +91,8 @@
 
         <div class="tools-grid">
           <div 
-            v-for="tool in filteredTools" 
-            :key="tool.name"
+            v-for="(tool, index) in filteredTools" 
+            :key="`${tool.id || tool.name}-${index}`"
             class="tool-card"
             @click="selectTool(tool)"
             :class="{ 'selected': selectedTool?.name === tool.name }"
@@ -118,7 +118,7 @@
             <div class="tool-meta">
               <div class="tool-endpoint">
                 <el-icon><Link /></el-icon>
-                <code>{{ tool.endpoint || tool.path || '/' }}</code>
+                <code>{{props.serverUrl + (tool.endpoint || tool.path || '/')}}</code>
               </div>
               <div v-if="tool.parameters && tool.parameters.properties && Object.keys(tool.parameters.properties).length > 0" class="tool-params">
                 <el-icon><List /></el-icon>
@@ -353,6 +353,7 @@ import { simulateMCPToolExecution, generateToolConfig, generateToolSchema } from
 interface Props {
   tools?: MCPTool[]
   loading?: boolean
+  serverUrl?: string
 }
 
 interface Emits {
@@ -373,11 +374,53 @@ const testForm = ref<Record<string, any>>({})
 const testResult = ref('')
 const testing = ref(false)
 
+// 数据转换：将用户传入的数据格式转换为组件期望的格式
+const normalizedTools = computed(() => {
+  if (!props.tools) {
+    return []
+  }
+
+  
+  const normalized = props.tools.map((tool, index) => {
+    // 如果已经是正确格式，直接返回
+    if (tool.method && tool.parameters) {
+      console.log(`MCPToolPreview: Tool ${index} already in correct format`)
+      return tool
+    }
+    
+    // 转换用户传入的格式
+    const normalizedTool: MCPTool = {
+      id: tool.id || tool.name,
+      name: tool.name,
+      description: tool.description,
+      // 从 metadata 中获取 method 和 path
+      method: (tool as any).metadata?.method?.toLowerCase() || 'get',
+      endpoint: (tool as any).metadata?.path || '/',
+      path: (tool as any).metadata?.path || '/',
+      // 将 inputSchema 转换为 parameters
+      parameters: (tool as any).inputSchema || {
+        type: 'object',
+        properties: {},
+        required: []
+      },
+      serverId: tool.serverId || 'default'
+    }
+    
+    console.log(`MCPToolPreview: Normalized tool ${index}:`, normalizedTool)
+    return normalizedTool
+  })
+  return normalized
+})
+
 // 计算属性
 const filteredTools = computed(() => {
-  if (!props.tools) return []
+  console.log("normalizedTools",normalizedTools.value);
   
-  return props.tools.filter(tool => {
+  if (!normalizedTools.value) {
+    return []
+  }
+  
+  const filtered = normalizedTools.value.filter(tool => {
     const matchesSearch = !searchText.value || 
       tool.name.toLowerCase().includes(searchText.value.toLowerCase()) ||
       (tool.description && tool.description.toLowerCase().includes(searchText.value.toLowerCase()))
@@ -385,8 +428,12 @@ const filteredTools = computed(() => {
     const matchesMethod = !selectedMethod.value || 
       (tool.method && tool.method.toLowerCase() === selectedMethod.value.toLowerCase())
     
-    return matchesSearch && matchesMethod
+    const matches = matchesSearch && matchesMethod
+    return matches
   })
+  console.log("filters",props.serverUrl);
+  
+  return filtered
 })
 
 const schemaText = computed(() => {
@@ -405,8 +452,8 @@ const mcpConfigText = computed(() => {
 
 // 方法
 const getMethodCount = (method: string) => {
-  if (!props.tools) return 0
-  return props.tools.filter(tool => tool.method && tool.method.toLowerCase() === method).length
+  if (!normalizedTools.value) return 0
+  return normalizedTools.value.filter(tool => tool.method && tool.method.toLowerCase() === method).length
 }
 
 const getMethodType = (method: string) => {
@@ -516,6 +563,11 @@ const copyMCPConfig = async () => {
 watch(() => props.tools, () => {
   selectedTool.value = null
 })
+
+// 监听转换后的工具变化，重置选择
+watch(() => normalizedTools.value, () => {
+  selectedTool.value = null
+})
 </script>
 
 <style scoped>
@@ -584,6 +636,27 @@ watch(() => props.tools, () => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 16px;
+  max-height: 600px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.tools-grid::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tools-grid::-webkit-scrollbar-track {
+  background: var(--el-fill-color-lighter);
+  border-radius: 3px;
+}
+
+.tools-grid::-webkit-scrollbar-thumb {
+  background: var(--el-border-color);
+  border-radius: 3px;
+}
+
+.tools-grid::-webkit-scrollbar-thumb:hover {
+  background: var(--el-border-color-dark);
 }
 
 .tool-card {
