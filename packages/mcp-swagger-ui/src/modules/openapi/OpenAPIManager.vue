@@ -5,19 +5,19 @@
       <div class="header-content">
         <h1>
           <el-icon><Document /></el-icon>
-          OpenAPI 文档管理
+          {{ t('openapi.title') }}
         </h1>
-        <p class="header-description">管理和编辑OpenAPI规范文档，支持文档上传、在线编辑和MCP工具转换</p>
+        <p class="header-description">{{ t('openapi.description') }}</p>
       </div>
       <div class="header-actions">
         <el-button type="primary" @click="showUploadDialog = true" :icon="Upload">
-          上传文档
+          {{ t('openapi.uploadFile') }}
         </el-button>
         <el-button type="success" @click="showUrlDialog = true" :icon="Link">
-          从URL导入
+          {{ t('openapi.importFromUrl') }}
         </el-button>
         <el-button @click="refreshDocuments" :loading="loading" :icon="Refresh">
-          刷新
+          {{ t('common.refresh') }}
         </el-button>
       </div>
     </div>
@@ -32,7 +32,7 @@
               <div class="list-header">
                 <span>
                    <el-icon><Folder /></el-icon>
-                   文档列表 ({{ documents.length }})
+                   {{ t('openapi.specList') }} ({{ documents.length }})
                  </span>
               </div>
             </template>
@@ -41,7 +41,7 @@
           <div class="search-container">
             <el-input
               v-model="searchQuery"
-              placeholder="搜索文档..."
+              :placeholder="t('openapi.searchPlaceholder')"
               clearable
               size="small"
             >
@@ -53,7 +53,7 @@
           
           <!-- 文档列表 -->
           <div class="document-list">
-            <el-empty v-if="!filteredDocuments.length" description="暂无文档，请上传OpenAPI文档" />
+            <el-empty v-if="!filteredDocuments.length" :description="t('openapi.noSpecs')" />
             <div v-else class="document-items">
               <div 
                 v-for="doc in filteredDocuments" 
@@ -108,17 +108,9 @@
                       :disabled="selectedDocument.status !== 'valid'"
                     >
                       <el-icon><Edit /></el-icon>
-                      编辑
+                      {{ t('common.edit') }}
                     </el-button>
-                    <el-button 
-                      :type="activeTab === 'preview' ? 'primary' : ''"
-                      size="small" 
-                      @click="activeTab = 'preview'"
-                      :disabled="selectedDocument.status !== 'valid'"
-                    >
-                      <el-icon><Document /></el-icon>
-                      预览
-                    </el-button>
+
                     <el-button 
                       :type="activeTab === 'apis' ? 'primary' : ''"
                       size="small" 
@@ -126,7 +118,7 @@
                       :disabled="selectedDocument.status !== 'valid'"
                     >
                       <el-icon><Operation /></el-icon>
-                      接口列表
+                      {{ t('openapi.paths') }}
                     </el-button>
                     <el-button 
                       :type="activeTab === 'tools' ? 'primary' : ''"
@@ -135,17 +127,17 @@
                       :disabled="selectedDocument.status !== 'valid'"
                     >
                       <el-icon><Tools /></el-icon>
-                      MCP工具
+                      {{ t('openapi.tools') }}
                     </el-button>
                   </el-button-group>
                   <el-divider direction="vertical" />
                   <el-button size="small" @click="validateSpec" :disabled="!selectedDocument || !editorContent.trim()">
                     <el-icon><Check /></el-icon>
-                    验证
+                    {{ t('openapi.validateSpec') }}
                   </el-button>
                   <el-button type="primary" size="small" @click="convertToMCP" :disabled="selectedDocument.status !== 'valid'">
                      <el-icon><Setting /></el-icon>
-                     转换为MCP
+                     {{ t('openapi.convertToMcp') }}
                    </el-button>
                   <el-button 
                     type="primary" 
@@ -154,14 +146,14 @@
                     :disabled="selectedDocument.status !== 'valid'"
                   >
                     <el-icon><Download /></el-icon>
-                    下载
+                    {{ t('common.download') }}
                   </el-button>
                 </div>
               </div>
               <div v-else class="empty-header">
                 <span>
                   <el-icon><Document /></el-icon>
-                  请选择一个文档查看详情
+                  {{ t('openapi.selectDocument') }}
                 </span>
               </div>
             </template>
@@ -169,19 +161,19 @@
           <div class="detail-content" style="height: calc(100% - 60px); overflow: hidden;">
             <!-- 空状态 -->
             <div v-if="!selectedDocument" class="empty-state" style="height: 100%; display: flex; align-items: center; justify-content: center;">
-              <el-empty description="请选择一个文档查看详情" :image-size="150">
+              <el-empty :description="t('openapi.selectDocument')" :image-size="150">
                 <el-button type="primary" @click="showUploadDialog = true" :icon="Upload">
-                  上传文档
+                  {{ t('openapi.uploadFile') }}
                 </el-button>
               </el-empty>
             </div>
             
             <!-- 错误状态 -->
             <div v-else-if="selectedDocument.status === 'error'" class="error-state" style="height: 100%; display: flex; align-items: center; justify-content: center;">
-              <el-result icon="error" title="文档解析失败" :sub-title="selectedDocument.errorMessage">
+              <el-result icon="error" :title="t('openapi.parseFailed')" :sub-title="selectedDocument.errorMessage">
                 <template #extra>
                   <el-button type="primary" @click="deleteDocument(selectedDocument.id)">
-                    删除文档
+                    {{ t('openapi.deleteSpec') }}
                   </el-button>
                 </template>
               </el-result>
@@ -193,85 +185,110 @@
                 <el-icon size="48" class="is-loading" style="margin-bottom: 16px;">
                   <Loading />
                 </el-icon>
-                <p style="color: #606266; margin: 0;">正在解析文档...</p>
+                <p style="color: #606266; margin: 0;">{{ t('openapi.parsing') }}</p>
               </div>
             </div>
             
             <!-- 正常状态 -->
             <div v-else class="content-tabs" style="height: 100%;">
-              <div v-show="activeTab === 'editor'" class="editor-container" style="height: 100%;">
+              <div v-show="activeTab === 'editor'" ref="editorContainerRef" class="editor-container" style="height: 100%;">
                 <MonacoEditor
                   v-model="editorContent"
                   :language="detectLanguage(editorContent)"
-                  :height="600"
+                  :height="editorHeight"
                   :options="editorOptions"
                   @change="handleContentChange"
                 />
               </div>
               
-              <div v-show="activeTab === 'preview'" class="preview-container" style="height: 100%; overflow-y: auto;">
-                <SpecPreview 
-                  :spec="selectedDocument" 
-                  :validation-result="validationResults"
-                  :api-paths="parsedApis"
-                  :mcp-tools="mcpTools"
-                />
-              </div>
+
               
               <div v-show="activeTab === 'apis'" class="apis-container" style="height: 100%; overflow-y: auto;">
-                <el-empty v-if="!parsedApis.length" description="暂无解析结果，请先验证文档" />
-                <div v-else>
-                  <!-- API列表内容 -->
-                  <el-table 
-                    :data="parsedApis"
-                    stripe
-                    style="width: 100%"
-                    max-height="500"
+                <el-empty v-if="!parsedApis.length" :description="t('openapi.noParseResult')" />
+                <div v-else class="api-list">
+                  <!-- API卡片列表 -->
+                  <div 
+                    v-for="(api, index) in parsedApis" 
+                    :key="`${api.method}-${api.path}-${index}`"
+                    class="api-card"
+                    :class="`api-card--${api.method.toLowerCase()}`"
                   >
-                    <el-table-column prop="method" label="方法" width="80">
-                      <template #default="{ row }">
-                        <el-tag 
-                          :type="getMethodTagType(row.method)"
-                          size="small"
-                        >
-                          {{ row.method.toUpperCase() }}
-                        </el-tag>
-                      </template>
-                    </el-table-column>
+                    <div class="api-card__header" @click="toggleApiDetail(index)">
+                      <div class="api-card__method-info">
+                        <span class="api-method-tag" :class="`method-${api.method.toLowerCase()}`">
+                          {{ api.method.toUpperCase() }}
+                        </span>
+                        <span class="api-path">{{ api.path }}</span>
+                      </div>
+                      <div class="api-card__summary">
+                        <span class="api-summary">{{ api.summary || api.description || t('openapi.noDescription') }}</span>
+                        <el-icon class="expand-icon" :class="{ 'expanded': expandedApis.includes(index) }">
+                          <ArrowDown />
+                        </el-icon>
+                      </div>
+                    </div>
                     
-                    <el-table-column prop="path" label="路径" min-width="200" />
-                    
-                    <el-table-column prop="summary" label="摘要" min-width="150" show-overflow-tooltip />
-                    
-                    <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-                    
-                    <el-table-column prop="tags" label="标签" width="120">
-                      <template #default="{ row }">
-                        <el-tag 
-                          v-for="tag in row.tags" 
-                          :key="tag"
-                          size="small"
-                          effect="plain"
-                          style="margin-right: 4px;"
-                        >
-                          {{ tag }}
-                        </el-tag>
-                      </template>
-                    </el-table-column>
-                    
-                    <el-table-column label="操作" width="100">
-                      <template #default="{ row }">
-                        <el-button 
-                          size="small"
-                          type="primary"
-                          text
-                          @click="viewApiDetail(row)"
-                        >
-                          详情
-                        </el-button>
-                      </template>
-                    </el-table-column>
-                  </el-table>
+                    <!-- 可展开的详细信息 -->
+                    <el-collapse-transition>
+                      <div v-show="expandedApis.includes(index)" class="api-card__details">
+                        <div class="api-detail-section">
+                          <div v-if="api.description && api.description !== api.summary" class="detail-item">
+                            <label>{{ t('openapi.description') }}：</label>
+                            <span>{{ api.description }}</span>
+                          </div>
+                          
+                          <div v-if="api.operationId" class="detail-item">
+                            <label>{{ t('openapi.operationId') }}：</label>
+                            <span>{{ api.operationId }}</span>
+                          </div>
+                          
+                          <div v-if="api.tags && api.tags.length" class="detail-item">
+                            <label>{{ t('openapi.tags') }}：</label>
+                            <div class="tag-list">
+                              <el-tag 
+                                v-for="tag in api.tags" 
+                                :key="tag"
+                                size="small"
+                                effect="plain"
+                                class="api-tag"
+                              >
+                                {{ tag }}
+                              </el-tag>
+                            </div>
+                          </div>
+                          
+                          <div v-if="api.parameters && api.parameters.length" class="detail-item">
+                            <label>{{ t('openapi.parameters') }}：</label>
+                            <div class="parameter-list">
+                              <div 
+                                v-for="param in api.parameters" 
+                                :key="param.name"
+                                class="parameter-item"
+                              >
+                                <span class="param-name">{{ param.name }}</span>
+                                <span class="param-type">{{ param.type || param.schema?.type || 'unknown' }}</span>
+                                <span v-if="param.required" class="param-required">{{ t('tester.required') }}</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div v-if="api.responses" class="detail-item">
+                            <label>{{ t('openapi.responses') }}：</label>
+                            <div class="response-list">
+                              <div 
+                                v-for="(response, code) in api.responses" 
+                                :key="code"
+                                class="response-item"
+                              >
+                                <span class="response-code" :class="getResponseCodeClass(String(code))">{{ code }}</span>
+                                <span class="response-desc">{{ response.description || t('openapi.noDescription') }}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </el-collapse-transition>
+                  </div>
                 </div>
               </div>
               
@@ -288,7 +305,7 @@
     <!-- 创建规范对话框 -->
     <el-dialog
       v-model="showCreateDialog"
-      title="创建新的OpenAPI规范"
+      :title="t('openapi.createSpec')"
       width="600px"
       align-center
     >
@@ -298,54 +315,54 @@
         :rules="createFormRules"
         label-width="100px"
       >
-        <el-form-item label="规范名称" prop="name">
+        <el-form-item :label="t('openapi.specName')" prop="name">
           <el-input 
             v-model="createForm.name"
-            placeholder="请输入规范名称"
+            :placeholder="t('openapi.enterSpecName')"
             clearable
           />
         </el-form-item>
         
-        <el-form-item label="版本" prop="version">
+        <el-form-item :label="t('openapi.specVersion')" prop="version">
           <el-input 
             v-model="createForm.version"
-            placeholder="请输入版本号，如 1.0.0"
+            :placeholder="t('openapi.enterVersion')"
             clearable
           />
         </el-form-item>
         
-        <el-form-item label="描述" prop="description">
+        <el-form-item :label="t('openapi.specDescription')" prop="description">
           <el-input 
             v-model="createForm.description"
             type="textarea"
             :rows="3"
-            placeholder="请输入描述信息"
+            :placeholder="t('openapi.enterDescription')"
           />
         </el-form-item>
         
-        <el-form-item label="模板">
+        <el-form-item :label="t('openapi.template')">
           <el-select 
             v-model="createForm.template"
-            placeholder="选择模板（可选）"
+            :placeholder="t('openapi.selectTemplate')"
             clearable
             style="width: 100%;"
           >
-            <el-option label="空白模板" value="blank" />
-            <el-option label="基础REST API" value="basic-rest" />
-            <el-option label="电商API" value="ecommerce" />
-            <el-option label="用户管理API" value="user-management" />
+            <el-option :label="t('openapi.blankTemplate')" value="blank" />
+            <el-option :label="t('openapi.basicRestTemplate')" value="basic-rest" />
+            <el-option :label="t('openapi.ecommerceTemplate')" value="ecommerce" />
+            <el-option :label="t('openapi.userManagementTemplate')" value="user-management" />
           </el-select>
         </el-form-item>
       </el-form>
       
       <template #footer>
-        <el-button @click="showCreateDialog = false">取消</el-button>
+        <el-button @click="showCreateDialog = false">{{ t('common.cancel') }}</el-button>
         <el-button 
           type="primary" 
           @click="createNewSpec"
           :loading="creating"
         >
-          创建
+          {{ t('common.create') }}
         </el-button>
       </template>
     </el-dialog>
@@ -353,7 +370,7 @@
     <!-- 上传对话框 -->
     <el-dialog
       v-model="showUploadDialog"
-      title="上传OpenAPI文档"
+      :title="t('openapi.uploadFile')"
       width="600px"
       :before-close="handleUploadDialogClose"
     >
@@ -364,16 +381,18 @@
           drag
           :auto-upload="false"
           :on-change="handleFileChange"
+          :on-remove="handleFileRemove"
+          :file-list="uploadFileList"
           :accept="'.json,.yaml,.yml'"
           :limit="1"
         >
           <el-icon class="el-icon--upload" size="48" style="color: #409eff;"><UploadFilled /></el-icon>
           <div class="el-upload__text" style="font-size: 16px; margin-top: 16px;">
-            拖拽文件到此处或 <em style="color: #409eff;">点击选择文件</em>
+            {{ t('openapi.dragOrClick') }}
           </div>
           <template #tip>
             <div class="el-upload__tip" style="margin-top: 12px; color: #909399;">
-              支持 JSON 和 YAML 格式的 OpenAPI 规范文档
+              {{ t('openapi.supportedFormats') }}
             </div>
           </template>
         </el-upload>
@@ -386,19 +405,19 @@
           label-width="100px"
           class="upload-form"
         >
-          <el-form-item label="文档名称" prop="name">
-            <el-input v-model="uploadForm.name" placeholder="请输入文档名称" size="large">
+          <el-form-item :label="t('openapi.docName')" prop="name">
+            <el-input v-model="uploadForm.name" :placeholder="t('openapi.enterDocName')" size="large">
               <template #prefix>
                 <el-icon><Document /></el-icon>
               </template>
             </el-input>
           </el-form-item>
-          <el-form-item label="文档描述" prop="description">
+          <el-form-item :label="t('openapi.docDescription')" prop="description">
             <el-input 
               v-model="uploadForm.description" 
               type="textarea" 
               :rows="3"
-              placeholder="请输入文档描述（可选）"
+              :placeholder="t('openapi.enterDocDescription')"
               size="large"
             />
           </el-form-item>
@@ -407,7 +426,7 @@
       
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="handleUploadDialogClose" size="large">取消</el-button>
+          <el-button @click="handleUploadDialogClose" size="large">{{ t('common.cancel') }}</el-button>
           <el-button 
             type="primary" 
             @click="confirmUpload" 
@@ -415,7 +434,7 @@
             size="large"
             :loading="uploading"
           >
-            {{ uploading ? '上传中...' : '确认上传' }}
+            {{ uploading ? t('openapi.uploading') : t('openapi.confirmUpload') }}
           </el-button>
         </div>
       </template>
@@ -424,7 +443,7 @@
     <!-- URL导入对话框 -->
     <el-dialog
       v-model="showUrlDialog"
-      title="从URL导入OpenAPI文档"
+      :title="t('openapi.importFromUrl')"
       width="600px"
       align-center
     >
@@ -434,10 +453,10 @@
         :rules="urlFormRules"
         label-width="100px"
       >
-        <el-form-item label="文档URL" prop="url">
+        <el-form-item :label="t('openapi.docUrl')" prop="url">
           <el-input 
             v-model="urlForm.url"
-            placeholder="请输入OpenAPI文档的URL地址"
+            :placeholder="t('openapi.enterDocUrl')"
             clearable
             size="large"
           >
@@ -446,14 +465,14 @@
             </template>
           </el-input>
           <div class="form-tip">
-            支持 HTTP/HTTPS 协议的 JSON 或 YAML 格式文档
+            {{ t('openapi.urlFormats') }}
           </div>
         </el-form-item>
         
-        <el-form-item label="文档名称" prop="name">
+        <el-form-item :label="t('openapi.docName')" prop="name">
           <el-input 
             v-model="urlForm.name"
-            placeholder="请输入文档名称"
+            :placeholder="t('openapi.enterDocName')"
             clearable
             size="large"
           >
@@ -462,42 +481,42 @@
             </template>
           </el-input>
           <div class="form-tip">
-            如果不填写，将使用文档中的标题信息
+            {{ t('openapi.autoNameTip') }}
           </div>
         </el-form-item>
         
-        <el-form-item label="认证方式">
-          <el-select v-model="urlForm.authType" placeholder="选择认证方式" size="large" style="width: 100%;">
-            <el-option label="无需认证" value="none" />
-            <el-option label="Bearer Token" value="bearer" />
-            <el-option label="Basic Auth" value="basic" />
+        <el-form-item :label="t('auth.authType')">
+          <el-select v-model="urlForm.authType" :placeholder="t('auth.selectAuthType')" size="large" style="width: 100%;">
+            <el-option :label="t('auth.noAuth')" value="none" />
+            <el-option :label="t('auth.bearerToken')" value="bearer" />
+            <el-option :label="t('auth.basicAuth')" value="basic" />
           </el-select>
         </el-form-item>
         
-        <el-form-item v-if="urlForm.authType === 'bearer'" label="Token">
+        <el-form-item v-if="urlForm.authType === 'bearer'" :label="t('auth.token')">
           <el-input 
             v-model="urlForm.token"
             type="password"
-            placeholder="请输入Bearer Token"
+            :placeholder="t('auth.enterToken')"
             show-password
             size="large"
           />
         </el-form-item>
         
         <template v-if="urlForm.authType === 'basic'">
-          <el-form-item label="用户名">
+          <el-form-item :label="t('auth.username')">
             <el-input 
               v-model="urlForm.username"
-              placeholder="请输入用户名"
+              :placeholder="t('auth.enterUsername')"
               size="large"
             />
           </el-form-item>
           
-          <el-form-item label="密码">
+          <el-form-item :label="t('auth.password')">
             <el-input 
               v-model="urlForm.password"
               type="password"
-              placeholder="请输入密码"
+              :placeholder="t('auth.enterPassword')"
               show-password
               size="large"
             />
@@ -507,14 +526,66 @@
       
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="showUrlDialog = false" size="large">取消</el-button>
+          <el-button @click="showUrlDialog = false" size="large">{{ t('common.cancel') }}</el-button>
           <el-button 
             type="primary" 
             @click="importFromUrl"
             :loading="importing"
             size="large"
           >
-            {{ importing ? '导入中...' : '开始导入' }}
+            {{ importing ? t('openapi.importing') : t('openapi.startImport') }}
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑文档对话框 -->
+    <el-dialog
+      v-model="showEditDialog"
+      :title="t('openapi.editDocument')"
+      width="600px"
+      align-center
+    >
+      <el-form 
+        ref="editFormRef"
+        :model="editForm"
+        :rules="editFormRules"
+        label-width="100px"
+      >
+        <el-form-item :label="t('openapi.docName')" prop="name">
+          <el-input 
+            v-model="editForm.name"
+            :placeholder="t('openapi.enterDocName')"
+            clearable
+            size="large"
+          >
+            <template #prefix>
+              <el-icon><Document /></el-icon>
+            </template>
+          </el-input>
+        </el-form-item>
+        
+        <el-form-item :label="t('openapi.docDescription')" prop="description">
+          <el-input 
+            v-model="editForm.description"
+            type="textarea"
+            :rows="4"
+            :placeholder="t('openapi.enterDocDescription')"
+            size="large"
+          />
+        </el-form-item>
+      </el-form>
+      
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="showEditDialog = false" size="large">{{ t('common.cancel') }}</el-button>
+          <el-button 
+            type="primary" 
+            @click="saveEditDocument"
+            :loading="editing"
+            size="large"
+          >
+            {{ editing ? t('openapi.saving') : t('common.save') }}
           </el-button>
         </div>
       </template>
@@ -525,25 +596,29 @@
 
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import {
   Plus, Upload, Link, Document, Search, MoreFilled, Edit, 
   DocumentCopy, Download, Delete, Operation, Tools, Check, 
-  DocumentChecked, UploadFilled, Folder, Setting, Refresh
+  DocumentChecked, UploadFilled, Folder, Setting, Refresh, ArrowDown
 } from '@element-plus/icons-vue'
 import type { UploadFile, FormInstance } from 'element-plus'
 import MonacoEditor from '../../shared/components/monaco/MonacoEditor.vue'
-import SpecPreview from './components/openapi/SpecPreview.vue'
+
 import MCPToolPreview from './components/openapi/MCPToolPreview.vue'
 import type { OpenAPISpec, ValidationResult, MCPTool } from '../../types'
 import { useOpenAPIStore } from '../../stores/openapi'
-import { parseOpenAPI, validateOpenAPI } from '../../utils/openapi'
+import { parseOpenAPI, validateOpenAPI, extractApiPaths } from '../../utils/openapi'
 
 // 导入全局功能
 import { useConfirmation } from '../../composables/useConfirmation'
 import { useFormValidation } from '../../composables/useFormValidation'
 import { usePerformanceMonitor } from '../../composables/usePerformance'
+
+// 国际化
+const { t } = useI18n()
 // import LoadingOverlay from '@/shared/components/ui/LoadingOverlay.vue' // 暂时注释掉，如果需要可以创建这个组件
 
 // 状态管理
@@ -567,7 +642,7 @@ const specsLoading = ref(false)
 const loading = ref(false)
 const searchQuery = ref('')
 const selectedDocument = ref<any>(null)
-const activeTab = ref<'editor' | 'preview' | 'apis' | 'tools'>('editor')
+const activeTab = ref<'editor' | 'apis' | 'tools'>('editor')
 const editorContent = ref('')
 const saving = ref(false)
 const validating = ref(false)
@@ -578,19 +653,24 @@ const mcpServerUrl = ref('')
 const documents = ref<any[]>([])  // 文档列表
 const parsedApis = ref<any[]>([])  // 解析的API列表
 const uploadFile = ref<File | null>(null)
+const editorContainerRef = ref<HTMLElement>()  // 编辑器容器引用
+const expandedApis = ref<number[]>([])  // 展开的API卡片索引列表
 
 // 对话框状态
 const showCreateDialog = ref(false)
 const showUploadDialog = ref(false)
 const showUrlDialog = ref(false)
+const showEditDialog = ref(false)
 const creating = ref(false)
 const uploading = ref(false)
 const importing = ref(false)
+const editing = ref(false)
 
 // 表单引用
 const createFormRef = ref<FormInstance>()
 const urlFormRef = ref<FormInstance>()
 const uploadRef = ref()
+const editFormRef = ref<FormInstance>()
 
 // 上传文件列表
 const uploadFileList = ref<UploadFile[]>([])
@@ -617,31 +697,44 @@ const urlForm = ref({
   password: ''
 })
 
+const editForm = ref({
+  id: '',
+  name: '',
+  description: ''
+})
+
 // 表单验证规则
 const createFormRules = {
   name: [
-    { required: true, message: '请输入规范名称', trigger: 'blur' },
-    { min: 2, max: 50, message: '名称长度在 2 到 50 个字符', trigger: 'blur' }
+    { required: true, message: t('openapi.validation.specNameRequired'), trigger: 'blur' },
+    { min: 2, max: 50, message: t('openapi.validation.nameLength'), trigger: 'blur' }
   ],
   version: [
-    { required: true, message: '请输入版本号', trigger: 'blur' }
+    { required: true, message: t('openapi.validation.versionRequired'), trigger: 'blur' }
   ]
 }
 
 const uploadRules = {
   name: [
-    { required: true, message: '请输入文档名称', trigger: 'blur' },
-    { min: 2, max: 50, message: '名称长度在 2 到 50 个字符', trigger: 'blur' }
+    { required: true, message: t('openapi.validation.docNameRequired'), trigger: 'blur' },
+    { min: 2, max: 50, message: t('openapi.validation.nameLength'), trigger: 'blur' }
   ]
 }
 
 const urlFormRules = {
   url: [
-    { required: true, message: '请输入URL地址', trigger: 'blur' },
-    { type: 'url', message: '请输入有效的URL地址', trigger: 'blur' }
+    { required: true, message: t('openapi.validation.urlRequired'), trigger: 'blur' },
+    { type: 'url', message: t('openapi.validation.urlInvalid'), trigger: 'blur' }
   ],
   name: [
-    { required: true, message: '请输入规范名称', trigger: 'blur' }
+    { required: true, message: t('openapi.validation.specNameRequired'), trigger: 'blur' }
+  ]
+}
+
+const editFormRules = {
+  name: [
+    { required: true, message: t('openapi.validation.docNameRequired'), trigger: 'blur' },
+    { min: 2, max: 50, message: t('openapi.validation.nameLength'), trigger: 'blur' }
   ]
 }
 
@@ -692,6 +785,18 @@ const filteredDocuments = computed(() => {
   )
 })
 
+// 计算编辑器高度
+const editorHeight = computed(() => {
+  // 如果容器引用存在，动态计算可用高度
+  if (editorContainerRef.value) {
+    const containerHeight = editorContainerRef.value.clientHeight
+    // 减去一些边距和其他元素的高度
+    return Math.max(containerHeight - 20, 300) // 最小高度300px
+  }
+  // 默认使用视窗高度的计算值
+  return Math.max(window.innerHeight - 300, 400)
+})
+
 // 方法
 const detectLanguage = (content: string) => {
   if (!content.trim()) return 'yaml'
@@ -723,25 +828,105 @@ const selectDocument = (doc: any) => {
 }
 
 const editDocument = (doc: any) => {
-  selectDocument(doc)
-  activeTab.value = 'editor'
+  // 填充编辑表单数据
+  editForm.value = {
+    id: doc.id,
+    name: doc.name,
+    description: doc.description || ''
+  }
+  showEditDialog.value = true
 }
 
 const deleteDocument = async (docId: string) => {
   try {
-    console.log(docId);
+    // 查找要删除的文档
+    const docToDelete = documents.value.find(doc => doc.id === docId)
+    if (!docToDelete) {
+      ElMessage.error(t('openapi.documentNotFound'))
+      return
+    }
     
-    const confirmed = await globalConfirmDelete('此文档')
+    // 显示确认对话框，包含文档名称
+    const confirmed = await ElMessageBox.confirm(
+      t('openapi.confirmDeleteDocument', { name: docToDelete.name }),
+      t('openapi.confirmDelete'),
+      {
+        confirmButtonText: t('common.confirm'),
+        cancelButtonText: t('common.cancel'),
+        type: 'warning',
+        center: true
+      }
+    ).then(() => true).catch(() => false)
     if (!confirmed) return
     
+    // 从文档列表中删除
     documents.value = documents.value.filter(doc => doc.id !== docId)
+    
+    // 如果删除的是当前选中的文档，清空相关状态
     if (selectedDocument.value?.id === docId) {
       selectedDocument.value = null
       editorContent.value = ''
+      validationResults.value = null
+      parsedApis.value = []
+      expandedApis.value = []
+      activeTab.value = 'editor'
     }
-    ElMessage.success('文档删除成功')
+    
+    // 如果删除后没有文档了，可以显示空状态
+    if (documents.value.length === 0) {
+      selectedDocument.value = null
+      editorContent.value = ''
+      validationResults.value = null
+      parsedApis.value = []
+      expandedApis.value = []
+      activeTab.value = 'editor'
+    }
+    
+    ElMessage.success(t('openapi.deleteSuccess', { name: docToDelete.name }))
   } catch (error) {
-    ElMessage.error(`删除失败: ${error}`)
+    console.error('删除文档失败:', error)
+    ElMessage.error(t('openapi.deleteFailed', { error: error instanceof Error ? error.message : t('common.unknownError') }))
+  }
+}
+
+const saveEditDocument = async () => {
+  if (!editFormRef.value) return
+  
+  try {
+    const valid = await editFormRef.value.validate()
+    if (!valid) return
+    
+    editing.value = true
+    
+    // 查找要编辑的文档
+    const docIndex = documents.value.findIndex(doc => doc.id === editForm.value.id)
+    if (docIndex === -1) {
+      ElMessage.error(t('openapi.documentNotFound'))
+      return
+    }
+    
+    // 更新文档信息
+    documents.value[docIndex] = {
+      ...documents.value[docIndex],
+      name: editForm.value.name,
+      description: editForm.value.description
+    }
+    
+    // 如果当前选中的是被编辑的文档，也要更新选中文档的信息
+    if (selectedDocument.value?.id === editForm.value.id) {
+      selectedDocument.value = {
+        ...selectedDocument.value,
+        name: editForm.value.name,
+        description: editForm.value.description
+      }
+    }
+    
+    showEditDialog.value = false
+    ElMessage.success(t('openapi.updateSuccess'))
+  } catch (error) {
+    ElMessage.error(t('openapi.saveFailed', { error }))
+  } finally {
+    editing.value = false
   }
 }
 
@@ -750,9 +935,9 @@ const refreshDocuments = async () => {
     loading.value = true
     await openApiStore.fetchSpecs()
     // 这里可以添加从store获取文档列表的逻辑
-    ElMessage.success('文档列表刷新成功')
+    ElMessage.success(t('openapi.refreshSuccess'))
   } catch (error) {
-    ElMessage.error(`刷新失败: ${error}`)
+    ElMessage.error(t('openapi.refreshFailed', { error }))
   } finally {
     loading.value = false
   }
@@ -760,11 +945,11 @@ const refreshDocuments = async () => {
 
 const getStatusText = (status: string) => {
   const statusMap: Record<string, string> = {
-    'valid': '有效',
-    'invalid': '无效',
-    'pending': '待验证'
+    'valid': t('openapi.status.valid'),
+    'invalid': t('openapi.status.invalid'),
+    'pending': t('openapi.status.pending')
   }
-  return statusMap[status] || '未知'
+  return statusMap[status] || t('openapi.status.unknown')
 }
 
 const handleSpecAction = async (command: { action: string; spec: OpenAPISpec }) => {
@@ -783,9 +968,9 @@ const handleSpecAction = async (command: { action: string; spec: OpenAPISpec }) 
     case 'duplicate':
       try {
         await openApiStore.duplicateSpec(spec.id)
-        ElMessage.success('规范复制成功')
+        ElMessage.success(t('openapi.duplicateSuccess'))
       } catch (error) {
-        ElMessage.error(`复制失败: ${error}`)
+        ElMessage.error(t('openapi.duplicateFailed', { error }))
       }
       break
       
@@ -795,7 +980,16 @@ const handleSpecAction = async (command: { action: string; spec: OpenAPISpec }) 
       
     case 'delete':
       try {
-        const confirmed = await globalConfirmDelete(spec.name)
+        const confirmed = await ElMessageBox.confirm(
+          t('openapi.confirmDeleteSpec', { name: spec.name }),
+          t('openapi.confirmDelete'),
+          {
+            confirmButtonText: t('common.confirm'),
+            cancelButtonText: t('common.cancel'),
+            type: 'warning',
+            center: true
+          }
+        ).then(() => true).catch(() => false)
         if (!confirmed) break
         
         await measureFunction('deleteSpec', async () => {
@@ -809,9 +1003,9 @@ const handleSpecAction = async (command: { action: string; spec: OpenAPISpec }) 
         }
         // 从文档列表中移除
         documents.value = documents.value.filter(doc => doc.id !== spec.id)
-        ElMessage.success('规范删除成功')
+        ElMessage.success(t('openapi.deleteSpecSuccess'))
       } catch (error) {
-        ElMessage.error(`删除失败: ${error}`)
+        ElMessage.error(t('openapi.deleteFailed', { error }))
       }
       break
   }
@@ -820,7 +1014,7 @@ const handleSpecAction = async (command: { action: string; spec: OpenAPISpec }) 
 const downloadSpec = (spec?: OpenAPISpec) => {
   const content = spec?.content || editorContent.value
   if (!content) {
-    ElMessage.warning('请先输入OpenAPI规范内容')
+    ElMessage.warning(t('openapi.enterContentFirst'))
     return
   }
   
@@ -833,7 +1027,7 @@ const downloadSpec = (spec?: OpenAPISpec) => {
   link.download = spec ? `${spec.name}-${spec.version}.yaml` : `openapi-spec-${new Date().getTime()}.yaml`
   link.click()
   URL.revokeObjectURL(url)
-  ElMessage.success('下载成功')
+  ElMessage.success(t('openapi.downloadSuccess'))
 }
 
 const handleContentChange = (content: string) => {
@@ -846,7 +1040,7 @@ const handleContentChange = (content: string) => {
 
 const validateSpec = async () => {
   if (!editorContent.value.trim()) {
-    ElMessage.warning('请先输入OpenAPI规范内容')
+    ElMessage.warning(t('openapi.enterContentFirst'))
     return
   }
   
@@ -864,33 +1058,57 @@ const validateSpec = async () => {
       selectedDocument.value.status = result.valid ? 'valid' : 'invalid'
     }
     
+    // 如果验证成功，解析API路径并更新parsedApis
+    if (result.valid) {
+      try {
+        // 使用 extractApiPaths 函数从内容中提取API路径
+        const apiPaths = extractApiPaths(editorContent.value)
+        parsedApis.value = apiPaths.map((api, index) => ({
+          id: index,
+          method: api.method.toUpperCase(),
+          path: api.path,
+          summary: api.summary || '',
+          description: api.description || ''
+        }))
+        
+        // 自动切换到APIs标签页显示API列表
+        activeTab.value = 'apis'
+      } catch (parseError) {
+        console.error('解析API路径失败:', parseError)
+        parsedApis.value = []
+      }
+    } else {
+      // 验证失败时清空API列表
+      parsedApis.value = []
+    }
+    
     // 显示验证结果消息
     if (result.valid) {
       const warningCount = result.warnings?.length || 0
+      const apiCount = parsedApis.value.length
       if (warningCount > 0) {
-        ElMessage.success(`规范验证通过，但有 ${warningCount} 个警告`)
+        ElMessage.success(t('openapi.validationSuccessWithWarnings', { apiCount, warningCount }))
       } else {
-        ElMessage.success('规范验证通过，无错误和警告')
+        ElMessage.success(t('openapi.validationSuccessDetail', { apiCount }))
       }
     } else {
       const errorCount = result.errors?.length || 0
       const warningCount = result.warnings?.length || 0
-      let message = `规范验证失败，发现 ${errorCount} 个错误`
       if (warningCount > 0) {
-        message += `，${warningCount} 个警告`
+        ElMessage.error(t('openapi.validationFailedWithWarnings', { errorCount, warningCount }))
+      } else {
+        ElMessage.error(t('openapi.validationFailedDetail', { errorCount }))
       }
-      ElMessage.error(message)
-    }
-    
-    // 如果有验证结果，自动切换到预览标签页以显示详细信息
-    if ((result.errors?.length || 0) > 0 || (result.warnings?.length || 0) > 0) {
-      activeTab.value = 'preview'
+      
+      // 如果有验证错误，切换到编辑器标签页显示错误信息
+      activeTab.value = 'editor'
     }
     
   } catch (error) {
     console.error('验证失败:', error)
-    ElMessage.error(`验证失败: ${error instanceof Error ? error.message : String(error)}`)
+    ElMessage.error(t('openapi.validationError', { error: error instanceof Error ? error.message : String(error) }))
     validationResults.value = null
+    parsedApis.value = []
     if (selectedDocument.value) {
       selectedDocument.value.status = 'invalid'
     }
@@ -928,9 +1146,9 @@ const createNewSpec = async () => {
       template: ''
     }
     
-    ElMessage.success('文档创建成功')
+    ElMessage.success(t('openapi.createSuccess'))
   } catch (error) {
-    ElMessage.error(`创建失败: ${error}`)
+    ElMessage.error(t('openapi.createFailed', { error }))
   } finally {
     creating.value = false
   }
@@ -953,10 +1171,10 @@ info:
 paths:
   /users:
     get:
-      summary: 获取用户列表
+      summary: ${t('openapi.templates.getUserList')}
       responses:
         '200':
-          description: 成功
+          description: ${t('openapi.templates.success')}
 `,
     'ecommerce': `openapi: 3.0.0
 info:
@@ -966,10 +1184,10 @@ info:
 paths:
   /products:
     get:
-      summary: 获取商品列表
+      summary: ${t('openapi.templates.getProductList')}
       responses:
         '200':
-          description: 成功
+          description: ${t('openapi.templates.success')}
 `,
     'user-management': `openapi: 3.0.0
 info:
@@ -979,17 +1197,18 @@ info:
 paths:
   /auth/login:
     post:
-      summary: 用户登录
+      summary: ${t('openapi.templates.userLogin')}
       responses:
         '200':
-          description: 登录成功
+          description: ${t('openapi.templates.loginSuccess')}
 `
   }
   return templates[template] || templates['blank']
 }
 
-const handleFileChange = (file: UploadFile) => {
+const handleFileChange = (file: UploadFile, fileList: UploadFile[]) => {
   uploadFile.value = file.raw || null
+  uploadFileList.value = fileList
   if (uploadFile.value) {
     console.log("uploadFile.value", uploadFile.value);
     
@@ -997,10 +1216,21 @@ const handleFileChange = (file: UploadFile) => {
   }
 }
 
+const handleFileRemove = (file: UploadFile, fileList: UploadFile[]) => {
+  uploadFile.value = null
+  uploadFileList.value = fileList
+  uploadForm.value = { name: '', description: '' }
+}
+
 const handleUploadDialogClose = () => {
   showUploadDialog.value = false
   uploadFile.value = null
   uploadForm.value = { name: '', description: '' }
+  uploadFileList.value = []
+  // 清空上传组件的文件列表
+  if (uploadRef.value) {
+    uploadRef.value.clearFiles()
+  }
 }
 
 const confirmUpload = async () => {
@@ -1024,9 +1254,9 @@ const confirmUpload = async () => {
     selectDocument(newDoc)
     handleUploadDialogClose()
     
-    ElMessage.success('文档上传成功，请点击验证按钮进行验证')
+    ElMessage.success(t('openapi.uploadSuccessValidate'))
   } catch (error) {
-    ElMessage.error(`上传失败: ${error instanceof Error ? error.message : String(error)}`)
+    ElMessage.error(t('openapi.uploadFailed', { error: error instanceof Error ? error.message : String(error) }))
   } finally {
     uploading.value = false
   }
@@ -1047,7 +1277,7 @@ const readFileContent = (file: File): Promise<string> => {
       resolve(e.target?.result as string)
     }
     reader.onerror = () => {
-      reject(new Error('文件读取失败'))
+      reject(new Error(t('openapi.fileReadFailed')))
     }
     reader.readAsText(file)
   })
@@ -1056,7 +1286,7 @@ const readFileContent = (file: File): Promise<string> => {
 // MCP相关方法
 const convertToMCP = async () => {
   if (!editorContent.value) {
-    ElMessage.warning('请先选择文档或输入OpenAPI规范内容')
+    ElMessage.warning(t('openapi.selectDocumentFirst'))
     return
   }
   
@@ -1065,7 +1295,7 @@ const convertToMCP = async () => {
     // 首先验证当前规范
     const validation = await openApiStore.validateSpec(editorContent.value)
     if (!validation.valid) {
-      ElMessage.error('当前规范验证失败，请先修复错误')
+      ElMessage.error(t('openapi.fixErrorsFirst'))
       return
     }
 
@@ -1075,9 +1305,9 @@ const convertToMCP = async () => {
     mcpServerUrl.value = parseResult.servers[0]?.url || ''
     activeTab.value = 'tools'
     
-    ElMessage.success(`成功转换为 ${mcpTools.value.length} 个MCP工具`)
+    ElMessage.success(t('openapi.convertSuccess', { count: mcpTools.value.length }))
   } catch (error) {
-    ElMessage.error(`转换失败: ${error instanceof Error ? error.message : error}`)
+    ElMessage.error(t('openapi.convertFailed', { error: error instanceof Error ? error.message : error }))
   } finally {
     converting.value = false
   }
@@ -1109,7 +1339,7 @@ const importFromUrl = async () => {
     const newDoc = {
       id: Date.now().toString(),
       name: urlForm.value.name || 'imported_spec',
-      description: '从URL导入的文档',
+      description: t('openapi.importedFromUrl'),
       content: rawContent,
       uploadTime: new Date(),
       status: 'pending' // 设置为待验证状态
@@ -1129,9 +1359,9 @@ const importFromUrl = async () => {
       password: ''
     }
     
-    ElMessage.success('文档导入成功，请点击验证按钮进行验证')
+    ElMessage.success(t('openapi.importSuccessValidate'))
   } catch (error) {
-    ElMessage.error(`导入失败: ${error instanceof Error ? error.message : String(error)}`)
+    ElMessage.error(t('openapi.importFailed', { error: error instanceof Error ? error.message : String(error) }))
   } finally {
     importing.value = false
   }
@@ -1139,11 +1369,11 @@ const importFromUrl = async () => {
 
 const handleTestTool = async (tool: MCPTool, params: Record<string, any>) => {
   try {
-    ElMessage.info(`正在测试工具: ${tool.name}`)
+    ElMessage.info(t('openapi.testingTool', { name: tool.name }))
     // 这里可以集成实际的工具测试逻辑
     console.log('Testing tool:', tool, 'with params:', params)
   } catch (error) {
-    ElMessage.error(`工具测试失败: ${error instanceof Error ? error.message : error}`)
+    ElMessage.error(t('openapi.testToolFailed', { error: error instanceof Error ? error.message : error }))
   }
 }
 
@@ -1164,25 +1394,69 @@ const getMethodTagType = (method: string) => {
 const viewApiDetail = (api: any) => {
   ElMessageBox.alert(
     `<div>
-      <p><strong>路径:</strong> ${api.path}</p>
-      <p><strong>方法:</strong> ${api.method.toUpperCase()}</p>
-      <p><strong>摘要:</strong> ${api.summary || '无'}</p>
-      <p><strong>描述:</strong> ${api.description || '无'}</p>
-      <p><strong>操作ID:</strong> ${api.operationId || '无'}</p>
-      <p><strong>标签:</strong> ${api.tags?.join(', ') || '无'}</p>
+      <p><strong>${t('openapi.path')}:</strong> ${api.path}</p>
+      <p><strong>${t('openapi.method')}:</strong> ${api.method.toUpperCase()}</p>
+      <p><strong>${t('openapi.summary')}:</strong> ${api.summary || t('openapi.none')}</p>
+      <p><strong>${t('openapi.description')}:</strong> ${api.description || t('openapi.none')}</p>
+      <p><strong>${t('openapi.operationId')}:</strong> ${api.operationId || t('openapi.none')}</p>
+      <p><strong>${t('openapi.tags')}:</strong> ${api.tags?.join(', ') || t('openapi.none')}</p>
     </div>`,
-    '接口详情',
+    t('openapi.apiDetail'),
     {
       dangerouslyUseHTMLString: true,
-      confirmButtonText: '确定'
+      confirmButtonText: t('common.confirm')
     }
   )
+}
+
+// API卡片展开/收起处理
+const toggleApiDetail = (index: number) => {
+  const expandedIndex = expandedApis.value.indexOf(index)
+  if (expandedIndex > -1) {
+    expandedApis.value.splice(expandedIndex, 1)
+  } else {
+    expandedApis.value.push(index)
+  }
+}
+
+// 响应状态码样式类
+const getResponseCodeClass = (code: string) => {
+  const codeNum = parseInt(code)
+  if (codeNum >= 200 && codeNum < 300) {
+    return 'response-success'
+  } else if (codeNum >= 300 && codeNum < 400) {
+    return 'response-redirect'
+  } else if (codeNum >= 400 && codeNum < 500) {
+    return 'response-client-error'
+  } else if (codeNum >= 500) {
+    return 'response-server-error'
+  }
+  return 'response-default'
+}
+
+// 窗口大小变化处理
+const handleResize = () => {
+  // 触发计算属性重新计算
+  if (editorContainerRef.value) {
+    nextTick(() => {
+      // 强制重新计算高度
+      editorHeight.value
+    })
+  }
 }
 
 // 生命周期
 onMounted(async () => {
   // 暂时移除规范列表加载，直接使用解析功能
   specsLoading.value = false
+  
+  // 添加窗口大小变化监听器
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  // 清理窗口大小变化监听器
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
@@ -1463,7 +1737,7 @@ onMounted(async () => {
   box-shadow: var(--shadow-light);
 }
 
-.preview-container,
+
 .apis-container,
 .tools-container {
   height: 100%;
@@ -1852,5 +2126,281 @@ onMounted(async () => {
   background: rgba(144, 147, 153, 0.1);
   padding: 4px 8px;
   border-radius: 6px;
+}
+
+/* API卡片样式 - Swagger UI风格 */
+.api-list {
+  padding: 16px;
+  background: var(--bg-secondary);
+}
+
+.api-card {
+  margin-bottom: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-primary);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.api-card:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.api-card__header {
+  padding: 12px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.api-card__header:hover {
+  background: var(--bg-hover);
+}
+
+.api-card__method-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.api-method-tag {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  min-width: 60px;
+  text-align: center;
+  color: white;
+}
+
+.method-get {
+  background: #61affe;
+}
+
+.method-post {
+  background: #49cc90;
+}
+
+.method-put {
+  background: #fca130;
+}
+
+.method-delete {
+  background: #f93e3e;
+}
+
+.method-patch {
+  background: #50e3c2;
+}
+
+.method-head {
+  background: #9012fe;
+}
+
+.method-options {
+  background: #0d5aa7;
+}
+
+.api-path {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.api-card__summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.api-summary {
+  color: var(--text-secondary);
+  font-size: 14px;
+  flex: 1;
+  text-align: right;
+}
+
+.expand-icon {
+  transition: transform 0.2s ease;
+  color: var(--text-primary);
+}
+
+.expand-icon.expanded {
+  transform: rotate(180deg);
+}
+
+.api-card__details {
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.api-detail-section {
+  padding: 16px;
+}
+
+.detail-item {
+  margin-bottom: 16px;
+}
+
+.detail-item:last-child {
+  margin-bottom: 0;
+}
+
+.detail-item label {
+  display: inline-block;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.detail-item span {
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.api-tag {
+  background: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+.parameter-list {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.parameter-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.parameter-item:last-child {
+  border-bottom: none;
+}
+
+.param-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 120px;
+}
+
+.param-type {
+  color: var(--text-primary);
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 12px;
+  background: var(--bg-tertiary);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.param-required {
+  color: #f93e3e;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.response-list {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.response-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.response-item:last-child {
+  border-bottom: none;
+}
+
+.response-code {
+  font-weight: 600;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  min-width: 50px;
+  text-align: center;
+  color: white;
+}
+
+.response-success {
+  background: #49cc90;
+}
+
+.response-redirect {
+  background: #61affe;
+}
+
+.response-client-error {
+  background: #fca130;
+}
+
+.response-server-error {
+  background: #f93e3e;
+}
+
+.response-default {
+  background: #9012fe;
+}
+
+.response-desc {
+  color: var(--text-primary);
+  font-size: 14px;
+  flex: 1;
+}
+
+/* API卡片不同方法的边框颜色 */
+.api-card--get {
+  border-left: 4px solid #61affe;
+}
+
+.api-card--post {
+  border-left: 4px solid #49cc90;
+}
+
+.api-card--put {
+  border-left: 4px solid #fca130;
+}
+
+.api-card--delete {
+  border-left: 4px solid #f93e3e;
+}
+
+.api-card--patch {
+  border-left: 4px solid #50e3c2;
+}
+
+.api-card--head {
+  border-left: 4px solid #9012fe;
+}
+
+.api-card--options {
+  border-left: 4px solid #0d5aa7;
 }
 </style>
