@@ -57,6 +57,39 @@
   --spacing-2xl: 48px;
 }
 
+/* Dark Theme Variables */
+.dark {
+  /* Background Colors */
+  --bg-primary: #1c1c1e;
+  --bg-secondary: #2c2c2e;
+  --bg-tertiary: #3a3a3c;
+  --bg-quaternary: rgba(116, 116, 128, 0.16);
+  --bg-hover: rgba(255, 255, 255, 0.08);
+  --bg-error: rgba(255, 59, 48, 0.1);
+  --border-error: rgba(255, 59, 48, 0.3);
+  
+  /* Text Colors */
+  --text-primary: #ffffff;
+  --text-secondary: #98989d;
+  --text-tertiary: #8e8e93;
+  --text-quaternary: #636366;
+  --text-disabled: #48484a;
+  
+  /* Border & Shadow */
+  --border-color: rgba(255, 255, 255, 0.12);
+  --shadow-light: 0 2px 16px rgba(0, 0, 0, 0.2);
+  --shadow-medium: 0 4px 24px rgba(0, 0, 0, 0.3);
+  --shadow-heavy: 0 8px 32px rgba(0, 0, 0, 0.4);
+  
+  /* Neutral Colors for Dark Theme */
+  --system-gray: #8e8e93;
+  --system-gray-2: #636366;
+  --system-gray-3: #48484a;
+  --system-gray-4: #3a3a3c;
+  --system-gray-5: #2c2c2e;
+  --system-gray-6: #1c1c1e;
+}
+
 /* Global Reset & Base Styles */
 * {
   box-sizing: border-box;
@@ -94,6 +127,11 @@ html, body {
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: var(--radius-large);
   box-shadow: var(--shadow-medium);
+}
+
+.dark .glass-card {
+  background: rgba(28, 28, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* Enhanced Hover Effects */
