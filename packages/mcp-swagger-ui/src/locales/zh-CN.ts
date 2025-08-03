@@ -166,6 +166,7 @@ export default {
     importSpec: '导入规范',
     exportSpec: '导出规范',
     validateSpec: '验证规范',
+    saveDocument: '保存文档',
     convertToMcp: '转换为MCP',
     specName: '规范名称',
     specDescription: '规范描述',
@@ -238,6 +239,13 @@ export default {
       pending: '待验证',
       unknown: '未知'
     },
+    // 进度条
+    progress: {
+      created: '已创建',
+      pending: '待验证',
+      validating: '验证中',
+      completed: '已完成'
+    },
     // 消息提示
     documentNotFound: '文档不存在',
     confirmDeleteDocument: '确定要删除文档 "{name}" 吗？',
@@ -245,6 +253,7 @@ export default {
     deleteSuccess: '文档 "{name}" 删除成功',
     deleteFailed: '删除失败: {error}',
     updateSuccess: '文档信息更新成功',
+    saveSuccess: '文档保存成功',
     saveFailed: '保存失败: {error}',
     refreshSuccess: '文档列表刷新成功',
     refreshFailed: '刷新失败: {error}',
@@ -289,7 +298,11 @@ export default {
       userLogin: '用户登录',
       loginSuccess: '登录成功'
     },
-    unknownError: '未知错误'
+    authRequired: '需要登录后才能执行此操作',
+    unknownError: '未知错误',
+    parseContentFailed: '解析OpenAPI内容失败',
+    fetchDocumentFailed: '获取文档失败: {error}',
+    supportedFormats: '支持的格式'
   },
 
   // API测试
@@ -398,7 +411,6 @@ export default {
     importFile: '导入文件',
     selectFile: '选择文件',
     dragDrop: '拖拽文件到此处或点击选择',
-    supportedFormats: '支持的格式',
     previewConfig: '预览配置',
     conflictResolution: '冲突解决',
     overwrite: '覆盖',

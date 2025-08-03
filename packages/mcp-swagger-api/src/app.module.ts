@@ -21,6 +21,7 @@ import { HealthModule } from './modules/health/health.module';
 import { ConfigModule as AppConfigModule } from './modules/config/config.module';
 import { WebSocketModule } from './modules/websocket/websocket.module';
 import { AiAssistantModule } from './modules/ai-assistant/ai-assistant.module';
+import { DocumentsModule } from './modules/documents/documents.module';
 
 // 通用组件
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
@@ -93,6 +94,7 @@ import { AppController } from './app.controller';
     AppConfigModule,
     WebSocketModule,
     AiAssistantModule,
+    DocumentsModule,
   ],
   controllers: [AppController],
   providers: [

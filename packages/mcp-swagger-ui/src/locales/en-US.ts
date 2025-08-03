@@ -250,6 +250,13 @@ export default {
       pending: 'Pending',
       unknown: 'Unknown'
     },
+    // Progress
+    progress: {
+      created: 'Created',
+      pending: 'Pending',
+      validating: 'Validating',
+      completed: 'Completed'
+    },
     // Messages
     documentNotFound: 'Document not found',
     confirmDeleteDocument: 'Are you sure you want to delete document "{name}"?',
@@ -301,7 +308,10 @@ export default {
       userLogin: 'User Login',
       loginSuccess: 'Login Successful'
     },
-    unknownError: 'Unknown Error'
+    unknownError: 'Unknown Error',
+    parseContentFailed: 'Failed to parse OpenAPI content',
+    fetchDocumentFailed: 'Failed to fetch document: {error}',
+    supportedFormats: 'Supported Formats'
   },
 
   // API testing
@@ -410,7 +420,6 @@ export default {
     importFile: 'Import File',
     selectFile: 'Select File',
     dragDrop: 'Drag and drop files here or click to select',
-    supportedFormats: 'Supported Formats',
     previewConfig: 'Preview Configuration',
     conflictResolution: 'Conflict Resolution',
     overwrite: 'Overwrite',

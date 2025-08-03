@@ -13,6 +13,7 @@ import { AuditLog } from './entities/audit-log.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { AiAssistantTemplateEntity } from '../modules/ai-assistant/entities/ai-assistant-template.entity';
 import { AiAssistantConfigEntity } from '../modules/ai-assistant/entities/ai-assistant-config.entity';
+import { OpenAPIDocument } from './entities/openapi-document.entity';
 import { SeedService } from './seed.service';
 
 @Module({
@@ -38,6 +39,7 @@ import { SeedService } from './seed.service';
           RefreshToken,
           AiAssistantTemplateEntity,
           AiAssistantConfigEntity,
+          OpenAPIDocument,
         ],
         synchronize: configService.get('NODE_ENV') === 'development',
         logging: configService.get('DB_LOGGING', false),
@@ -66,6 +68,7 @@ import { SeedService } from './seed.service';
       RefreshToken,
       AiAssistantTemplateEntity,
       AiAssistantConfigEntity,
+      OpenAPIDocument,
     ]),
   ],
   providers: [

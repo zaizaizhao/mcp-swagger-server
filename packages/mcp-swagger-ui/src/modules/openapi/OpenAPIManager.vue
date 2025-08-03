@@ -1,26 +1,49 @@
 <template>
   <div class="openapi-manager">
-    <!-- 页面头部 -->
-    <div class="header-section">
-      <div class="header-content">
-        <h1>
-          <el-icon><Document /></el-icon>
-          {{ t('openapi.title') }}
-        </h1>
-        <p class="header-description">{{ t('openapi.description') }}</p>
-      </div>
-      <div class="header-actions">
-        <el-button type="primary" @click="showUploadDialog = true" :icon="Upload">
-          {{ t('openapi.uploadFile') }}
-        </el-button>
-        <el-button type="success" @click="showUrlDialog = true" :icon="Link">
-          {{ t('openapi.importFromUrl') }}
-        </el-button>
-        <el-button @click="refreshDocuments" :loading="loading" :icon="Refresh">
-          {{ t('common.refresh') }}
-        </el-button>
+    <!-- 认证检查加载状态 -->
+    <div v-if="authChecking" class="auth-loading" style="height: 100vh; display: flex; align-items: center; justify-content: center;">
+      <div style="text-align: center;">
+        <el-icon size="48" class="is-loading" style="margin-bottom: 16px;">
+          <Loading />
+        </el-icon>
+        <p style="color: #606266; margin: 0;">{{ t('openapi.checkingAuth') }}</p>
       </div>
     </div>
+    
+    <!-- 未认证状态 -->
+    <div v-else-if="!isAuthenticated" class="auth-required" style="height: 100vh; display: flex; align-items: center; justify-content: center;">
+      <el-result icon="warning" :title="t('openapi.authRequired')" :sub-title="t('openapi.pleaseLogin')">
+        <template #extra>
+          <el-button type="primary" @click="checkAuthentication">
+            {{ t('openapi.retryAuth') }}
+          </el-button>
+        </template>
+      </el-result>
+    </div>
+    
+    <!-- 已认证状态 - 正常页面内容 -->
+    <template v-else>
+      <!-- 页面头部 -->
+      <div class="header-section">
+        <div class="header-content">
+          <h1>
+            <el-icon><Document /></el-icon>
+            {{ t('openapi.title') }}
+          </h1>
+          <p class="header-description">{{ t('openapi.description') }}</p>
+        </div>
+        <div class="header-actions">
+          <el-button type="primary" @click="showUploadDialog = true" :icon="Upload">
+            {{ t('openapi.uploadFile') }}
+          </el-button>
+          <el-button type="success" @click="showUrlDialog = true" :icon="Link">
+            {{ t('openapi.importFromUrl') }}
+          </el-button>
+          <el-button @click="refreshDocuments" :loading="loading" :icon="Refresh">
+            {{ t('common.refresh') }}
+          </el-button>
+        </div>
+      </div>
 
     <!-- 主要内容区域 -->
     <div class="manager-content">
@@ -63,26 +86,26 @@
                 @click="selectDocument(doc)"
               >
                 <div class="document-info">
-                  <div class="document-name">{{ doc.name }}</div>
+                  <div class="document-header">
+                    <div class="document-name">{{ doc.name }}</div>
+                    <span class="upload-time">{{ formatDate(doc.updatedAt) }}</span>
+                  </div>
                   <div class="document-meta">
-                    <span class="upload-time">{{ formatDate(doc.uploadTime) }}</span>
-                    <el-tag 
-                      :type="doc.status === 'valid' ? 'success' : doc.status === 'invalid' ? 'danger' : 'warning'"
+                    <DocumentStatusProgress 
+                      :status="doc.status as 'valid' | 'invalid' | 'pending' | 'unknown'"
                       size="small"
-                    >
-                      {{ getStatusText(doc.status) }}
-                    </el-tag>
+                    />
                   </div>
                 </div>
                 <div class="document-actions">
-                  <el-button-group size="small">
-                    <el-button @click.stop="editDocument(doc)">
+                  <div class="action-buttons">
+                    <el-button size="small" @click.stop="editDocument(doc)">
                       <el-icon><Edit /></el-icon>
                     </el-button>
-                    <el-button @click.stop="deleteDocument(doc.id)">
+                    <el-button size="small" @click.stop="deleteDocument(doc.id)">
                       <el-icon><Delete /></el-icon>
                     </el-button>
-                  </el-button-group>
+                  </div>
                 </div>
               </div>
             </div>
@@ -135,6 +158,16 @@
                     <el-icon><Check /></el-icon>
                     {{ t('openapi.validateSpec') }}
                   </el-button>
+                  <el-button 
+                    size="small" 
+                    type="success"
+                    @click="saveDocumentContent" 
+                    :disabled="!selectedDocument || !editorContent.trim() || !isAuthenticated"
+                    :loading="saving"
+                  >
+                    <el-icon><DocumentCopy /></el-icon>
+                    {{ t('openapi.saveDocument') }}
+                  </el-button>
                   <el-button type="primary" size="small" @click="convertToMCP" :disabled="selectedDocument.status !== 'valid'">
                      <el-icon><Setting /></el-icon>
                      {{ t('openapi.convertToMcp') }}
@@ -169,8 +202,8 @@
             </div>
             
             <!-- 错误状态 -->
-            <div v-else-if="selectedDocument.status === 'error'" class="error-state" style="height: 100%; display: flex; align-items: center; justify-content: center;">
-              <el-result icon="error" :title="t('openapi.parseFailed')" :sub-title="selectedDocument.errorMessage">
+            <div v-else-if="selectedDocument.status === 'invalid'" class="error-state" style="height: 100%; display: flex; align-items: center; justify-content: center;">
+              <el-result icon="error" :title="t('openapi.parseFailed')" :sub-title="selectedDocument.metadata?.validationErrors?.[0] || t('openapi.validationFailed')">
                 <template #extra>
                   <el-button type="primary" @click="deleteDocument(selectedDocument.id)">
                     {{ t('openapi.deleteSpec') }}
@@ -180,7 +213,7 @@
             </div>
             
             <!-- 加载状态 -->
-            <div v-else-if="selectedDocument.status === 'loading'" class="loading-state" style="height: 100%; display: flex; align-items: center; justify-content: center;">
+            <div v-else-if="selectedDocument.status === 'pending'" class="loading-state" style="height: 100%; display: flex; align-items: center; justify-content: center;">
               <div style="text-align: center;">
                 <el-icon size="48" class="is-loading" style="margin-bottom: 16px;">
                   <Loading />
@@ -590,6 +623,7 @@
         </div>
       </template>
     </el-dialog>
+    </template>
   </div>
 </template>
 
@@ -600,17 +634,19 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import {
-  Plus, Upload, Link, Document, Search, MoreFilled, Edit, 
+  Plus, Upload, Link, Search, MoreFilled, Edit, 
   DocumentCopy, Download, Delete, Operation, Tools, Check, 
   DocumentChecked, UploadFilled, Folder, Setting, Refresh, ArrowDown
 } from '@element-plus/icons-vue'
 import type { UploadFile, FormInstance } from 'element-plus'
 import MonacoEditor from '../../shared/components/monaco/MonacoEditor.vue'
+import DocumentStatusProgress from '../../components/DocumentStatusProgress.vue'
 
 import MCPToolPreview from './components/openapi/MCPToolPreview.vue'
 import type { OpenAPISpec, ValidationResult, MCPTool } from '../../types'
 import { useOpenAPIStore } from '../../stores/openapi'
 import { parseOpenAPI, validateOpenAPI, extractApiPaths } from '../../utils/openapi'
+import { documentsApi, type Document, type CreateDocumentDto, type UpdateDocumentDto } from '../../api/documents'
 
 // 导入全局功能
 import { useConfirmation } from '../../composables/useConfirmation'
@@ -641,7 +677,7 @@ const {
 const specsLoading = ref(false)
 const loading = ref(false)
 const searchQuery = ref('')
-const selectedDocument = ref<any>(null)
+const selectedDocument = ref<Document | null>(null)
 const activeTab = ref<'editor' | 'apis' | 'tools'>('editor')
 const editorContent = ref('')
 const saving = ref(false)
@@ -650,11 +686,13 @@ const converting = ref(false)
 const validationResults = ref<ValidationResult | null>(null)
 const mcpTools = ref<any[]>([])  // MCP工具列表
 const mcpServerUrl = ref('')
-const documents = ref<any[]>([])  // 文档列表
+const documents = ref<Document[]>([])  // 文档列表
 const parsedApis = ref<any[]>([])  // 解析的API列表
 const uploadFile = ref<File | null>(null)
 const editorContainerRef = ref<HTMLElement>()  // 编辑器容器引用
 const expandedApis = ref<number[]>([])  // 展开的API卡片索引列表
+const isAuthenticated = ref(false)  // 用户认证状态
+const authChecking = ref(true)  // 认证检查状态
 
 // 对话框状态
 const showCreateDialog = ref(false)
@@ -798,6 +836,61 @@ const editorHeight = computed(() => {
 })
 
 // 方法
+// 检查用户认证状态
+const checkAuthentication = async () => {
+  try {
+    authChecking.value = true
+    console.log('Starting authentication check...')
+    
+    isAuthenticated.value = await documentsApi.checkAuth()
+    console.log('Authentication result:', isAuthenticated.value)
+    
+    if (isAuthenticated.value) {
+      console.log('User authenticated, loading documents...')
+      await loadDocuments()
+    } else {
+      console.log('User not authenticated, clearing document list')
+      documents.value = []
+    }
+  } catch (error) {
+    console.error('Authentication check failed:', error)
+    isAuthenticated.value = false
+    documents.value = []
+  } finally {
+    authChecking.value = false
+    console.log('Authentication check completed')
+  }
+}
+
+// 加载文档列表
+const loadDocuments = async () => {
+  try {
+    loading.value = true
+    console.log('Loading documents...')
+    
+    const docs = await documentsApi.getDocuments();
+    console.log(docs);
+    
+    documents.value = docs
+    
+    //console.log(`Successfully loaded ${docs.length} documents:`, docs.map(d => ({ id: d.id, name: d.name })))
+  } catch (error: any) {
+    console.error('Failed to load documents:', error)
+    console.error('Error details:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      message: error.message,
+      url: error.config?.url
+    })
+    
+    ElMessage.error(t('openapi.loadDocumentsFailed'))
+    documents.value = []
+  } finally {
+    loading.value = false
+    console.log('Document loading completed')
+  }
+}
+
 const detectLanguage = (content: string) => {
   if (!content.trim()) return 'yaml'
   
@@ -820,14 +913,106 @@ const formatDate = (date: Date | string) => {
   }).format(dateObj)
 }
 
-const selectDocument = (doc: any) => {
+const selectDocument = async (doc: Document) => {
+  if (!isAuthenticated.value) {
+    ElMessage.error(t('openapi.authRequired'))
+    return
+  }
+
+  // 设置加载状态
+  loading.value = true
   selectedDocument.value = doc
-  editorContent.value = doc.content || ''
+  editorContent.value = ''
   validationResults.value = null
   activeTab.value = 'editor'
+  
+  // 清空之前的解析数据
+  parsedApis.value = []
+  mcpTools.value = []
+  mcpServerUrl.value = ''
+  
+  try {
+    // 调用API获取完整的文档内容
+    const fullDocument = await documentsApi.getDocument(doc.id)
+    
+    // 更新选中的文档和编辑器内容
+    selectedDocument.value = fullDocument
+    editorContent.value = fullDocument.content || ''
+    
+    // 自动解析OpenAPI内容并填充数据
+    if (fullDocument.content && fullDocument.content.trim()) {
+      try {
+        // 解析API路径和详细信息
+        const { data: parsedData } = parseOpenAPI(fullDocument.content)
+        if (parsedData && parsedData.paths) {
+          const apis: any[] = []
+          Object.entries(parsedData.paths).forEach(([path, pathItem]: [string, any]) => {
+            if (!pathItem || typeof pathItem !== 'object') return
+            
+            const methods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options']
+            methods.forEach(method => {
+              if (pathItem[method]) {
+                const operation = pathItem[method]
+                apis.push({
+                  id: apis.length,
+                  method: method.toUpperCase(),
+                  path,
+                  summary: operation.summary || '',
+                  description: operation.description || '',
+                  operationId: operation.operationId,
+                  tags: operation.tags || [],
+                  parameters: operation.parameters || [],
+                  responses: operation.responses || {}
+                })
+              }
+            })
+          })
+          parsedApis.value = apis
+        } else {
+          parsedApis.value = []
+        }
+        
+        // 解析MCP工具
+        try {
+          const parseResult = await openApiStore.parseOpenAPIContent(fullDocument.content)
+          mcpTools.value = parseResult.tools || []
+          mcpServerUrl.value = parseResult.servers[0]?.url || ''
+        } catch (mcpError) {
+          console.warn('解析MCP工具失败:', mcpError)
+          mcpTools.value = []
+          mcpServerUrl.value = ''
+        }
+        
+        // 保持在编辑标签页，不自动切换
+        // if (parsedApis.value.length > 0) {
+        //   activeTab.value = 'apis'
+        // }
+        
+      } catch (parseError) {
+        console.error('解析OpenAPI内容失败:', parseError)
+        ElMessage.warning(t('openapi.parseContentFailed'))
+        parsedApis.value = []
+        mcpTools.value = []
+        mcpServerUrl.value = ''
+      }
+    }
+    
+  } catch (error) {
+    console.error('获取文档内容失败:', error)
+    ElMessage.error(t('openapi.fetchDocumentFailed', { error: error instanceof Error ? error.message : t('common.unknownError') }))
+    
+    // 重置状态
+    selectedDocument.value = null
+    editorContent.value = ''
+    parsedApis.value = []
+    mcpTools.value = []
+    mcpServerUrl.value = ''
+  } finally {
+    loading.value = false
+  }
 }
 
-const editDocument = (doc: any) => {
+const editDocument = (doc: Document) => {
   // 填充编辑表单数据
   editForm.value = {
     id: doc.id,
@@ -838,6 +1023,11 @@ const editDocument = (doc: any) => {
 }
 
 const deleteDocument = async (docId: string) => {
+  if (!isAuthenticated.value) {
+    ElMessage.error(t('openapi.authRequired'))
+    return
+  }
+
   try {
     // 查找要删除的文档
     const docToDelete = documents.value.find(doc => doc.id === docId)
@@ -859,21 +1049,14 @@ const deleteDocument = async (docId: string) => {
     ).then(() => true).catch(() => false)
     if (!confirmed) return
     
-    // 从文档列表中删除
+    // 调用API删除文档
+    await documentsApi.deleteDocument(docId)
+    
+    // 从本地文档列表中删除
     documents.value = documents.value.filter(doc => doc.id !== docId)
     
     // 如果删除的是当前选中的文档，清空相关状态
     if (selectedDocument.value?.id === docId) {
-      selectedDocument.value = null
-      editorContent.value = ''
-      validationResults.value = null
-      parsedApis.value = []
-      expandedApis.value = []
-      activeTab.value = 'editor'
-    }
-    
-    // 如果删除后没有文档了，可以显示空状态
-    if (documents.value.length === 0) {
       selectedDocument.value = null
       editorContent.value = ''
       validationResults.value = null
@@ -890,7 +1073,12 @@ const deleteDocument = async (docId: string) => {
 }
 
 const saveEditDocument = async () => {
-  if (!editFormRef.value) return
+  if (!editFormRef.value || !isAuthenticated.value) {
+    if (!isAuthenticated.value) {
+      ElMessage.error(t('openapi.authRequired'))
+    }
+    return
+  }
   
   try {
     const valid = await editFormRef.value.validate()
@@ -898,48 +1086,48 @@ const saveEditDocument = async () => {
     
     editing.value = true
     
-    // 查找要编辑的文档
-    const docIndex = documents.value.findIndex(doc => doc.id === editForm.value.id)
-    if (docIndex === -1) {
-      ElMessage.error(t('openapi.documentNotFound'))
-      return
-    }
-    
-    // 更新文档信息
-    documents.value[docIndex] = {
-      ...documents.value[docIndex],
+    // 准备更新数据
+    const updateData: UpdateDocumentDto = {
       name: editForm.value.name,
       description: editForm.value.description
     }
     
+    // 调用API更新文档
+    const updatedDoc = await documentsApi.updateDocument(editForm.value.id, updateData)
+    
+    // 更新本地文档列表
+    const docIndex = documents.value.findIndex(doc => doc.id === editForm.value.id)
+    if (docIndex !== -1) {
+      documents.value[docIndex] = updatedDoc
+    }
+    
     // 如果当前选中的是被编辑的文档，也要更新选中文档的信息
     if (selectedDocument.value?.id === editForm.value.id) {
-      selectedDocument.value = {
-        ...selectedDocument.value,
-        name: editForm.value.name,
-        description: editForm.value.description
-      }
+      selectedDocument.value = updatedDoc
     }
     
     showEditDialog.value = false
     ElMessage.success(t('openapi.updateSuccess'))
   } catch (error) {
-    ElMessage.error(t('openapi.saveFailed', { error }))
+    console.error('更新文档失败:', error)
+    ElMessage.error(t('openapi.saveFailed', { error: error instanceof Error ? error.message : t('common.unknownError') }))
   } finally {
     editing.value = false
   }
 }
 
 const refreshDocuments = async () => {
+  if (!isAuthenticated.value) {
+    ElMessage.error(t('openapi.authRequired'))
+    return
+  }
+
   try {
-    loading.value = true
-    await openApiStore.fetchSpecs()
-    // 这里可以添加从store获取文档列表的逻辑
+    await loadDocuments()
     ElMessage.success(t('openapi.refreshSuccess'))
   } catch (error) {
-    ElMessage.error(t('openapi.refreshFailed', { error }))
-  } finally {
-    loading.value = false
+    console.error('刷新文档失败:', error)
+    ElMessage.error(t('openapi.refreshFailed', { error: error instanceof Error ? error.message : t('common.unknownError') }))
   }
 }
 
@@ -1038,6 +1226,67 @@ const handleContentChange = (content: string) => {
   validationResults.value = null
 }
 
+// 保存文档内容
+const saveDocumentContent = async () => {
+  if (!selectedDocument.value || !isAuthenticated.value) {
+    if (!isAuthenticated.value) {
+      ElMessage.error(t('openapi.authRequired'))
+    }
+    return
+  }
+
+  try {
+    saving.value = true
+    
+    // 准备更新数据
+    const updateData: UpdateDocumentDto = {
+      content: editorContent.value
+    }
+    
+    // 调用API更新文档
+    const updatedDoc = await documentsApi.updateDocument(selectedDocument.value.id, updateData)
+    
+    // 更新本地文档列表
+    const docIndex = documents.value.findIndex(doc => doc.id === selectedDocument.value!.id)
+    if (docIndex !== -1) {
+      documents.value[docIndex] = updatedDoc
+    }
+    
+    // 更新选中的文档
+    selectedDocument.value = updatedDoc
+    
+    ElMessage.success(t('openapi.saveSuccess'))
+  } catch (error: any) {
+    console.error('保存文档内容失败:', error)
+    
+    // 处理400错误，显示更具体的错误信息
+    if (error.response && error.response.status === 400) {
+      const errorData = error.response.data
+      let errorMessage = ''
+      
+      if (errorData && errorData.message) {
+        // 检查是否是OpenAPI规范验证错误
+        if (errorData.message.includes('OpenAPI') || errorData.message.includes('Swagger')) {
+          errorMessage = `OpenAPI规范验证失败: ${errorData.message}`
+        } else if (errorData.message.includes('JSON')) {
+          errorMessage = `JSON格式错误: ${errorData.message}`
+        } else {
+          errorMessage = `请求参数错误: ${errorData.message}`
+        }
+      } else {
+        errorMessage = '文档内容格式不正确，请检查OpenAPI规范格式'
+      }
+      
+      ElMessage.error(errorMessage)
+    } else {
+      // 其他错误使用原有逻辑
+      ElMessage.error(t('openapi.saveFailed', { error: error instanceof Error ? error.message : t('common.unknownError') }))
+    }
+  } finally {
+    saving.value = false
+  }
+}
+
 const validateSpec = async () => {
   if (!editorContent.value.trim()) {
     ElMessage.warning(t('openapi.enterContentFirst'))
@@ -1055,7 +1304,18 @@ const validateSpec = async () => {
     
     // 更新文档状态
     if (selectedDocument.value) {
-      selectedDocument.value.status = result.valid ? 'valid' : 'invalid'
+      const newStatus = result.valid ? 'valid' : 'invalid'
+      selectedDocument.value.status = newStatus
+      
+      // 调用后端API更新文档状态
+      try {
+        await documentsApi.updateDocument(selectedDocument.value.id, {
+          status: newStatus as any
+        })
+      } catch (statusUpdateError) {
+        console.error('更新文档状态失败:', statusUpdateError)
+        // 状态更新失败不影响验证流程，只记录错误
+      }
     }
     
     // 如果验证成功，解析API路径并更新parsedApis
@@ -1111,6 +1371,16 @@ const validateSpec = async () => {
     parsedApis.value = []
     if (selectedDocument.value) {
       selectedDocument.value.status = 'invalid'
+      
+      // 调用后端API更新文档状态为invalid
+      try {
+        await documentsApi.updateDocument(selectedDocument.value.id, {
+          status: 'invalid' as any
+        })
+      } catch (statusUpdateError) {
+        console.error('更新文档状态失败:', statusUpdateError)
+        // 状态更新失败不影响验证流程，只记录错误
+      }
     }
   } finally {
     validating.value = false
@@ -1118,22 +1388,28 @@ const validateSpec = async () => {
 }
 
 const createNewSpec = async () => {
-  if (!createFormRef.value) return
+  if (!createFormRef.value || !isAuthenticated.value) {
+    if (!isAuthenticated.value) {
+      ElMessage.error(t('openapi.authRequired'))
+    }
+    return
+  }
   
   try {
     await createFormRef.value.validate()
     creating.value = true
     
-    const newDoc = {
-      id: Date.now().toString(),
+    // 准备创建数据
+    const createData: CreateDocumentDto = {
       name: createForm.value.name,
-      version: createForm.value.version,
       description: createForm.value.description,
-      content: generateTemplateContent(createForm.value.template),
-      uploadTime: new Date(),
-      status: 'pending'
+      content: generateTemplateContent(createForm.value.template)
     }
     
+    // 调用API创建文档
+    const newDoc = await documentsApi.createDocument(createData)
+    
+    // 添加到本地文档列表
     documents.value.push(newDoc)
     selectDocument(newDoc)
     showCreateDialog.value = false
@@ -1148,7 +1424,8 @@ const createNewSpec = async () => {
     
     ElMessage.success(t('openapi.createSuccess'))
   } catch (error) {
-    ElMessage.error(t('openapi.createFailed', { error }))
+    console.error('创建文档失败:', error)
+    ElMessage.error(t('openapi.createFailed', { error: error instanceof Error ? error.message : t('common.unknownError') }))
   } finally {
     creating.value = false
   }
@@ -1234,28 +1511,38 @@ const handleUploadDialogClose = () => {
 }
 
 const confirmUpload = async () => {
-  if (!uploadFile.value) return
+  if (!uploadFile.value || !isAuthenticated.value) {
+    if (!isAuthenticated.value) {
+      ElMessage.error(t('openapi.authRequired'))
+    }
+    return
+  }
   
   uploading.value = true
   try {
-    // 直接读取文件内容，不调用后端接口
+    // 读取文件内容
     const rawContent = await readFileContent(uploadFile.value)
     
-    const newDoc = {
-      id: Date.now().toString(),
+    // 准备创建数据
+    const createData: CreateDocumentDto = {
       name: uploadForm.value.name,
       description: uploadForm.value.description,
-      content: rawContent,
-      uploadTime: new Date(),
-      status: 'pending' // 设置为待验证状态
+      content: rawContent
     }
     
+    // 调用API创建文档
+    const newDoc = await documentsApi.createDocument(createData)
+    
+    // 添加到本地文档列表
     documents.value.push(newDoc)
     selectDocument(newDoc)
+    
+    // 确保对话框关闭
     handleUploadDialogClose()
     
     ElMessage.success(t('openapi.uploadSuccessValidate'))
   } catch (error) {
+    console.error('上传文档失败:', error)
     ElMessage.error(t('openapi.uploadFailed', { error: error instanceof Error ? error.message : String(error) }))
   } finally {
     uploading.value = false
@@ -1314,13 +1601,18 @@ const convertToMCP = async () => {
 }
 
 const importFromUrl = async () => {
-  if (!urlFormRef.value) return
+  if (!urlFormRef.value || !isAuthenticated.value) {
+    if (!isAuthenticated.value) {
+      ElMessage.error(t('openapi.authRequired'))
+    }
+    return
+  }
   
   try {
     await urlFormRef.value.validate()
     importing.value = true
     
-    // 直接获取URL内容，不调用后端解析接口
+    // 获取URL内容
     const rawContentResponse = await fetch(urlForm.value.url)
     if (!rawContentResponse.ok) {
       throw new Error(`HTTP ${rawContentResponse.status}: ${rawContentResponse.statusText}`)
@@ -1336,18 +1628,19 @@ const importFromUrl = async () => {
       console.log('Content is not JSON, keeping original format')
     }
     
-    const newDoc = {
-      id: Date.now().toString(),
+    // 准备创建数据
+    const createData: CreateDocumentDto = {
       name: urlForm.value.name || 'imported_spec',
       description: t('openapi.importedFromUrl'),
-      content: rawContent,
-      uploadTime: new Date(),
-      status: 'pending' // 设置为待验证状态
+      content: rawContent
     }
     
+    // 调用API创建文档
+    const newDoc = await documentsApi.createDocument(createData)
+    
+    // 添加到本地文档列表
     documents.value.push(newDoc)
     selectDocument(newDoc)
-    showUrlDialog.value = false
     
     // 重置表单
     urlForm.value = {
@@ -1359,8 +1652,18 @@ const importFromUrl = async () => {
       password: ''
     }
     
+    // 重置表单验证状态
+    if (urlFormRef.value) {
+      urlFormRef.value.resetFields()
+      urlFormRef.value.clearValidate()
+    }
+    
+    // 关闭对话框
+    showUrlDialog.value = false
+    
     ElMessage.success(t('openapi.importSuccessValidate'))
   } catch (error) {
+    console.error('从URL导入文档失败:', error)
     ElMessage.error(t('openapi.importFailed', { error: error instanceof Error ? error.message : String(error) }))
   } finally {
     importing.value = false
@@ -1447,8 +1750,8 @@ const handleResize = () => {
 
 // 生命周期
 onMounted(async () => {
-  // 暂时移除规范列表加载，直接使用解析功能
-  specsLoading.value = false
+  // 检查用户认证状态并加载文档
+  await checkAuthentication()
   
   // 添加窗口大小变化监听器
   window.addEventListener('resize', handleResize)
@@ -1566,9 +1869,10 @@ onUnmounted(() => {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   position: relative;
   overflow: hidden;
+  min-height: 120px;
 }
 
 .document-item::before {
@@ -1618,11 +1922,18 @@ onUnmounted(() => {
   line-height: 1.4;
 }
 
-.document-meta {
+.document-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+  margin-bottom: 8px;
+}
+
+.document-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .upload-time {
@@ -1631,18 +1942,37 @@ onUnmounted(() => {
   background: var(--bg-quaternary);
   padding: var(--spacing-xs) var(--spacing-sm);
   border-radius: var(--radius-small);
+  white-space: nowrap;
 }
 
 .document-actions {
-  margin-left: 12px;
   position: relative;
   z-index: 1;
-  opacity: 0;
-  transition: opacity 0.3s ease;
+  opacity: 1;
+  width: 80px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.document-item:hover .document-actions {
-  opacity: 1;
+.action-buttons {
+  margin-top: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-buttons .el-button {
+  width: 32px;
+  height: 28px;
+  padding: 0;
+  margin: 0px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 右侧详情区域样式 */
