@@ -61,11 +61,17 @@ export const useServerStore = defineStore('server', () => {
   }
 
   // 获取所有服务器
-  const fetchServers = async () => {
+  const fetchServers = async (params?: {
+    page?: number
+    limit?: number
+    search?: string
+    status?: string
+    tags?: string[]
+  }) => {
     setLoading(true)
     try {
-      const response = await serverAPI.getServers()
-      servers.value = response
+      const response = await serverAPI.getServers(params)
+      servers.value = response.data || response
       clearError()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '获取服务器列表失败'
@@ -161,29 +167,33 @@ export const useServerStore = defineStore('server', () => {
     }
   }
 
-  // 启动/停止服务器
-  const toggleServer = async (id: string, enabled: boolean): Promise<boolean> => {
+  // 执行服务器操作
+  const performServerAction = async (id: string, action: 'start' | 'stop' | 'restart', force?: boolean): Promise<boolean> => {
     setLoading(true)
     try {
-      const response = await serverAPI.toggleServer(id, enabled)
-      const index = servers.value.findIndex(s => s.id === id)
-      if (index > -1) {
-        servers.value[index] = response
-      }
+      const response = await serverAPI.performServerAction(id, action, force)
       
-      const action = enabled ? '启动' : '停止'
+      // 刷新服务器列表以获取最新状态
+       await fetchServers({})
+      
+      const actionText = {
+        start: '启动',
+        stop: '停止', 
+        restart: '重启'
+      }[action]
+      
       appStore.addNotification({
         type: 'success',
-        title: `服务器${action}成功`,
-        message: `服务器已${action}`,
+        title: `服务器${actionText}成功`,
+        message: response.message || `服务器已${actionText}`,
         duration: 3000
       })
       clearError()
       return true
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : `${enabled ? '启动' : '停止'}服务器失败`
+      const errorMessage = err instanceof Error ? err.message : `服务器操作失败`
       setError(errorMessage)
-      console.error('Failed to toggle server:', err)
+      console.error('Failed to perform server action:', err)
       return false
     } finally {
       setLoading(false)
@@ -209,25 +219,18 @@ export const useServerStore = defineStore('server', () => {
   }
 
   // 启动服务器
-  const startServer = async (id: string): Promise<boolean> => {
-    return await toggleServer(id, true)
+  const startServer = async (id: string, force?: boolean): Promise<boolean> => {
+    return await performServerAction(id, 'start', force)
   }
 
   // 停止服务器
-  const stopServer = async (id: string): Promise<boolean> => {
-    return await toggleServer(id, false)
+  const stopServer = async (id: string, force?: boolean): Promise<boolean> => {
+    return await performServerAction(id, 'stop', force)
   }
 
   // 重启服务器
-  const restartServer = async (id: string): Promise<boolean> => {
-    // 先停止，再启动
-    const stopResult = await stopServer(id)
-    if (stopResult) {
-      // 等待一小段时间确保服务器完全停止
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      return await startServer(id)
-    }
-    return false
+  const restartServer = async (id: string, force?: boolean): Promise<boolean> => {
+    return await performServerAction(id, 'restart', force)
   }
 
   // 选择服务器
@@ -251,7 +254,18 @@ export const useServerStore = defineStore('server', () => {
   const updateServerMetrics = (id: string, metrics: Partial<ServerMetrics>) => {
     const server = servers.value.find(s => s.id === id)
     if (server) {
-      server.metrics = { ...server.metrics, ...metrics }
+      server.metrics = {
+        totalRequests: 0,
+        successfulRequests: 0,
+        failedRequests: 0,
+        averageResponseTime: 0,
+        errorRate: 0,
+        activeConnections: 0,
+        lastRequestTime: undefined,
+        uptime: 0,
+        ...server.metrics,
+        ...metrics
+      }
       server.updatedAt = new Date()
     }
   }
@@ -265,16 +279,131 @@ export const useServerStore = defineStore('server', () => {
           server.status = update.status
         }
         if (update.metrics) {
-          server.metrics = { ...server.metrics, ...update.metrics }
+          server.metrics = {
+            totalRequests: 0,
+            successfulRequests: 0,
+            failedRequests: 0,
+            averageResponseTime: 0,
+            errorRate: 0,
+            activeConnections: 0,
+            lastRequestTime: undefined,
+            uptime: 0,
+            ...server.metrics,
+            ...update.metrics
+          }
         }
         server.updatedAt = new Date()
       }
     })
   }
 
+  // 批量执行服务器操作
+  const performBatchAction = async (serverIds: string[], action: 'start' | 'stop' | 'restart', force?: boolean): Promise<boolean> => {
+    setLoading(true)
+    try {
+      const response = await serverAPI.performBatchAction(serverIds, action, force)
+      
+      // 刷新服务器列表以获取最新状态
+       await fetchServers({})
+      
+      const actionText = {
+        start: '启动',
+        stop: '停止',
+        restart: '重启'
+      }[action]
+      
+      appStore.addNotification({
+        type: 'success',
+        title: `批量${actionText}成功`,
+        message: response.message || `已${actionText} ${serverIds.length} 个服务器`,
+        duration: 3000
+      })
+      clearError()
+      return true
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : '批量操作失败'
+      setError(errorMessage)
+      console.error('Failed to perform batch action:', err)
+      return false
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 获取服务器健康状态
+  const getServerHealth = async (id: string) => {
+    try {
+      const response = await serverAPI.getServerHealth(id)
+      return response
+    } catch (err) {
+      console.error('Failed to get server health:', err)
+      return null
+    }
+  }
+
+  // 获取所有服务器健康状态概览
+  const getAllServersHealth = async () => {
+    try {
+      const response = await serverAPI.getAllServersHealth()
+      // 更新本地服务器数据的健康状态和指标
+      if (response && Array.isArray(response)) {
+        response.forEach((serverHealth: any) => {
+          const server = servers.value.find(s => s.id === serverHealth.id)
+          if (server) {
+            server.healthy = serverHealth.healthy
+            server.lastHealthCheck = new Date()
+            server.metrics = {
+              totalRequests: serverHealth.totalRequests || 0,
+              successfulRequests: serverHealth.successfulRequests || 0,
+              failedRequests: serverHealth.failedRequests || 0,
+              averageResponseTime: serverHealth.averageResponseTime || 0,
+              errorRate: serverHealth.errorRate || 0,
+              activeConnections: serverHealth.activeConnections || 0,
+              lastRequestTime: serverHealth.lastRequestTime,
+              uptime: serverHealth.uptime || 0
+            }
+            server.updatedAt = new Date()
+          }
+        })
+      }
+      return response
+    } catch (err) {
+      console.error('Failed to get all servers health:', err)
+      return null
+    }
+  }
+
+  // 执行健康检查
+  const performHealthCheck = async (id: string): Promise<boolean> => {
+    try {
+      const response = await serverAPI.performHealthCheck(id)
+      
+      // 更新服务器健康状态
+      const server = servers.value.find(s => s.id === id)
+      if (server) {
+        server.healthy = response.healthy
+        server.lastHealthCheck = new Date()
+        server.updatedAt = new Date()
+      }
+      
+      appStore.addNotification({
+        type: 'success',
+        title: '健康检查完成',
+        message: `服务器健康状态: ${response.healthy ? '健康' : '异常'}`,
+        duration: 3000
+      })
+      return true
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : '健康检查失败'
+      setError(errorMessage)
+      console.error('Failed to perform health check:', err)
+      return false
+    }
+  }
+
   // 初始化
   const initialize = async () => {
-    await fetchServers()
+    await fetchServers({})
   }
 
   return {
@@ -300,7 +429,7 @@ export const useServerStore = defineStore('server', () => {
     createServer,
     updateServer,
     deleteServer,
-    toggleServer,
+    performServerAction,
     startServer,
     stopServer,
     restartServer,
@@ -309,6 +438,10 @@ export const useServerStore = defineStore('server', () => {
     updateServerStatus,
     updateServerMetrics,
     batchUpdateServers,
+    performBatchAction,
+    getServerHealth,
+    getAllServersHealth,
+    performHealthCheck,
     initialize
   }
 })

@@ -22,12 +22,79 @@
         />
       </el-form-item>
       
-      <el-form-item label="端点地址" prop="endpoint" required :error="getFieldError('endpoint')">
+      <el-form-item label="版本" prop="version" :error="getFieldError('version')">
         <el-input
-          v-model="formData.endpoint"
-          placeholder="请输入服务器端点地址"
+          v-model="formData.version"
+          placeholder="请输入服务器版本（可选）"
           clearable
-          @blur="() => validateField('endpoint', formData.endpoint)"
+          @blur="() => validateField('version', formData.version)"
+        />
+      </el-form-item>
+      
+      <el-form-item label="端口" prop="port" :error="getFieldError('port')">
+        <el-input-number
+          v-model="formData.port"
+          :min="1"
+          :max="65535"
+          placeholder="请输入端口号"
+          style="width: 100%"
+        />
+      </el-form-item>
+      
+      <el-form-item label="传输类型" prop="transport" :error="getFieldError('transport')">
+        <el-select
+          v-model="formData.transport"
+          placeholder="请选择传输类型"
+          style="width: 100%"
+        >
+          <el-option label="Streamable" value="streamable" />
+          <el-option label="Server-Sent Events" value="sse" />
+          <el-option label="Standard I/O" value="stdio" />
+          <el-option label="WebSocket" value="websocket" />
+        </el-select>
+      </el-form-item>
+      
+      <el-form-item label="OpenAPI文档" prop="openApiDocumentId" required :error="getFieldError('openApiDocumentId')">
+        <el-select
+          v-model="formData.openApiDocumentId"
+          placeholder="请选择要转换的OpenAPI文档"
+          style="width: 100%"
+          :loading="documentsLoading"
+          filterable
+          @blur="() => validateField('openApiDocumentId', formData.openApiDocumentId)"
+        >
+          <el-option
+            v-for="doc in availableDocuments"
+            :key="doc.id"
+            :label="`${doc.name} (v${doc.version || '1.0.0'})`"
+            :value="doc.id"
+          >
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span>
+                <el-icon style="margin-right: 8px;"><Document /></el-icon>
+                {{ doc.name }}
+              </span>
+              <span style="color: var(--el-text-color-secondary); font-size: 12px;">
+                v{{ doc.version || '1.0.0' }}
+              </span>
+            </div>
+          </el-option>
+          <template #empty>
+            <div style="padding: 20px; text-align: center; color: var(--el-text-color-secondary);">
+              {{ documentsLoading ? '加载中...' : '暂无可用的OpenAPI文档' }}
+            </div>
+          </template>
+        </el-select>
+        <div style="margin-top: 4px; font-size: 12px; color: var(--el-text-color-secondary);">
+          只显示状态为"有效"的OpenAPI文档
+        </div>
+      </el-form-item>
+      
+      <el-form-item label="自动启动" prop="autoStart">
+        <el-switch
+          v-model="formData.autoStart"
+          active-text="是"
+          inactive-text="否"
         />
       </el-form-item>
       
@@ -127,11 +194,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
-import { Plus, Delete } from '@element-plus/icons-vue'
+import { Plus, Delete, Document } from '@element-plus/icons-vue'
 import type { MCPServer, ServerConfig } from '@/types'
 import { useServerStore } from '@/stores/server'
+import { documentsApi, type Document as OpenAPIDocument } from '@/api/documents'
 
 // 导入全局功能
 import { useFormValidation } from '@/composables/useFormValidation'
@@ -163,13 +231,24 @@ const loading = ref(false)
 const inputVisible = ref(false)
 const inputValue = ref('')
 const InputRef = ref()
+const availableDocuments = ref<OpenAPIDocument[]>([])
+const documentsLoading = ref(false)
 
 // 表单数据
-const formData = ref<ServerConfig & { description?: string; tags?: string[] }>({
+const formData = ref<ServerConfig & { openApiDocumentId?: string }>({
   name: '',
-  endpoint: '',
+  version: '',
   description: '',
+  port: 3000,
+  transport: 'streamable',
+  openApiData: {},
+  config: {},
+  authConfig: '',
+  autoStart: false,
   tags: [],
+  openApiDocumentId: '',
+  // 兼容旧字段
+  endpoint: '',
   customHeaders: {}
 })
 
@@ -185,11 +264,31 @@ const validationFields = [
     ]
   },
   {
-    name: 'endpoint',
-    label: '端点地址',
+    name: 'version',
+    label: '版本',
     rules: [
-      { required: true, message: '端点地址不能为空' },
-      { pattern: /^https?:\/\/.+/, message: '请输入有效的HTTP/HTTPS地址' }
+      { type: 'string' as const, max: 20, message: '版本号不能超过20个字符' }
+    ]
+  },
+  {
+    name: 'port',
+    label: '端口',
+    rules: [
+      { type: 'number' as const, min: 1, max: 65535, message: '端口号必须在1-65535之间' }
+    ]
+  },
+  {
+    name: 'transport',
+    label: '传输类型',
+    rules: [
+      { required: true, message: '请选择传输类型' }
+    ]
+  },
+  {
+    name: 'openApiDocumentId',
+    label: 'OpenAPI文档',
+    rules: [
+      { required: true, message: '请选择要转换的OpenAPI文档' }
     ]
   },
   {
@@ -227,14 +326,43 @@ const formRules: FormRules = {
     { required: true, message: '请输入服务器名称', trigger: 'blur' },
     { min: 2, max: 50, message: '名称长度在 2 到 50 个字符', trigger: 'blur' }
   ],
-  endpoint: [
-    { required: true, message: '请输入端点地址', trigger: 'blur' },
-    {
-      pattern: /^https?:\/\/.+/,
-      message: '请输入有效的 HTTP/HTTPS 地址',
-      trigger: 'blur'
-    }
+  version: [
+    { max: 20, message: '版本号不能超过20个字符', trigger: 'blur' }
+  ],
+  port: [
+    { type: 'number', min: 1, max: 65535, message: '端口号必须在1-65535之间', trigger: 'blur' }
+  ],
+  transport: [
+    { required: true, message: '请选择传输类型', trigger: 'change' }
+  ],
+  openApiDocumentId: [
+    { required: true, message: '请选择要转换的OpenAPI文档', trigger: 'change' }
+  ],
+  description: [
+    { max: 200, message: '描述不能超过200个字符', trigger: 'blur' }
   ]
+}
+
+// 方法
+const resetForm = () => {
+  formData.value = {
+    name: '',
+    version: '',
+    description: '',
+    port: 3000,
+    transport: 'streamable',
+    openApiData: {},
+    config: {},
+    authConfig: '',
+    autoStart: false,
+    tags: [],
+    openApiDocumentId: '',
+    // 兼容旧字段
+    endpoint: '',
+    customHeaders: {}
+  }
+  customHeadersList.value = []
+  formRef.value?.clearValidate()
 }
 
 // 监听服务器属性变化
@@ -243,11 +371,20 @@ watch(
   (server) => {
     if (server) {
       formData.value = {
-        name: server.config.name,
-        endpoint: server.config.endpoint,
-        description: server.config.description || '',
-        tags: server.config.tags || [],
-        customHeaders: server.config.customHeaders || {}
+        name: server.name,
+        version: server.version || '',
+        description: server.description || '',
+        port: server.port || 3000,
+        transport: server.transport || 'streamable',
+        openApiData: {},
+        config: {},
+        authConfig: '',
+        autoStart: server.autoStart || false,
+        tags: server.tags || [],
+        openApiDocumentId: (server.config as any)?.openApiDocumentId || '',
+        // 兼容旧字段
+        endpoint: server.endpoint || '',
+        customHeaders: server.config?.customHeaders || {}
       }
       
       // 转换自定义头部为列表格式
@@ -266,19 +403,25 @@ watch(dialogVisible, (visible) => {
   if (visible && !props.server) {
     resetForm()
   }
+  if (visible) {
+    loadAvailableDocuments()
+  }
 })
 
-// 方法
-const resetForm = () => {
-  formData.value = {
-    name: '',
-    endpoint: '',
-    description: '',
-    tags: [],
-    customHeaders: {}
+// 加载可用的OpenAPI文档
+const loadAvailableDocuments = async () => {
+  try {
+    documentsLoading.value = true
+    const documents = await documentsApi.getDocuments()
+    // 只显示有效的文档
+    availableDocuments.value = documents.filter(doc => doc.status === 'valid')
+  } catch (error) {
+    console.error('Failed to load OpenAPI documents:', error)
+    ElMessage.error('加载OpenAPI文档失败')
+    availableDocuments.value = []
+  } finally {
+    documentsLoading.value = false
   }
-  customHeadersList.value = []
-  formRef.value?.clearValidate()
 }
 
 const handleClose = () => {
@@ -306,10 +449,20 @@ const handleSubmit = async () => {
     
     const serverConfig: ServerConfig = {
       name: formData.value.name,
-      endpoint: formData.value.endpoint,
+      version: formData.value.version,
       description: formData.value.description,
-      tags: formData.value.tags?.filter(tag => tag.trim()),
-      customHeaders
+      port: formData.value.port,
+      transport: formData.value.transport,
+      openApiData: formData.value.openApiData || {},
+      config: { 
+        customHeaders,
+        openApiDocumentId: formData.value.openApiDocumentId
+      },
+      authConfig: formData.value.authConfig,
+      autoStart: formData.value.autoStart,
+      tags: formData.value.tags?.filter(tag => tag.trim()) || [],
+      // 兼容旧字段
+      endpoint: formData.value.endpoint
     }
     
     let success = false
@@ -334,6 +487,11 @@ const handleSubmit = async () => {
     loading.value = false
   }
 }
+
+// 组件挂载时初始化
+onMounted(() => {
+  loadAvailableDocuments()
+})
 
 // 标签相关方法
 const handleTagClose = (tag: string) => {

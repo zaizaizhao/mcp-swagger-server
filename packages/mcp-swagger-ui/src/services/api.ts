@@ -172,31 +172,80 @@ api.interceptors.response.use(
 // ============================================================================
 
 export const serverAPI = {
-  // 获取所有服务器
-  async getServers(): Promise<MCPServer[]> {
-    const response = await api.get('/servers')
+  // 获取所有服务器（支持分页和过滤）
+  async getServers(params?: {
+    page?: number
+    limit?: number
+    status?: string
+    transport?: string
+    search?: string
+    tags?: string[]
+  }): Promise<{
+    data: MCPServer[]
+    total: number
+    page: number
+    limit: number
+    totalPages: number
+    hasNext: boolean
+    hasPrev: boolean
+  }> {
+    const response = await api.get('/v1/servers', { params })
     return response.data
   },
 
   // 创建服务器
-  async createServer(config: ServerConfig): Promise<MCPServer> {
-    const response = await api.post('/servers', config)
+  async createServer(config: {
+    name: string
+    version?: string
+    description?: string
+    port?: number
+    transport?: 'streamable' | 'sse' | 'stdio' | 'websocket'
+    openApiData: any
+    config?: any
+    authConfig?: string
+    autoStart?: boolean
+    tags?: string[]
+  }): Promise<MCPServer> {
+    const response = await api.post('/v1/servers', config)
     return response.data
   },
 
   // 更新服务器
-  async updateServer(id: string, config: Partial<ServerConfig>): Promise<MCPServer> {
-    const response = await api.put(`/servers/${id}`, config)
+  async updateServer(id: string, config: {
+    name?: string
+    version?: string
+    description?: string
+    port?: number
+    transport?: 'streamable' | 'sse' | 'stdio' | 'websocket'
+    openApiData?: any
+    config?: any
+    authConfig?: string
+    autoStart?: boolean
+    tags?: string[]
+  }): Promise<MCPServer> {
+    const response = await api.put(`/v1/servers/${id}`, config)
     return response.data
   },
 
   // 删除服务器
-  async deleteServer(id: string): Promise<void> {
-    const response = await api.delete(`/servers/${id}`)
+  async deleteServer(id: string): Promise<{ success: boolean; message: string }> {
+    const response = await api.delete(`/v1/servers/${id}`)
     return response.data
   },
 
-  // 启动/停止服务器
+  // 服务器操作（启动/停止/重启）
+  async performServerAction(id: string, action: 'start' | 'stop' | 'restart', force?: boolean): Promise<{ success: boolean; message: string }> {
+    const response = await api.post(`/v1/servers/${id}/actions`, { action, force })
+    return response.data
+  },
+
+  // 批量服务器操作
+  async performBatchAction(serverIds: string[], action: 'start' | 'stop' | 'restart', force?: boolean): Promise<{ success: boolean; message: string; data?: any }> {
+    const response = await api.post('/v1/servers/batch/actions', { serverIds, action, force })
+    return response.data
+  },
+
+  // 启动/停止服务器（兼容旧接口）
   async toggleServer(id: string, enabled: boolean): Promise<MCPServer> {
     const response = await api.post(`/servers/${id}/toggle`, { enabled })
     return response.data
@@ -204,7 +253,60 @@ export const serverAPI = {
 
   // 获取服务器详情
   async getServerDetails(id: string): Promise<MCPServer> {
-    const response = await api.get(`/servers/${id}`)
+    const response = await api.get(`/v1/servers/${id}`)
+    return response.data
+  },
+
+  // 获取服务器健康状态
+  async getServerHealth(id: string): Promise<any> {
+    const response = await api.get(`/v1/servers/${id}/health`)
+    return response.data
+  },
+
+  // 获取所有服务器健康概览
+  async getAllServersHealth(): Promise<any> {
+    const response = await api.get('/v1/servers/health/overview')
+    return response.data
+  },
+
+  // 获取健康检查历史
+  async getHealthCheckHistory(id: string, limit?: number): Promise<any> {
+    const response = await api.get(`/v1/servers/${id}/health/history`, {
+      params: { limit }
+    })
+    return response.data
+  },
+
+  // 手动执行健康检查
+  async performHealthCheck(id: string): Promise<any> {
+    const response = await api.post(`/v1/servers/${id}/health/check`)
+    return response.data
+  },
+
+  // 获取服务器指标
+  async getServerMetrics(id: string, params?: {
+    startTime?: Date
+    endTime?: Date
+    interval?: 'minute' | 'hour' | 'day'
+    limit?: number
+  }): Promise<any> {
+    const response = await api.get(`/v1/servers/${id}/metrics`, { params })
+    return response.data
+  },
+
+  // 获取服务器性能摘要
+  async getServerPerformanceSummary(id: string): Promise<any> {
+    const response = await api.get(`/v1/servers/${id}/metrics/summary`)
+    return response.data
+  },
+
+  // 获取系统指标
+  async getSystemMetrics(params?: {
+    startTime?: Date
+    endTime?: Date
+    limit?: number
+  }): Promise<any> {
+    const response = await api.get('/v1/servers/metrics/system', { params })
     return response.data
   }
 }

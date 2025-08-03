@@ -31,6 +31,7 @@ import { LoggingInterceptor } from '../../common/interceptors/logging.intercepto
 import { OpenAPIService } from './services/openapi.service';
 import { ConfigureOpenAPIDto, InputSourceType } from './dto/configure-openapi.dto';
 import { OpenAPIResponseDto } from './dto/openapi-response.dto';
+import { AppConfigService } from '../../config/app-config.service';
 
 @ApiTags('OpenAPI')
 @Controller('openapi')
@@ -40,7 +41,20 @@ import { OpenAPIResponseDto } from './dto/openapi-response.dto';
 export class OpenAPIController {
   private readonly logger = new Logger(OpenAPIController.name);
 
-  constructor(private readonly openApiService: OpenAPIService) {}
+  constructor(
+    private readonly openApiService: OpenAPIService,
+    private readonly configService: AppConfigService,
+  ) {}
+
+  private parseFileSize(sizeStr: string): number {
+    const units = { B: 1, KB: 1024, MB: 1024 * 1024, GB: 1024 * 1024 * 1024 };
+    const match = sizeStr.match(/^(\d+)\s*(B|KB|MB|GB)$/i);
+    if (!match) {
+      throw new Error(`Invalid file size format: ${sizeStr}`);
+    }
+    const [, size, unit] = match;
+    return parseInt(size) * units[unit.toUpperCase()];
+  }
 
   @Post('parse')
   @HttpCode(HttpStatus.OK)
@@ -236,10 +250,11 @@ export class OpenAPIController {
         throw new BadRequestException('File content is empty');
       }
 
-      // Check file size (limit to 10MB)
-      const maxSize = 10 * 1024 * 1024; // 10MB
+      // Check file size using configured limit
+      const maxFileSizeStr = this.configService.maxOpenAPIFileSize;
+      const maxSize = this.parseFileSize(maxFileSizeStr);
       if (file.size > maxSize) {
-        throw new BadRequestException('File size exceeds 10MB limit');
+        throw new BadRequestException(`File size exceeds ${maxFileSizeStr} limit`);
       }
 
       // Check file type
@@ -324,10 +339,11 @@ export class OpenAPIController {
         throw new BadRequestException('File content is empty');
       }
 
-      // Check file size (limit to 10MB)
-      const maxSize = 10 * 1024 * 1024; // 10MB
+      // Check file size using configured limit
+      const maxFileSizeStr = this.configService.maxOpenAPIFileSize;
+      const maxSize = this.parseFileSize(maxFileSizeStr);
       if (file.size > maxSize) {
-        throw new BadRequestException('File size exceeds 10MB limit');
+        throw new BadRequestException(`File size exceeds ${maxFileSizeStr} limit`);
       }
 
       this.logger.log(`Validating uploaded file: ${file.originalname} (${file.size} bytes)`);

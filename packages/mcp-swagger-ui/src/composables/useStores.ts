@@ -82,7 +82,7 @@ export function useServerManagement() {
     createServer: server.createServer,
     updateServer: server.updateServer,
     deleteServer: server.deleteServer,
-    toggleServer: server.toggleServer,
+    performServerAction: server.performServerAction,
     selectServer: server.selectServer,
     
     // WebSocket 订阅

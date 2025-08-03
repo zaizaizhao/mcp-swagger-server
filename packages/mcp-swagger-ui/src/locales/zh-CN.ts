@@ -266,6 +266,7 @@ export default {
     validationSuccessWithWarnings: '规范验证通过，解析到 {apiCount} 个API接口，但有 {warningCount} 个警告',
     validationSuccessDetail: '规范验证通过，解析到 {apiCount} 个API接口，无错误和警告',
     validationFailedDetail: '规范验证失败，发现 {errorCount} 个错误',
+    validationErrors: '验证错误',
     validationError: '验证失败: {error}',
     createSuccess: '文档创建成功',
     createFailed: '创建失败: {error}',
