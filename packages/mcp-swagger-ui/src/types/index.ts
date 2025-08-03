@@ -55,12 +55,20 @@ export interface ApiResponse<T = any> {
 
 export interface ServerConfig {
   name: string
-  endpoint: string
+  version?: string
+  description?: string
+  port?: number
+  transport?: 'streamable' | 'sse' | 'stdio' | 'websocket'
+  openApiData: any
+  config?: any
+  authConfig?: string
+  autoStart?: boolean
+  tags?: string[]
+  // 兼容旧字段
+  endpoint?: string
   openApiSpec?: string | File
   authentication?: AuthConfig
   customHeaders?: Record<string, string>
-  description?: string
-  tags?: string[]
 }
 
 export interface ServerMetrics {
@@ -87,14 +95,25 @@ export interface ResourceUsage {
 export interface MCPServer {
   id: string
   name: string
-  endpoint: string
+  version: string
+  description?: string
+  port: number
+  transport: 'streamable' | 'sse' | 'stdio' | 'websocket'
   status: ServerStatus
-  config: ServerConfig
-  tools: MCPTool[]
-  metrics: ServerMetrics
-  lastError?: string
+  healthy: boolean
+  endpoint?: string
+  toolCount: number
+  autoStart: boolean
+  tags: string[]
+  errorMessage?: string
+  lastHealthCheck?: Date
   createdAt: Date
   updatedAt: Date
+  // 兼容旧字段
+  config?: ServerConfig
+  tools?: MCPTool[]
+  metrics?: ServerMetrics
+  lastError?: string
 }
 
 // ============================================================================

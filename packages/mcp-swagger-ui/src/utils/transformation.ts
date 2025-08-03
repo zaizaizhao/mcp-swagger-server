@@ -142,9 +142,22 @@ const convertToPropertySchema = (schema: any): PropertySchema => {
 export const createMCPServer = (config: ServerConfig): MCPServer => {
   return {
     id: generateId('server'),
-    name: config.name,
-    endpoint: config.endpoint,
+    name: config.name || '',
+    version: config.version || '1.0.0',
+    description: config.description || '',
+    port: config.port || 3000,
+    transport: config.transport || 'streamable',
     status: 'stopped',
+    healthy: false,
+    endpoint: config.endpoint || '',
+    toolCount: 0,
+    autoStart: config.autoStart || false,
+    tags: config.tags || [],
+    errorMessage: undefined,
+    lastHealthCheck: undefined,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    // 兼容旧字段
     config,
     tools: [],
     metrics: {
@@ -155,9 +168,7 @@ export const createMCPServer = (config: ServerConfig): MCPServer => {
       errorRate: 0,
       activeConnections: 0,
       uptime: 0
-    },
-    createdAt: new Date(),
-    updatedAt: new Date()
+    }
   }
 }
 
@@ -182,6 +193,13 @@ export const cloneServerConfig = (server: MCPServer, newName: string): MCPServer
     id: generateId('server'),
     name: newName,
     status: 'stopped',
+    healthy: false,
+    toolCount: 0,
+    errorMessage: undefined,
+    lastHealthCheck: undefined,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    // 兼容旧字段
     tools: [],
     metrics: {
       totalRequests: 0,
@@ -191,9 +209,7 @@ export const cloneServerConfig = (server: MCPServer, newName: string): MCPServer
       errorRate: 0,
       activeConnections: 0,
       uptime: 0
-    },
-    createdAt: new Date(),
-    updatedAt: new Date()
+    }
   }
 }
 
@@ -310,8 +326,25 @@ export const serversToConfigFile = (
   const processedServers = servers.map(server => {
     const processedServer = { ...server }
     
+    // 确保config存在
+    if (!processedServer.config) {
+      processedServer.config = {
+        name: server.name,
+        version: server.version,
+        description: server.description,
+        port: server.port,
+        transport: server.transport,
+        openApiData: {},
+        config: {},
+        authConfig: '',
+        autoStart: server.autoStart,
+        tags: server.tags,
+        endpoint: server.endpoint
+      }
+    }
+    
     // 处理敏感数据
-    if (!includeSensitiveData && processedServer.config.authentication) {
+    if (!includeSensitiveData && processedServer.config?.authentication) {
       processedServer.config = {
         ...processedServer.config,
         authentication: {

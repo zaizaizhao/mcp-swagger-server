@@ -197,34 +197,42 @@
                     {{ getStatusText(server.status) }}
                   </el-tag>
                   <span class="uptime" v-if="server.status === 'running'">
-                    运行时间: {{ formatUptime(server.metrics.uptime) }}
+                    运行时间: {{ formatUptime(server.metrics?.uptime || 0) }}
                   </span>
                 </div>
                 
                 <div class="server-info">
-                  <div class="info-item">
-                    <span class="label">端点:</span>
-                    <span class="value">{{ server.endpoint }}</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="label">工具数量:</span>
-                    <span class="value">{{ server.tools.length }}</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="label">请求总数:</span>
-                    <span class="value">{{ server.metrics.totalRequests }}</span>
-                  </div>
+                <div class="info-item" v-if="server.endpoint">
+                  <span class="label">端点:</span>
+                  <span class="value">{{ server.endpoint || 'N/A' }}</span>
                 </div>
+                <div class="info-item">
+                  <span class="label">端口:</span>
+                  <span class="value">{{ server.port }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="label">传输:</span>
+                  <span class="value">{{ server.transport }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="label">工具数量:</span>
+                  <span class="value">{{ server.toolCount || 0 }}</span>
+                </div>
+                <div class="info-item" v-if="server.autoStart !== undefined">
+                  <span class="label">自动启动:</span>
+                  <span class="value">{{ server.autoStart ? '是' : '否' }}</span>
+                </div>
+              </div>
                 
                 <div class="server-metrics" v-if="server.status === 'running'">
                   <el-progress 
-                    :percentage="Math.min(100, server.metrics.errorRate * 100)"
-                    :color="getErrorRateColor(server.metrics.errorRate)"
+                    :percentage="Math.min(100, (server.metrics?.errorRate || 0) * 100)"
+                    :color="getErrorRateColor(server.metrics?.errorRate || 0)"
                     :show-text="false"
                     :stroke-width="4"
                   />
                   <span class="metrics-text">
-                    错误率: {{ (server.metrics.errorRate * 100).toFixed(1) }}%
+                    错误率: {{ ((server.metrics?.errorRate || 0) * 100).toFixed(1) }}%
                   </span>
                 </div>
               </div>
@@ -262,19 +270,27 @@
             </template>
           </el-table-column>
           
-          <el-table-column prop="endpoint" label="端点" min-width="200" />
-          
-          <el-table-column prop="tools" label="工具数量" width="100">
+          <el-table-column prop="endpoint" label="端点" min-width="200">
             <template #default="{ row }">
-              {{ row.tools.length }}
+              {{ row.endpoint || `${row.transport}://${row.host || 'localhost'}:${row.port}` }}
             </template>
           </el-table-column>
           
-          <el-table-column prop="metrics.totalRequests" label="请求总数" width="120" />
+          <el-table-column prop="transport" label="传输" width="100" />
           
-          <el-table-column prop="metrics.errorRate" label="错误率" width="100">
+          <el-table-column prop="port" label="端口" width="80" />
+          
+          <el-table-column prop="toolCount" label="工具数量" width="100">
             <template #default="{ row }">
-              {{ (row.metrics.errorRate * 100).toFixed(1) }}%
+              {{ row.toolCount || 0 }}
+            </template>
+          </el-table-column>
+          
+          <el-table-column prop="autoStart" label="自动启动" width="100">
+            <template #default="{ row }">
+              <el-tag :type="row.autoStart ? 'success' : 'info'" size="small">
+                {{ row.autoStart ? '是' : '否' }}
+              </el-tag>
             </template>
           </el-table-column>
           
@@ -349,8 +365,8 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   Monitor, Plus, Refresh, Search, Grid, List, More, Edit, Delete,
-  CircleCheck, CircleClose, VideoPlay, VideoPause,
-  WarningFilled
+  CircleCheck, CircleClose, VideoPlay, VideoPause, RefreshRight,
+  WarningFilled, MoreFilled
 } from '@element-plus/icons-vue'
 import type { MCPServer, ServerStatus } from '@/types'
 import { useServerStore } from '@/stores/server'
@@ -400,8 +416,8 @@ const filteredServers = computed(() => {
     const query = searchQuery.value.toLowerCase()
     filtered = filtered.filter(server => 
       server.name.toLowerCase().includes(query) ||
-      server.endpoint.toLowerCase().includes(query) ||
-      server.config.description?.toLowerCase().includes(query)
+      (server.endpoint || '').toLowerCase().includes(query) ||
+      (server.config?.description || '').toLowerCase().includes(query)
     )
   }
 
@@ -501,6 +517,9 @@ const handleServerAction = async ({ action, server }: { action: string, server: 
       break
     case 'restart':
       await restartServer(server)
+      break
+    case 'health':
+      await serverStore.performHealthCheck(server.id)
       break
     case 'edit':
       editServer(server)

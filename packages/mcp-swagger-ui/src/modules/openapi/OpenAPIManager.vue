@@ -128,7 +128,6 @@
                       :type="activeTab === 'editor' ? 'primary' : ''"
                       size="small" 
                       @click="activeTab = 'editor'"
-                      :disabled="selectedDocument.status !== 'valid'"
                     >
                       <el-icon><Edit /></el-icon>
                       {{ t('common.edit') }}
@@ -154,7 +153,7 @@
                     </el-button>
                   </el-button-group>
                   <el-divider direction="vertical" />
-                  <el-button size="small" @click="validateSpec" :disabled="!selectedDocument || !editorContent.trim()">
+                  <el-button size="small" @click="validateSpec" :disabled="!selectedDocument || !editorContent.trim()" :loading="validating">
                     <el-icon><Check /></el-icon>
                     {{ t('openapi.validateSpec') }}
                   </el-button>
@@ -202,10 +201,15 @@
             </div>
             
             <!-- 错误状态 -->
-            <div v-else-if="selectedDocument.status === 'invalid'" class="error-state" style="height: 100%; display: flex; align-items: center; justify-content: center;">
+            <div v-else-if="selectedDocument.status === 'invalid' && activeTab !== 'editor'" class="error-state" style="height: 100%; display: flex; align-items: center; justify-content: center;">
               <el-result icon="error" :title="t('openapi.parseFailed')" :sub-title="selectedDocument.metadata?.validationErrors?.[0] || t('openapi.validationFailed')">
                 <template #extra>
-                  <el-button type="primary" @click="deleteDocument(selectedDocument.id)">
+                  <el-button type="primary" @click="activeTab = 'editor'">
+                    <el-icon><Edit /></el-icon>
+                    {{ t('openapi.editDocument') }}
+                  </el-button>
+                  <el-button @click="deleteDocument(selectedDocument.id)">
+                    <el-icon><Delete /></el-icon>
                     {{ t('openapi.deleteSpec') }}
                   </el-button>
                 </template>
@@ -222,15 +226,33 @@
               </div>
             </div>
             
-            <!-- 正常状态 -->
+            <!-- 正常状态或编辑状态 -->
             <div v-else class="content-tabs" style="height: 100%;">
-              <div v-show="activeTab === 'editor'" ref="editorContainerRef" class="editor-container" style="height: 100%;">
+              <div v-show="activeTab === 'editor'" ref="editorContainerRef" class="editor-container" style="height: 100%; position: relative;">
+                <!-- 验证错误提示 -->
+                <div v-if="selectedDocument.status === 'invalid' && validationResults && !validationResults.valid" class="validation-errors" style="position: absolute; top: 0; left: 0; right: 0; z-index: 10; background: #fff; border-bottom: 1px solid #dcdfe6; padding: 12px;">
+                  <el-alert
+                    :title="t('openapi.validationErrors')"
+                    type="error"
+                    :closable="false"
+                    show-icon
+                  >
+                    <template #default>
+                      <div class="error-list" style="max-height: 120px; overflow-y: auto;">
+                        <div v-for="(error, index) in validationResults.errors" :key="index" class="error-item" style="margin-bottom: 4px; font-size: 12px;">
+                          {{ error }}
+                        </div>
+                      </div>
+                    </template>
+                  </el-alert>
+                </div>
                 <MonacoEditor
                   v-model="editorContent"
                   :language="detectLanguage(editorContent)"
-                  :height="editorHeight"
+                  :height="selectedDocument.status === 'invalid' && validationResults?.valid === false ? Math.max(editorHeight - 160, 300) : editorHeight"
                   :options="editorOptions"
                   @change="handleContentChange"
+                  :style="{ marginTop: selectedDocument.status === 'invalid' && validationResults?.valid === false ? '160px' : '0' }"
                 />
               </div>
               

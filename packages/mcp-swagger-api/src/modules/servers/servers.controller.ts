@@ -41,7 +41,7 @@ import {
 
 
 @ApiTags('服务器管理')
-@Controller('api/v1/servers')
+@Controller('v1/servers')
 // @UseGuards(AuthGuard) // TODO: 添加认证守卫
 export class ServersController {
   private readonly logger = new Logger(ServersController.name);

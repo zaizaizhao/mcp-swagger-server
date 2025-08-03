@@ -276,6 +276,7 @@ export default {
     validationSuccessWithWarnings: 'Specification validation passed, parsed {apiCount} API endpoints with {warningCount} warnings',
     validationSuccessDetail: 'Specification validation passed, parsed {apiCount} API endpoints with no errors or warnings',
     validationFailedDetail: 'Specification validation failed, found {errorCount} errors',
+    validationErrors: 'Validation Errors',
     validationError: 'Validation failed: {error}',
     createSuccess: 'Document created successfully',
     createFailed: 'Create failed: {error}',

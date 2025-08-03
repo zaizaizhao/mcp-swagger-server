@@ -6,6 +6,7 @@ import { AppModule } from './app.module';
 import * as cors from 'cors';
 import * as helmet from 'helmet';
 import * as compression from 'compression';
+import * as express from 'express';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -16,6 +17,11 @@ async function bootstrap() {
     });
 
     const configService = app.get(ConfigService);
+
+    // 配置请求体大小限制
+    const maxPayloadSize = configService.get<string>('MAX_PAYLOAD_SIZE', '50mb');
+    app.use(express.json({ limit: maxPayloadSize }));
+    app.use(express.urlencoded({ limit: maxPayloadSize, extended: true }));
 
     // 安全中间件
     app.use(helmet.default({
