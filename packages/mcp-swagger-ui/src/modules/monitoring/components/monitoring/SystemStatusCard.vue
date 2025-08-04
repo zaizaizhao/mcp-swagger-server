@@ -39,101 +39,119 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { 
-  Clock, 
-  Monitor, 
-  Connection, 
+import { computed } from "vue";
+import {
+  Clock,
+  Monitor,
+  Connection,
   Coin,
   Service,
-  Link
-} from '@element-plus/icons-vue'
+  Link,
+} from "@element-plus/icons-vue";
 
 interface ServiceStatus {
-  name: string
-  status: 'online' | 'offline' | 'degraded' | 'connecting'
-  icon: any
+  name: string;
+  status: "online" | "offline" | "degraded" | "connecting";
+  icon: any;
 }
 
 interface Props {
-  status: 'healthy' | 'warning' | 'critical' | 'unknown'
-  services: ServiceStatus[]
-  uptime?: number
-  lastUpdate?: Date
+  status: "healthy" | "warning" | "critical" | "unknown";
+  services: ServiceStatus[];
+  uptime?: number;
+  lastUpdate?: Date;
 }
 
-const props = defineProps<Props>()
+const props = defineProps<Props>();
 
 const statusType = computed(() => {
   switch (props.status) {
-    case 'healthy': return 'success'
-    case 'warning': return 'warning'
-    case 'critical': return 'danger'
-    default: return 'info'
+    case "healthy":
+      return "success";
+    case "warning":
+      return "warning";
+    case "critical":
+      return "danger";
+    default:
+      return "info";
   }
-})
+});
 
 const statusText = computed(() => {
   switch (props.status) {
-    case 'healthy': return '正常'
-    case 'warning': return '警告'
-    case 'critical': return '严重'
-    default: return '未知'
+    case "healthy":
+      return "正常";
+    case "warning":
+      return "警告";
+    case "critical":
+      return "严重";
+    default:
+      return "未知";
   }
-})
+});
 
 const services = computed(() => {
-  return props.services.map(service => ({
+  return props.services.map((service) => ({
     ...service,
     statusClass: getStatusClass(service.status),
-    statusText: getStatusText(service.status)
-  }))
-})
+    statusText: getStatusText(service.status),
+  }));
+});
 
 const getStatusClass = (status: string) => {
   switch (status) {
-    case 'online': return 'status-online'
-    case 'offline': return 'status-offline'
-    case 'degraded': return 'status-degraded'
-    case 'connecting': return 'status-connecting'
-    default: return 'status-unknown'
+    case "online":
+      return "status-online";
+    case "offline":
+      return "status-offline";
+    case "degraded":
+      return "status-degraded";
+    case "connecting":
+      return "status-connecting";
+    default:
+      return "status-unknown";
   }
-}
+};
 
 const getStatusText = (status: string) => {
   switch (status) {
-    case 'online': return '在线'
-    case 'offline': return '离线'
-    case 'degraded': return '降级'
-    case 'connecting': return '连接中'
-    default: return '未知'
+    case "online":
+      return "在线";
+    case "offline":
+      return "离线";
+    case "degraded":
+      return "降级";
+    case "connecting":
+      return "连接中";
+    default:
+      return "未知";
   }
-}
+};
 
 const formatUptime = (seconds: number) => {
-  const days = Math.floor(seconds / 86400)
-  const hours = Math.floor((seconds % 86400) / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
   if (days > 0) {
-    return `${days}天 ${hours}小时 ${minutes}分钟`
+    return `${days}天 ${hours}小时 ${minutes}分钟`;
   } else if (hours > 0) {
-    return `${hours}小时 ${minutes}分钟`
+    return `${hours}小时 ${minutes}分钟`;
   } else {
-    return `${minutes}分钟`
+    return `${minutes}分钟`;
   }
-}
+};
 
 const formatTime = (date: Date) => {
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  })
-}
+  return date.toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+};
 </script>
 
 <style scoped>
@@ -212,8 +230,13 @@ const formatTime = (date: Date) => {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .service-details {

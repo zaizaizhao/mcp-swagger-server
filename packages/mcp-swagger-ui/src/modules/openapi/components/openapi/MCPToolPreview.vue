@@ -1,12 +1,18 @@
 <template>
   <div class="mcp-tool-preview">
-    <el-card v-if="!tools || tools.length === 0" shadow="never" class="empty-state">
+    <el-card
+      v-if="!tools || tools.length === 0"
+      shadow="never"
+      class="empty-state"
+    >
       <div class="empty-content">
         <el-icon size="64" class="empty-icon">
           <Tools />
         </el-icon>
         <p class="empty-text">还没有转换的MCP工具</p>
-        <p class="empty-description">选择一个有效的OpenAPI规范并点击"转换为MCP工具"</p>
+        <p class="empty-description">
+          选择一个有效的OpenAPI规范并点击"转换为MCP工具"
+        </p>
       </div>
     </el-card>
 
@@ -24,30 +30,30 @@
 
         <el-row :gutter="20">
           <el-col :span="6">
-            <el-statistic 
-              title="GET 方法" 
-              :value="getMethodCount('get')" 
+            <el-statistic
+              title="GET 方法"
+              :value="getMethodCount('get')"
               suffix="个"
             />
           </el-col>
           <el-col :span="6">
-            <el-statistic 
-              title="POST 方法" 
-              :value="getMethodCount('post')" 
+            <el-statistic
+              title="POST 方法"
+              :value="getMethodCount('post')"
               suffix="个"
             />
           </el-col>
           <el-col :span="6">
-            <el-statistic 
-              title="PUT 方法" 
-              :value="getMethodCount('put')" 
+            <el-statistic
+              title="PUT 方法"
+              :value="getMethodCount('put')"
               suffix="个"
             />
           </el-col>
           <el-col :span="6">
-            <el-statistic 
-              title="DELETE 方法" 
-              :value="getMethodCount('delete')" 
+            <el-statistic
+              title="DELETE 方法"
+              :value="getMethodCount('delete')"
               suffix="个"
             />
           </el-col>
@@ -90,55 +96,66 @@
         </template>
 
         <div class="tools-grid">
-          <div 
-            v-for="(tool, index) in filteredTools" 
+          <div
+            v-for="(tool, index) in filteredTools"
             :key="`${tool.id || tool.name}-${index}`"
             class="tool-card"
             @click="selectTool(tool)"
-            :class="{ 'selected': selectedTool?.name === tool.name }"
+            :class="{ selected: selectedTool?.name === tool.name }"
           >
             <div class="tool-header">
               <div class="tool-title">
                 <el-icon class="tool-icon"><Setting /></el-icon>
                 <span class="tool-name">{{ tool.name }}</span>
               </div>
-              <el-tag 
+              <el-tag
                 :type="getMethodType(tool.method || 'get')"
                 size="small"
                 class="method-tag"
               >
-                {{ (tool.method || 'GET').toUpperCase() }}
+                {{ (tool.method || "GET").toUpperCase() }}
               </el-tag>
             </div>
 
             <div class="tool-description">
-              {{ tool.description || '暂无描述' }}
+              {{ tool.description || "暂无描述" }}
             </div>
 
             <div class="tool-meta">
               <div class="tool-endpoint">
                 <el-icon><Link /></el-icon>
-                <code>{{props.serverUrl + (tool.endpoint || tool.path || '/')}}</code>
+                <code>{{
+                  props.serverUrl + (tool.endpoint || tool.path || "/")
+                }}</code>
               </div>
-              <div v-if="tool.parameters && tool.parameters.properties && Object.keys(tool.parameters.properties).length > 0" class="tool-params">
+              <div
+                v-if="
+                  tool.parameters &&
+                  tool.parameters.properties &&
+                  Object.keys(tool.parameters.properties).length > 0
+                "
+                class="tool-params"
+              >
                 <el-icon><List /></el-icon>
-                <span>{{ Object.keys(tool.parameters.properties).length }} 个参数</span>
+                <span
+                  >{{
+                    Object.keys(tool.parameters.properties).length
+                  }}
+                  个参数</span
+                >
               </div>
             </div>
 
             <div class="tool-actions">
-              <el-button 
-                type="primary" 
-                size="small" 
+              <el-button
+                type="primary"
+                size="small"
                 @click.stop="testTool(tool)"
               >
                 <el-icon><VideoPlay /></el-icon>
                 测试
               </el-button>
-              <el-button 
-                size="small" 
-                @click.stop="copyToolConfig(tool)"
-              >
+              <el-button size="small" @click.stop="copyToolConfig(tool)">
                 <el-icon><CopyDocument /></el-icon>
                 复制配置
               </el-button>
@@ -152,10 +169,7 @@
         <template #header>
           <div class="card-header">
             <h3>{{ selectedTool.name }} - 详细信息</h3>
-            <el-button 
-              size="small"
-              @click="selectedTool = null"
-            >
+            <el-button size="small" @click="selectedTool = null">
               <el-icon><Close /></el-icon>
               关闭
             </el-button>
@@ -172,17 +186,24 @@
                 </el-descriptions-item>
                 <el-descriptions-item label="HTTP方法">
                   <el-tag :type="getMethodType(selectedTool.method || 'get')">
-                    {{ (selectedTool.method || 'GET').toUpperCase() }}
+                    {{ (selectedTool.method || "GET").toUpperCase() }}
                   </el-tag>
                 </el-descriptions-item>
                 <el-descriptions-item label="端点路径">
-                  <code>{{ selectedTool.endpoint || selectedTool.path || '/' }}</code>
+                  <code>{{
+                    selectedTool.endpoint || selectedTool.path || "/"
+                  }}</code>
                 </el-descriptions-item>
                 <el-descriptions-item label="参数数量">
-                  {{ selectedTool.parameters?.properties ? Object.keys(selectedTool.parameters.properties).length : 0 }} 个
+                  {{
+                    selectedTool.parameters?.properties
+                      ? Object.keys(selectedTool.parameters.properties).length
+                      : 0
+                  }}
+                  个
                 </el-descriptions-item>
                 <el-descriptions-item label="描述" :span="2">
-                  {{ selectedTool.description || '暂无描述' }}
+                  {{ selectedTool.description || "暂无描述" }}
                 </el-descriptions-item>
               </el-descriptions>
             </div>
@@ -190,36 +211,34 @@
 
           <!-- 参数详情 -->
           <el-tab-pane label="参数详情" name="parameters">
-            <div v-if="!selectedTool.parameters || !selectedTool.parameters.properties || Object.keys(selectedTool.parameters.properties).length === 0" class="no-params">
+            <div
+              v-if="
+                !selectedTool.parameters ||
+                !selectedTool.parameters.properties ||
+                Object.keys(selectedTool.parameters.properties).length === 0
+              "
+              class="no-params"
+            >
               <el-empty description="此工具不需要参数" />
             </div>
             <div v-else class="params-list">
-              <div 
-                v-for="(param, paramName) in selectedTool.parameters.properties" 
+              <div
+                v-for="(param, paramName) in selectedTool.parameters.properties"
                 :key="paramName"
                 class="param-item"
               >
                 <div class="param-header">
                   <span class="param-name">{{ paramName }}</span>
-                  <el-tag 
-                    v-if="selectedTool.parameters.required?.includes(paramName)" 
-                    type="danger" 
+                  <el-tag
+                    v-if="selectedTool.parameters.required?.includes(paramName)"
+                    type="danger"
                     size="small"
                   >
                     必需
                   </el-tag>
-                  <el-tag 
-                    v-else 
-                    type="info" 
-                    size="small"
-                  >
-                    可选
-                  </el-tag>
-                  <el-tag 
-                    type="warning" 
-                    size="small"
-                  >
-                    {{ param.type || 'string' }}
+                  <el-tag v-else type="info" size="small"> 可选 </el-tag>
+                  <el-tag type="warning" size="small">
+                    {{ param.type || "string" }}
                   </el-tag>
                 </div>
                 <div v-if="param.description" class="param-description">
@@ -228,10 +247,13 @@
                 <div v-if="param.default !== undefined" class="param-default">
                   默认值: <code>{{ param.default }}</code>
                 </div>
-                <div v-if="param.enum && param.enum.length > 0" class="param-enum">
-                  可选值: 
-                  <el-tag 
-                    v-for="value in param.enum" 
+                <div
+                  v-if="param.enum && param.enum.length > 0"
+                  class="param-enum"
+                >
+                  可选值:
+                  <el-tag
+                    v-for="value in param.enum"
                     :key="value"
                     size="small"
                     style="margin-left: 4px"
@@ -246,9 +268,9 @@
           <!-- JSON Schema -->
           <el-tab-pane label="JSON Schema" name="schema">
             <div class="schema-container">
-              <el-button 
-                type="primary" 
-                size="small" 
+              <el-button
+                type="primary"
+                size="small"
                 @click="copySchema"
                 style="margin-bottom: 12px"
               >
@@ -268,9 +290,9 @@
           <!-- MCP配置 -->
           <el-tab-pane label="MCP配置" name="mcp-config">
             <div class="mcp-config-container">
-              <el-button 
-                type="primary" 
-                size="small" 
+              <el-button
+                type="primary"
+                size="small"
                 @click="copyMCPConfig"
                 style="margin-bottom: 12px"
               >
@@ -299,8 +321,8 @@
     >
       <div v-if="testingTool" class="test-container">
         <el-form :model="testForm" label-width="120px">
-          <el-form-item 
-            v-for="(param, paramName) in testingTool.parameters?.properties" 
+          <el-form-item
+            v-for="(param, paramName) in testingTool.parameters?.properties"
             :key="paramName"
             :label="paramName"
             :required="testingTool.parameters?.required?.includes(paramName)"
@@ -308,7 +330,11 @@
             <el-input
               v-model="testForm[paramName]"
               :placeholder="param.description || `请输入${paramName}`"
-              :type="param.type === 'integer' || param.type === 'number' ? 'number' : 'text'"
+              :type="
+                param.type === 'integer' || param.type === 'number'
+                  ? 'number'
+                  : 'text'
+              "
             />
             <div v-if="param.description" class="param-help">
               {{ param.description }}
@@ -318,22 +344,13 @@
 
         <div class="test-result" v-if="testResult">
           <h4>测试结果:</h4>
-          <el-input
-            v-model="testResult"
-            type="textarea"
-            :rows="10"
-            readonly
-          />
+          <el-input v-model="testResult" type="textarea" :rows="10" readonly />
         </div>
       </div>
 
       <template #footer>
         <el-button @click="testDialogVisible = false">取消</el-button>
-        <el-button 
-          type="primary" 
-          @click="executeTest"
-          :loading="testing"
-        >
+        <el-button type="primary" @click="executeTest" :loading="testing">
           执行测试
         </el-button>
       </template>
@@ -342,187 +359,230 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { 
-  Tools, Search, Setting, Link, List, VideoPlay, CopyDocument, Close
-} from '@element-plus/icons-vue'
-import type { MCPTool } from '@/types'
-import { simulateMCPToolExecution, generateToolConfig, generateToolSchema } from '@/utils/mcp-tools'
+import { ref, computed, watch } from "vue";
+import { ElMessage, ElMessageBox } from "element-plus";
+import {
+  Tools,
+  Search,
+  Setting,
+  Link,
+  List,
+  VideoPlay,
+  CopyDocument,
+  Close,
+} from "@element-plus/icons-vue";
+import type { MCPTool } from "@/types";
+import {
+  simulateMCPToolExecution,
+  generateToolConfig,
+  generateToolSchema,
+} from "@/utils/mcp-tools";
 
 interface Props {
-  tools?: MCPTool[]
-  loading?: boolean
-  serverUrl?: string
+  tools?: MCPTool[];
+  loading?: boolean;
+  serverUrl?: string;
 }
 
 interface Emits {
-  (e: 'test-tool', tool: MCPTool, params: Record<string, any>): void
+  (e: "test-tool", tool: MCPTool, params: Record<string, any>): void;
 }
 
-const props = defineProps<Props>()
-const emit = defineEmits<Emits>()
+const props = defineProps<Props>();
+const emit = defineEmits<Emits>();
 
 // 状态
-const searchText = ref('')
-const selectedMethod = ref('')
-const selectedTool = ref<MCPTool | null>(null)
-const activeTab = ref('basic')
-const testDialogVisible = ref(false)
-const testingTool = ref<MCPTool | null>(null)
-const testForm = ref<Record<string, any>>({})
-const testResult = ref('')
-const testing = ref(false)
+const searchText = ref("");
+const selectedMethod = ref("");
+const selectedTool = ref<MCPTool | null>(null);
+const activeTab = ref("basic");
+const testDialogVisible = ref(false);
+const testingTool = ref<MCPTool | null>(null);
+const testForm = ref<Record<string, any>>({});
+const testResult = ref("");
+const testing = ref(false);
 
 // 数据转换：将用户传入的数据格式转换为组件期望的格式
 const normalizedTools = computed(() => {
   if (!props.tools) {
-    return []
+    return [];
   }
 
-  
   const normalized = props.tools.map((tool, index) => {
     // 如果已经是正确格式，直接返回
     if (tool.method && tool.parameters) {
-      console.log(`MCPToolPreview: Tool ${index} already in correct format`)
-      return tool
+      console.log(`MCPToolPreview: Tool ${index} already in correct format`);
+      return tool;
     }
-    
+
     // 转换用户传入的格式
     const normalizedTool: MCPTool = {
       id: tool.id || tool.name,
       name: tool.name,
       description: tool.description,
       // 从 metadata 中获取 method 和 path
-      method: (tool as any).metadata?.method?.toLowerCase() || 'get',
-      endpoint: (tool as any).metadata?.path || '/',
-      path: (tool as any).metadata?.path || '/',
+      method: (tool as any).metadata?.method?.toLowerCase() || "get",
+      endpoint: (tool as any).metadata?.path || "/",
+      path: (tool as any).metadata?.path || "/",
       // 将 inputSchema 转换为 parameters
       parameters: (tool as any).inputSchema || {
-        type: 'object',
+        type: "object",
         properties: {},
-        required: []
+        required: [],
       },
-      serverId: tool.serverId || 'default'
-    }
-    
-    console.log(`MCPToolPreview: Normalized tool ${index}:`, normalizedTool)
-    return normalizedTool
-  })
-  return normalized
-})
+      serverId: tool.serverId || "default",
+    };
+
+    console.log(`MCPToolPreview: Normalized tool ${index}:`, normalizedTool);
+    return normalizedTool;
+  });
+  return normalized;
+});
 
 // 计算属性
 const filteredTools = computed(() => {
-  console.log("normalizedTools",normalizedTools.value);
-  
+  console.log("normalizedTools", normalizedTools.value);
+
   if (!normalizedTools.value) {
-    return []
+    return [];
   }
-  
-  const filtered = normalizedTools.value.filter(tool => {
-    const matchesSearch = !searchText.value || 
+
+  const filtered = normalizedTools.value.filter((tool) => {
+    const matchesSearch =
+      !searchText.value ||
       tool.name.toLowerCase().includes(searchText.value.toLowerCase()) ||
-      (tool.description && tool.description.toLowerCase().includes(searchText.value.toLowerCase()))
-    
-    const matchesMethod = !selectedMethod.value || 
-      (tool.method && tool.method.toLowerCase() === selectedMethod.value.toLowerCase())
-    
-    const matches = matchesSearch && matchesMethod
-    return matches
-  })
-  console.log("filters",props.serverUrl);
-  
-  return filtered
-})
+      (tool.description &&
+        tool.description
+          .toLowerCase()
+          .includes(searchText.value.toLowerCase()));
+
+    const matchesMethod =
+      !selectedMethod.value ||
+      (tool.method &&
+        tool.method.toLowerCase() === selectedMethod.value.toLowerCase());
+
+    const matches = matchesSearch && matchesMethod;
+    return matches;
+  });
+  console.log("filters", props.serverUrl);
+
+  return filtered;
+});
 
 const schemaText = computed(() => {
   if (!selectedTool.value) {
-    return JSON.stringify({ type: 'object', properties: {}, required: [] }, null, 2)
+    return JSON.stringify(
+      { type: "object", properties: {}, required: [] },
+      null,
+      2,
+    );
   }
-  
-  return generateToolSchema(selectedTool.value)
-})
+
+  return generateToolSchema(selectedTool.value);
+});
 
 const mcpConfigText = computed(() => {
-  if (!selectedTool.value) return ''
-  
-  return generateToolConfig(selectedTool.value)
-})
+  if (!selectedTool.value) return "";
+
+  return generateToolConfig(selectedTool.value);
+});
 
 // 方法
 const getMethodCount = (method: string) => {
-  if (!normalizedTools.value) return 0
-  return normalizedTools.value.filter(tool => tool.method && tool.method.toLowerCase() === method).length
-}
+  if (!normalizedTools.value) return 0;
+  return normalizedTools.value.filter(
+    (tool) => tool.method && tool.method.toLowerCase() === method,
+  ).length;
+};
 
 const getMethodType = (method: string) => {
   switch (method.toLowerCase()) {
-    case 'get': return 'success'
-    case 'post': return 'primary'
-    case 'put': return 'warning'
-    case 'delete': return 'danger'
-    case 'patch': return 'info'
-    default: return ''
+    case "get":
+      return "success";
+    case "post":
+      return "primary";
+    case "put":
+      return "warning";
+    case "delete":
+      return "danger";
+    case "patch":
+      return "info";
+    default:
+      return "";
   }
-}
+};
 
 const selectTool = (tool: MCPTool) => {
-  selectedTool.value = tool
-  activeTab.value = 'basic'
-}
+  selectedTool.value = tool;
+  activeTab.value = "basic";
+};
 
 const testTool = (tool: MCPTool) => {
-  testingTool.value = tool
-  testForm.value = {}
-  testResult.value = ''
-  
+  testingTool.value = tool;
+  testForm.value = {};
+  testResult.value = "";
+
   // 初始化表单默认值
   if (tool.parameters && tool.parameters.properties) {
     Object.entries(tool.parameters.properties).forEach(([paramName, param]) => {
       if (param.default !== undefined) {
-        testForm.value[paramName] = param.default
+        testForm.value[paramName] = param.default;
       }
-    })
+    });
   }
-  
-  testDialogVisible.value = true
-}
+
+  testDialogVisible.value = true;
+};
 
 const executeTest = async () => {
-  if (!testingTool.value) return
-  
-  testing.value = true
+  if (!testingTool.value) return;
+
+  testing.value = true;
   try {
     // 使用MCP工具执行函数
-    const result = await simulateMCPToolExecution(testingTool.value, testForm.value)
-    
+    const result = await simulateMCPToolExecution(
+      testingTool.value,
+      testForm.value,
+    );
+
     if (result.success) {
-      testResult.value = JSON.stringify({
-        success: true,
-        tool: testingTool.value.name,
-        result: result.result
-      }, null, 2)
-      emit('test-tool', testingTool.value, testForm.value)
-      ElMessage.success('工具测试成功')
+      testResult.value = JSON.stringify(
+        {
+          success: true,
+          tool: testingTool.value.name,
+          result: result.result,
+        },
+        null,
+        2,
+      );
+      emit("test-tool", testingTool.value, testForm.value);
+      ElMessage.success("工具测试成功");
     } else {
-      testResult.value = JSON.stringify({
-        success: false,
-        tool: testingTool.value.name,
-        error: result.error
-      }, null, 2)
-      ElMessage.error(result.error || '工具测试失败')
+      testResult.value = JSON.stringify(
+        {
+          success: false,
+          tool: testingTool.value.name,
+          error: result.error,
+        },
+        null,
+        2,
+      );
+      ElMessage.error(result.error || "工具测试失败");
     }
   } catch (error) {
-    testResult.value = JSON.stringify({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, null, 2)
-    ElMessage.error('工具测试失败')
+    testResult.value = JSON.stringify(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      null,
+      2,
+    );
+    ElMessage.error("工具测试失败");
   } finally {
-    testing.value = false
+    testing.value = false;
   }
-}
+};
 
 const copyToolConfig = async (tool: MCPTool) => {
   const config = {
@@ -530,44 +590,50 @@ const copyToolConfig = async (tool: MCPTool) => {
     description: tool.description,
     method: tool.method,
     endpoint: tool.endpoint || tool.path,
-    parameters: tool.parameters
-  }
-  
+    parameters: tool.parameters,
+  };
+
   try {
-    await navigator.clipboard.writeText(JSON.stringify(config, null, 2))
-    ElMessage.success('工具配置已复制到剪贴板')
+    await navigator.clipboard.writeText(JSON.stringify(config, null, 2));
+    ElMessage.success("工具配置已复制到剪贴板");
   } catch (error) {
-    ElMessage.error('复制失败')
+    ElMessage.error("复制失败");
   }
-}
+};
 
 const copySchema = async () => {
   try {
-    await navigator.clipboard.writeText(schemaText.value)
-    ElMessage.success('Schema已复制到剪贴板')
+    await navigator.clipboard.writeText(schemaText.value);
+    ElMessage.success("Schema已复制到剪贴板");
   } catch (error) {
-    ElMessage.error('复制失败')
+    ElMessage.error("复制失败");
   }
-}
+};
 
 const copyMCPConfig = async () => {
   try {
-    await navigator.clipboard.writeText(mcpConfigText.value)
-    ElMessage.success('MCP配置已复制到剪贴板')
+    await navigator.clipboard.writeText(mcpConfigText.value);
+    ElMessage.success("MCP配置已复制到剪贴板");
   } catch (error) {
-    ElMessage.error('复制失败')
+    ElMessage.error("复制失败");
   }
-}
+};
 
 // 监听工具变化，重置选择
-watch(() => props.tools, () => {
-  selectedTool.value = null
-})
+watch(
+  () => props.tools,
+  () => {
+    selectedTool.value = null;
+  },
+);
 
 // 监听转换后的工具变化，重置选择
-watch(() => normalizedTools.value, () => {
-  selectedTool.value = null
-})
+watch(
+  () => normalizedTools.value,
+  () => {
+    selectedTool.value = null;
+  },
+);
 </script>
 
 <style scoped>

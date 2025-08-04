@@ -1,53 +1,55 @@
-import axios from 'axios'
-import type { InputSource, ConvertConfig, ApiResponse } from '@/types'
-import { demoApiInfo, demoEndpoints, demoConvertResult } from './demo-data'
-import { mcpApiService } from '@/services/mcpApi'
+import axios from "axios";
+import type { InputSource, ConvertConfig, ApiResponse } from "@/types";
+import { demoApiInfo, demoEndpoints, demoConvertResult } from "./demo-data";
+import { mcpApiService } from "@/services/mcpApi";
 
 // 创建 axios 实例
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:3001/api",
   timeout: 30000,
   headers: {
-    'Content-Type': 'application/json'
-  }
-})
+    "Content-Type": "application/json",
+  },
+});
 
 // 检查是否启用演示模式
-const isDemoMode = import.meta.env.VITE_FORCE_MOCK_MODE === 'true'
+const isDemoMode = import.meta.env.VITE_FORCE_MOCK_MODE === "true";
 
 // 响应拦截器
 api.interceptors.response.use(
   (response: any) => response.data,
   (error: any) => {
-    console.error('API Error:', error)
-    return Promise.reject(error)
-  }
-)
+    console.error("API Error:", error);
+    return Promise.reject(error);
+  },
+);
 
 /**
  * 延迟函数，用于演示
  */
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * 获取 OpenAPI 内容
  */
 async function getOpenApiContent(source: InputSource): Promise<string> {
-  if (source.type === 'url') {
-    const headers: Record<string, string> = {}
-    
+  if (source.type === "url") {
+    const headers: Record<string, string> = {};
+
     // 添加认证头
-    if (source.auth?.type === 'bearer' && source.auth.token) {
-      headers.Authorization = `Bearer ${source.auth.token}`
-    } else if (source.auth?.type === 'apikey' && source.auth.token) {
-      headers['X-API-Key'] = source.auth.token
+    if (source.auth?.type === "bearer" && source.auth.token) {
+      headers.Authorization = `Bearer ${source.auth.token}`;
+    } else if (source.auth?.type === "apikey" && source.auth.token) {
+      headers["X-API-Key"] = source.auth.token;
     }
-    
-    const response = await axios.get(source.content, { headers })
-    return typeof response.data === 'string' ? response.data : JSON.stringify(response.data)
+
+    const response = await axios.get(source.content, { headers });
+    return typeof response.data === "string"
+      ? response.data
+      : JSON.stringify(response.data);
   }
-  
-  return source.content
+
+  return source.content;
 }
 
 /**
@@ -56,37 +58,40 @@ async function getOpenApiContent(source: InputSource): Promise<string> {
 export async function validateApi(source: InputSource): Promise<ApiResponse> {
   try {
     if (isDemoMode) {
-      await delay(1000) // 模拟网络延迟
+      await delay(1000); // 模拟网络延迟
       return {
         success: true,
         data: { valid: true },
-        message: '验证成功'
-      }
+        message: "验证成功",
+      };
     }
-    
+
     // 构建源配置
     const sourceConfig = {
-      type: source.type === 'url' ? 'url' : 'content',
-      content: source.type === 'url' ? source.content : await getOpenApiContent(source)
-    }
-    
+      type: source.type === "url" ? "url" : "content",
+      content:
+        source.type === "url"
+          ? source.content
+          : await getOpenApiContent(source),
+    };
+
     // 使用 MCP API 验证
-    const validation = await mcpApiService.validateOpenApi(sourceConfig)
-    
+    const validation = await mcpApiService.validateOpenApi(sourceConfig);
+
     return {
       success: validation.success,
       data: {
         valid: validation.success,
         errors: validation.data?.errors || [],
-        warnings: validation.data?.warnings || []
+        warnings: validation.data?.warnings || [],
       },
-      message: validation.success ? '验证成功' : (validation.error || '验证失败')
-    }
+      message: validation.success ? "验证成功" : validation.error || "验证失败",
+    };
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : '验证失败'
-    }
+      error: error instanceof Error ? error.message : "验证失败",
+    };
   }
 }
 
@@ -96,59 +101,63 @@ export async function validateApi(source: InputSource): Promise<ApiResponse> {
 export async function previewApi(source: InputSource): Promise<ApiResponse> {
   try {
     if (isDemoMode) {
-      await delay(1500) // 模拟网络延迟
+      await delay(1500); // 模拟网络延迟
       return {
         success: true,
         data: {
           apiInfo: demoApiInfo,
-          endpoints: demoEndpoints
+          endpoints: demoEndpoints,
         },
-        message: '预览成功'
-      }
+        message: "预览成功",
+      };
     }
-    
+
     // 构建源配置
     const sourceConfig = {
-      type: source.type === 'url' ? 'url' : 'content',
-      content: source.type === 'url' ? source.content : await getOpenApiContent(source)
-    }
-    
+      type: source.type === "url" ? "url" : "content",
+      content:
+        source.type === "url"
+          ? source.content
+          : await getOpenApiContent(source),
+    };
+
     // 使用 MCP API 解析
-    const parseResult = await mcpApiService.parseOpenApi(sourceConfig)
-    
+    const parseResult = await mcpApiService.parseOpenApi(sourceConfig);
+
     if (!parseResult.success || !parseResult.data) {
-      throw new Error(parseResult.error || 'Parse failed')
+      throw new Error(parseResult.error || "Parse failed");
     }
-    
+
     // 转换为前端期望的格式
     const apiInfo = {
-      title: parseResult.data.info?.title || 'Unknown API',
-      version: parseResult.data.info?.version || '1.0.0',
-      description: parseResult.data.info?.description || '',
-      serverUrl: parseResult.data.servers?.[0]?.url || '',
-      totalEndpoints: parseResult.data.paths?.length || 0
-    }
-    
+      title: parseResult.data.info?.title || "Unknown API",
+      version: parseResult.data.info?.version || "1.0.0",
+      description: parseResult.data.info?.description || "",
+      serverUrl: parseResult.data.servers?.[0]?.url || "",
+      totalEndpoints: parseResult.data.paths?.length || 0,
+    };
+
     // 转换端点数据
-    const endpoints = parseResult.data.paths?.map((path: any) => ({
-      method: path.method,
-      path: path.path,
-      summary: path.summary || '',
-      description: path.description || '',
-      tags: path.tags || [],
-      deprecated: path.deprecated || false
-    })) || []
-    
+    const endpoints =
+      parseResult.data.paths?.map((path: any) => ({
+        method: path.method,
+        path: path.path,
+        summary: path.summary || "",
+        description: path.description || "",
+        tags: path.tags || [],
+        deprecated: path.deprecated || false,
+      })) || [];
+
     return {
       success: true,
       data: { apiInfo, endpoints },
-      message: '预览成功'
-    }
+      message: "预览成功",
+    };
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : '预览失败'
-    }
+      error: error instanceof Error ? error.message : "预览失败",
+    };
   }
 }
 
@@ -156,49 +165,53 @@ export async function previewApi(source: InputSource): Promise<ApiResponse> {
  * 转换为 MCP 格式
  */
 export async function convertApi(params: {
-  source: InputSource
-  config: ConvertConfig
+  source: InputSource;
+  config: ConvertConfig;
 }): Promise<ApiResponse> {
   try {
     if (isDemoMode) {
-      await delay(2000) // 模拟网络延迟
+      await delay(2000); // 模拟网络延迟
       return {
         success: true,
         data: demoConvertResult,
-        message: '转换成功'
-      }
+        message: "转换成功",
+      };
     }
-    
+
     // 获取 OpenAPI 内容
-    const openApiContent = await getOpenApiContent(params.source)
-    
+    const openApiContent = await getOpenApiContent(params.source);
+
     // 尝试解析为 JSON 对象，如果失败则使用字符串
-    let openApiData: string | object
+    let openApiData: string | object;
     try {
-      openApiData = JSON.parse(openApiContent)
+      openApiData = JSON.parse(openApiContent);
     } catch {
-      openApiData = openApiContent
+      openApiData = openApiContent;
     }
-    
+
     // 创建 MCP 服务器
     const createRequest = {
       openApiData,
       config: {
-        name: params.config.name || 'Generated MCP Server',
-        version: params.config.version || '1.0.0',
-        description: params.config.description || 'MCP server generated from OpenAPI specification',
+        name: params.config.name || "Generated MCP Server",
+        version: params.config.version || "1.0.0",
+        description:
+          params.config.description ||
+          "MCP server generated from OpenAPI specification",
         port: params.config.port,
-        transport: params.config.transport as 'streamable' | 'sse' | 'stdio' || 'stdio'
-      }
-    }
-    
-    const createResult = await mcpApiService.createServer(createRequest)
-    
+        transport:
+          (params.config.transport as "streamable" | "sse" | "stdio") ||
+          "stdio",
+      },
+    };
+
+    const createResult = await mcpApiService.createServer(createRequest);
+
     if (createResult.success) {
       // 获取工具列表来构建转换结果
-      const toolsResponse = await mcpApiService.getTools()
-      const tools = toolsResponse.data || []
-      
+      const toolsResponse = await mcpApiService.getTools();
+      const tools = toolsResponse.data || [];
+
       // 构建 MCP 配置格式的结果
       const convertResult = {
         mcpVersion: "1.0.0",
@@ -209,48 +222,52 @@ export async function convertApi(params: {
           tools: tools.map((tool: any) => ({
             name: tool.name,
             description: tool.description,
-            inputSchema: tool.inputSchema
-          }))
+            inputSchema: tool.inputSchema,
+          })),
         },
         metadata: {
           toolsCount: tools.length,
-          endpoint: createResult.data?.endpoint || '',
-          createdAt: new Date().toISOString()
-        }
-      }
-      
+          endpoint: createResult.data?.endpoint || "",
+          createdAt: new Date().toISOString(),
+        },
+      };
+
       return {
         success: true,
         data: convertResult,
-        message: '转换成功'
-      }
+        message: "转换成功",
+      };
     } else {
       return {
         success: false,
-        error: createResult.message || '转换失败'
-      }
+        error: createResult.message || "转换失败",
+      };
     }
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : '转换失败'
-    }
+      error: error instanceof Error ? error.message : "转换失败",
+    };
   }
 }
 
 /**
  * 下载文件
  */
-export function downloadFile(content: string, filename: string, type = 'application/json') {
-  const blob = new Blob([content], { type })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
+export function downloadFile(
+  content: string,
+  filename: string,
+  type = "application/json",
+) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 /**
@@ -258,10 +275,10 @@ export function downloadFile(content: string, filename: string, type = 'applicat
  */
 export async function copyToClipboard(text: string): Promise<boolean> {
   try {
-    await navigator.clipboard.writeText(text)
-    return true
+    await navigator.clipboard.writeText(text);
+    return true;
   } catch (error) {
-    console.error('复制失败:', error)
-    return false
+    console.error("复制失败:", error);
+    return false;
   }
 }

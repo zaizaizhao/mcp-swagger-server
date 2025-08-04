@@ -1,5 +1,5 @@
 <template>
-  <div 
+  <div
     ref="containerRef"
     class="virtual-list"
     :style="{ height: height + 'px' }"
@@ -8,11 +8,11 @@
     <!-- 总高度占位 -->
     <div :style="{ height: totalHeight + 'px' }" class="virtual-list-spacer">
       <!-- 可见项目容器 -->
-      <div 
+      <div
         class="virtual-list-content"
-        :style="{ 
+        :style="{
           transform: `translateY(${offsetY}px)`,
-          position: 'relative'
+          position: 'relative',
         }"
       >
         <div
@@ -26,7 +26,7 @@
         </div>
       </div>
     </div>
-    
+
     <!-- 加载更多指示器 -->
     <div v-if="hasMore && isNearBottom" class="virtual-list-loading">
       <el-icon class="is-loading"><Loading /></el-icon>
@@ -36,121 +36,126 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { Loading } from '@element-plus/icons-vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from "vue";
+import { Loading } from "@element-plus/icons-vue";
 
 interface Props {
-  items: any[]
-  itemHeight: number
-  height: number
-  hasMore?: boolean
-  keyField?: string
+  items: any[];
+  itemHeight: number;
+  height: number;
+  hasMore?: boolean;
+  keyField?: string;
 }
 
 interface Emits {
-  (e: 'load-more'): void
-  (e: 'scroll', event: Event): void
+  (e: "load-more"): void;
+  (e: "scroll", event: Event): void;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   hasMore: false,
-  keyField: 'id'
-})
+  keyField: "id",
+});
 
-const emit = defineEmits<Emits>()
+const emit = defineEmits<Emits>();
 
 // 引用
-const containerRef = ref<HTMLElement>()
+const containerRef = ref<HTMLElement>();
 
 // 状态
-const scrollTop = ref(0)
-const isNearBottom = ref(false)
+const scrollTop = ref(0);
+const isNearBottom = ref(false);
 
 // 计算属性
-const visibleCount = computed(() => Math.ceil(props.height / props.itemHeight) + 2)
+const visibleCount = computed(
+  () => Math.ceil(props.height / props.itemHeight) + 2,
+);
 
 const startIndex = computed(() => {
-  const index = Math.floor(scrollTop.value / props.itemHeight)
-  return Math.max(0, index - 1)
-})
+  const index = Math.floor(scrollTop.value / props.itemHeight);
+  return Math.max(0, index - 1);
+});
 
 const endIndex = computed(() => {
-  return Math.min(props.items.length, startIndex.value + visibleCount.value)
-})
+  return Math.min(props.items.length, startIndex.value + visibleCount.value);
+});
 
 const visibleItems = computed(() => {
-  return props.items.slice(startIndex.value, endIndex.value)
-})
+  return props.items.slice(startIndex.value, endIndex.value);
+});
 
-const totalHeight = computed(() => props.items.length * props.itemHeight)
+const totalHeight = computed(() => props.items.length * props.itemHeight);
 
-const offsetY = computed(() => startIndex.value * props.itemHeight)
+const offsetY = computed(() => startIndex.value * props.itemHeight);
 
 // 方法
 const getItemKey = (item: any, index: number): string | number => {
   if (props.keyField && item[props.keyField] !== undefined) {
-    return item[props.keyField]
+    return item[props.keyField];
   }
-  return index
-}
+  return index;
+};
 
 const handleScroll = (event: Event) => {
-  const target = event.target as HTMLElement
-  scrollTop.value = target.scrollTop
-  
+  const target = event.target as HTMLElement;
+  scrollTop.value = target.scrollTop;
+
   // 检查是否接近底部
-  const { scrollTop: st, scrollHeight, clientHeight } = target
-  const bottomDistance = scrollHeight - st - clientHeight
-  isNearBottom.value = bottomDistance < props.itemHeight * 3
-  
+  const { scrollTop: st, scrollHeight, clientHeight } = target;
+  const bottomDistance = scrollHeight - st - clientHeight;
+  isNearBottom.value = bottomDistance < props.itemHeight * 3;
+
   // 如果接近底部且有更多数据，触发加载更多
   if (isNearBottom.value && props.hasMore) {
-    emit('load-more')
+    emit("load-more");
   }
-  
-  emit('scroll', event)
-}
+
+  emit("scroll", event);
+};
 
 const scrollToTop = () => {
   if (containerRef.value) {
-    containerRef.value.scrollTop = 0
+    containerRef.value.scrollTop = 0;
   }
-}
+};
 
 const scrollToBottom = () => {
   if (containerRef.value) {
-    containerRef.value.scrollTop = containerRef.value.scrollHeight
+    containerRef.value.scrollTop = containerRef.value.scrollHeight;
   }
-}
+};
 
 const scrollToIndex = (index: number) => {
   if (containerRef.value) {
-    const targetScrollTop = index * props.itemHeight
-    containerRef.value.scrollTop = targetScrollTop
+    const targetScrollTop = index * props.itemHeight;
+    containerRef.value.scrollTop = targetScrollTop;
   }
-}
+};
 
 // 监听项目变化，保持滚动位置
-watch(() => props.items.length, (newLength, oldLength) => {
-  if (newLength > oldLength && containerRef.value) {
-    // 如果用户在底部，自动滚动到新的底部
-    const { scrollTop: st, scrollHeight, clientHeight } = containerRef.value
-    const bottomDistance = scrollHeight - st - clientHeight
-    
-    if (bottomDistance < props.itemHeight * 2) {
-      nextTick(() => {
-        scrollToBottom()
-      })
+watch(
+  () => props.items.length,
+  (newLength, oldLength) => {
+    if (newLength > oldLength && containerRef.value) {
+      // 如果用户在底部，自动滚动到新的底部
+      const { scrollTop: st, scrollHeight, clientHeight } = containerRef.value;
+      const bottomDistance = scrollHeight - st - clientHeight;
+
+      if (bottomDistance < props.itemHeight * 2) {
+        nextTick(() => {
+          scrollToBottom();
+        });
+      }
     }
-  }
-})
+  },
+);
 
 // 暴露方法
 defineExpose({
   scrollToTop,
   scrollToBottom,
-  scrollToIndex
-})
+  scrollToIndex,
+});
 </script>
 
 <style scoped>

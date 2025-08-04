@@ -9,8 +9,8 @@ import type {
   ApiEndpoint,
   ParameterSchema,
   PropertySchema,
-  GlobalSettings
-} from '@/types'
+  GlobalSettings,
+} from "@/types";
 import {
   transformToMCPTools,
   parseFromString,
@@ -18,9 +18,9 @@ import {
   parseFromFile,
   type TransformerOptions,
   type MCPTool as ParserMCPTool,
-  DEFAULT_TRANSFORMER_OPTIONS
-} from 'mcp-swagger-parser'
-import { generateId } from './index'
+  DEFAULT_TRANSFORMER_OPTIONS,
+} from "mcp-swagger-parser";
+import { generateId } from "./index";
 
 // ============================================================================
 // OpenAPI 到 MCP 工具转换
@@ -32,105 +32,117 @@ import { generateId } from './index'
 export const convertOpenAPIToMCPTools = async (
   spec: OpenAPISpec | string | object,
   serverId: string,
-  options?: TransformerOptions
+  options?: TransformerOptions,
 ): Promise<MCPTool[]> => {
   try {
-    const transformerOptions = { ...DEFAULT_TRANSFORMER_OPTIONS, ...options }
-    
-    let openApiSpec: any
-    if (typeof spec === 'string') {
-      const parseResult = await parseFromString(spec)
-      openApiSpec = parseResult.spec
-    } else if ('content' in spec) {
-      openApiSpec = spec.content
+    const transformerOptions = { ...DEFAULT_TRANSFORMER_OPTIONS, ...options };
+
+    let openApiSpec: any;
+    if (typeof spec === "string") {
+      const parseResult = await parseFromString(spec);
+      openApiSpec = parseResult.spec;
+    } else if ("content" in spec) {
+      openApiSpec = spec.content;
     } else {
-      openApiSpec = spec
+      openApiSpec = spec;
     }
-    
-    const parserTools: ParserMCPTool[] = await transformToMCPTools(openApiSpec, transformerOptions)
-    
+
+    const parserTools: ParserMCPTool[] = await transformToMCPTools(
+      openApiSpec,
+      transformerOptions,
+    );
+
     // 转换为 UI 层的 MCP 工具格式
-    return parserTools.map(tool => convertParserToolToUITool(tool, serverId))
+    return parserTools.map((tool) => convertParserToolToUITool(tool, serverId));
   } catch (error) {
-    console.error('OpenAPI 转换失败:', error)
-    throw new Error(`OpenAPI 转换失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    console.error("OpenAPI 转换失败:", error);
+    throw new Error(
+      `OpenAPI 转换失败: ${error instanceof Error ? error.message : "未知错误"}`,
+    );
   }
-}
+};
 
 /**
  * 将解析器工具转换为 UI 工具格式
  */
-const convertParserToolToUITool = (parserTool: ParserMCPTool, serverId: string): MCPTool => {
+const convertParserToolToUITool = (
+  parserTool: ParserMCPTool,
+  serverId: string,
+): MCPTool => {
   return {
-    id: generateId('tool'),
+    id: generateId("tool"),
     name: parserTool.name,
-    description: parserTool.description || '',
+    description: parserTool.description || "",
     parameters: convertToParameterSchema(parserTool.inputSchema),
     serverId,
-    endpoint: parserTool.metadata?.path || '',
-    method: parserTool.metadata?.method?.toUpperCase() || 'GET',
-    path: parserTool.metadata?.path || '',
-    createdAt: new Date()
-  }
-}
+    endpoint: parserTool.metadata?.path || "",
+    method: parserTool.metadata?.method?.toUpperCase() || "GET",
+    path: parserTool.metadata?.path || "",
+    createdAt: new Date(),
+  };
+};
 
 /**
  * 转换输入模式为参数模式
  */
 const convertToParameterSchema = (inputSchema: any): ParameterSchema => {
-  if (!inputSchema || typeof inputSchema !== 'object') {
+  if (!inputSchema || typeof inputSchema !== "object") {
     return {
-      type: 'object',
+      type: "object",
       properties: {},
-      required: []
-    }
+      required: [],
+    };
   }
-  
+
   return {
-    type: 'object',
+    type: "object",
     properties: convertProperties(inputSchema.properties || {}),
-    required: inputSchema.required || []
-  }
-}
+    required: inputSchema.required || [],
+  };
+};
 
 /**
  * 转换属性定义
  */
 const convertProperties = (properties: any): Record<string, PropertySchema> => {
-  const converted: Record<string, PropertySchema> = {}
-  
+  const converted: Record<string, PropertySchema> = {};
+
   for (const [key, value] of Object.entries(properties)) {
-    if (typeof value === 'object' && value !== null) {
-      const prop = value as any
+    if (typeof value === "object" && value !== null) {
+      const prop = value as any;
       converted[key] = {
-        type: prop.type || 'string',
+        type: prop.type || "string",
         description: prop.description,
         enum: prop.enum,
         default: prop.default,
         format: prop.format,
         items: prop.items ? convertToPropertySchema(prop.items) : undefined,
-        properties: prop.properties ? convertProperties(prop.properties) : undefined
-      }
+        properties: prop.properties
+          ? convertProperties(prop.properties)
+          : undefined,
+      };
     }
   }
-  
-  return converted
-}
+
+  return converted;
+};
 
 /**
  * 转换为属性模式
  */
 const convertToPropertySchema = (schema: any): PropertySchema => {
   return {
-    type: schema.type || 'string',
+    type: schema.type || "string",
     description: schema.description,
     enum: schema.enum,
     default: schema.default,
     format: schema.format,
     items: schema.items ? convertToPropertySchema(schema.items) : undefined,
-    properties: schema.properties ? convertProperties(schema.properties) : undefined
-  }
-}
+    properties: schema.properties
+      ? convertProperties(schema.properties)
+      : undefined,
+  };
+};
 
 // ============================================================================
 // 服务器数据转换
@@ -141,15 +153,15 @@ const convertToPropertySchema = (schema: any): PropertySchema => {
  */
 export const createMCPServer = (config: ServerConfig): MCPServer => {
   return {
-    id: generateId('server'),
-    name: config.name || '',
-    version: config.version || '1.0.0',
-    description: config.description || '',
+    id: generateId("server"),
+    name: config.name || "",
+    version: config.version || "1.0.0",
+    description: config.description || "",
     port: config.port || 3000,
-    transport: config.transport || 'streamable',
-    status: 'stopped',
+    transport: config.transport || "streamable",
+    status: "stopped",
     healthy: false,
-    endpoint: config.endpoint || '',
+    endpoint: config.endpoint || "",
     toolCount: 0,
     autoStart: config.autoStart || false,
     tags: config.tags || [],
@@ -167,32 +179,60 @@ export const createMCPServer = (config: ServerConfig): MCPServer => {
       averageResponseTime: 0,
       errorRate: 0,
       activeConnections: 0,
-      uptime: 0
-    }
-  }
-}
+      uptime: 0,
+    },
+  };
+};
 
 /**
  * 更新服务器配置
  */
-export const updateServerConfig = (server: MCPServer, newConfig: Partial<ServerConfig>): MCPServer => {
+export const updateServerConfig = (
+  server: MCPServer,
+  newConfig: Partial<ServerConfig>,
+): MCPServer => {
+  // 确保config中的必需字段不为undefined
+  const mergedConfig: ServerConfig = {
+    name: newConfig.name || server.config?.name || server.name,
+    version: newConfig.version || server.config?.version || server.version,
+    description:
+      newConfig.description || server.config?.description || server.description,
+    port: newConfig.port || server.config?.port || server.port,
+    transport:
+      newConfig.transport || server.config?.transport || server.transport,
+    openApiData: newConfig.openApiData || server.config?.openApiData || {},
+    config: newConfig.config || server.config?.config || {},
+    authConfig: newConfig.authConfig || server.config?.authConfig || "",
+    autoStart:
+      newConfig.autoStart !== undefined
+        ? newConfig.autoStart
+        : server.config?.autoStart || server.autoStart,
+    tags: newConfig.tags || server.config?.tags || server.tags,
+    endpoint: newConfig.endpoint || server.config?.endpoint || server.endpoint,
+    authentication: newConfig.authentication || server.config?.authentication,
+    customHeaders: newConfig.customHeaders || server.config?.customHeaders,
+  };
+
   return {
     ...server,
     ...newConfig,
-    config: { ...server.config, ...newConfig },
-    updatedAt: new Date()
-  }
-}
+    config: mergedConfig,
+    updatedAt: new Date(),
+  };
+};
 
 /**
  * 克隆服务器配置
  */
-export const cloneServerConfig = (server: MCPServer, newName: string): MCPServer => {
+export const cloneServerConfig = (
+  server: MCPServer,
+  newName: string,
+): MCPServer => {
   return {
     ...server,
-    id: generateId('server'),
+    id: generateId("server"),
     name: newName,
-    status: 'stopped',
+    status: "stopped",
     healthy: false,
     toolCount: 0,
     errorMessage: undefined,
@@ -208,10 +248,10 @@ export const cloneServerConfig = (server: MCPServer, newName: string): MCPServer
       averageResponseTime: 0,
       errorRate: 0,
       activeConnections: 0,
-      uptime: 0
-    }
-  }
-}
+      uptime: 0,
+    },
+  };
+};
 
 // ============================================================================
 // 测试用例数据转换
@@ -224,88 +264,95 @@ export const createTestCase = (
   name: string,
   toolId: string,
   parameters: Record<string, any>,
-  tags: string[] = []
+  tags: string[] = [],
 ): TestCase => {
   return {
-    id: generateId('test'),
+    id: generateId("test"),
     name,
     toolId,
     parameters,
     tags,
     createdAt: new Date(),
-    updatedAt: new Date()
-  }
-}
+    updatedAt: new Date(),
+  };
+};
 
 /**
  * 更新测试用例
  */
-export const updateTestCase = (testCase: TestCase, updates: Partial<TestCase>): TestCase => {
+export const updateTestCase = (
+  testCase: TestCase,
+  updates: Partial<TestCase>,
+): TestCase => {
   return {
     ...testCase,
     ...updates,
-    updatedAt: new Date()
-  }
-}
+    updatedAt: new Date(),
+  };
+};
 
 /**
  * 从工具参数生成测试用例模板
  */
 export const generateTestCaseTemplate = (tool: MCPTool): Partial<TestCase> => {
-  const parameters: Record<string, any> = {}
-  
+  const parameters: Record<string, any> = {};
+
   // 为每个参数生成默认值
   if (tool.parameters.properties) {
     for (const [key, prop] of Object.entries(tool.parameters.properties)) {
-      parameters[key] = generateDefaultValue(prop)
+      parameters[key] = generateDefaultValue(prop);
     }
   }
-  
+
   return {
     name: `${tool.name} 测试用例`,
     toolId: tool.id,
     parameters,
-    tags: ['auto-generated']
-  }
-}
+    tags: ["auto-generated"],
+  };
+};
 
 /**
  * 根据属性类型生成默认值
  */
 const generateDefaultValue = (prop: PropertySchema): any => {
   if (prop.default !== undefined) {
-    return prop.default
+    return prop.default;
   }
-  
+
   if (prop.enum && prop.enum.length > 0) {
-    return prop.enum[0]
+    return prop.enum[0];
   }
-  
+
   switch (prop.type) {
-    case 'string':
-      return prop.format === 'email' ? 'example@example.com' :
-             prop.format === 'uri' ? 'https://example.com' :
-             prop.format === 'date' ? '2024-01-01' :
-             prop.format === 'date-time' ? '2024-01-01T00:00:00Z' :
-             'example'
-    case 'number':
-      return 0
-    case 'boolean':
-      return false
-    case 'array':
-      return []
-    case 'object':
-      const obj: Record<string, any> = {}
+    case "string":
+      return prop.format === "email"
+        ? "example@example.com"
+        : prop.format === "uri"
+          ? "https://example.com"
+          : prop.format === "date"
+            ? "2024-01-01"
+            : prop.format === "date-time"
+              ? "2024-01-01T00:00:00Z"
+              : "example";
+    case "number":
+      return 0;
+    case "boolean":
+      return false;
+    case "array":
+      return [];
+    case "object":
+      const obj: Record<string, any> = {};
       if (prop.properties) {
         for (const [key, subProp] of Object.entries(prop.properties)) {
-          obj[key] = generateDefaultValue(subProp)
+          obj[key] = generateDefaultValue(subProp);
         }
       }
-      return obj
+      return obj;
     default:
-      return null
+      return null;
   }
-}
+};
 
 // ============================================================================
 // 配置导入导出转换
@@ -317,15 +364,16 @@ const generateDefaultValue = (prop: PropertySchema): any => {
 export const serversToConfigFile = (
   servers: MCPServer[],
   options: {
-    includeSensitiveData?: boolean
-    encryptSensitiveData?: boolean
-  } = {}
+    includeSensitiveData?: boolean;
+    encryptSensitiveData?: boolean;
+  } = {},
 ): ConfigFile => {
-  const { includeSensitiveData = false, encryptSensitiveData = false } = options
-  
-  const processedServers = servers.map(server => {
-    const processedServer = { ...server }
-    
+  const { includeSensitiveData = false, encryptSensitiveData = false } =
+    options;
+
+  const processedServers = servers.map((server) => {
+    const processedServer = { ...server };
+
     // 确保config存在
     if (!processedServer.config) {
       processedServer.config = {
@@ -336,66 +384,66 @@ export const serversToConfigFile = (
         transport: server.transport,
         openApiData: {},
         config: {},
-        authConfig: '',
+        authConfig: "",
         autoStart: server.autoStart,
         tags: server.tags,
-        endpoint: server.endpoint
-      }
+        endpoint: server.endpoint,
+      };
     }
-    
+
     // 处理敏感数据
     if (!includeSensitiveData && processedServer.config?.authentication) {
       processedServer.config = {
         ...processedServer.config,
         authentication: {
           ...processedServer.config.authentication,
-          credentials: {} // 清空凭据
-        }
-      }
+          credentials: {}, // 清空凭据
+        },
+      };
     }
-    
-    return processedServer
-  })
-  
+
+    return processedServer;
+  });
+
   return {
-    version: '1.0.0',
+    version: "1.0.0",
     exportedAt: new Date(),
     servers: processedServers,
     globalSettings: {
-      theme: 'light',
-      language: 'zh',
+      theme: "light",
+      language: "zh",
       autoRefresh: true,
       refreshInterval: 30000,
-      logLevel: 'info',
+      logLevel: "info",
       maxLogEntries: 1000,
       enableNotifications: true,
       enableWebSocket: true,
-      enableSounds: false
+      enableSounds: false,
     },
-    encrypted: encryptSensitiveData
-  }
-}
+    encrypted: encryptSensitiveData,
+  };
+};
 
 /**
  * 从配置文件解析服务器列表
  */
 export const configFileToServers = (configFile: ConfigFile): ImportResult => {
   try {
-    const servers = configFile.servers || []
-    const importedServers = servers.length
-    
+    const servers = configFile.servers || [];
+    const importedServers = servers.length;
+
     // 验证每个服务器配置
-    const errors: string[] = []
-    const validServers: MCPServer[] = []
-    
+    const errors: string[] = [];
+    const validServers: MCPServer[] = [];
+
     servers.forEach((server, index) => {
       try {
         // 确保必要的字段存在
-        if (!server.id) server.id = generateId('server')
-        if (!server.createdAt) server.createdAt = new Date()
-        if (!server.updatedAt) server.updatedAt = new Date()
-        if (!server.status) server.status = 'stopped'
-        if (!server.tools) server.tools = []
+        if (!server.id) server.id = generateId("server");
+        if (!server.createdAt) server.createdAt = new Date();
+        if (!server.updatedAt) server.updatedAt = new Date();
+        if (!server.status) server.status = "stopped";
+        if (!server.tools) server.tools = [];
         if (!server.metrics) {
           server.metrics = {
             totalRequests: 0,
@@ -404,29 +452,33 @@ export const configFileToServers = (configFile: ConfigFile): ImportResult => {
             averageResponseTime: 0,
             errorRate: 0,
             activeConnections: 0,
-            uptime: 0
-          }
+            uptime: 0,
+          };
         }
-        
-        validServers.push(server)
+
+        validServers.push(server);
       } catch (error) {
-        errors.push(`服务器 ${index + 1}: ${error instanceof Error ? error.message : '未知错误'}`)
+        errors.push(
+          `服务器 ${index + 1}: ${error instanceof Error ? error.message : "未知错误"}`,
+        );
       }
-    })
-    
+    });
+
     return {
       success: errors.length === 0,
       importedServers,
-      errors: errors.length > 0 ? errors : undefined
-    }
+      errors: errors.length > 0 ? errors : undefined,
+    };
   } catch (error) {
     return {
       success: false,
       importedServers: 0,
-      errors: [`配置文件解析失败: ${error instanceof Error ? error.message : '未知错误'}`]
-    }
+      errors: [
+        `配置文件解析失败: ${error instanceof Error ? error.message : "未知错误"}`,
+      ],
+    };
   }
-}
+};
 
 // ============================================================================
 // 数据格式转换工具
@@ -436,8 +488,8 @@ export const configFileToServers = (configFile: ConfigFile): ImportResult => {
  * 将对象转换为 JSON 字符串（格式化）
  */
 export const toFormattedJSON = (obj: any, indent = 2): string => {
-  return JSON.stringify(obj, null, indent)
-}
+  return JSON.stringify(obj, null, indent);
+};
 
 /**
  * 将对象转换为 YAML 字符串
@@ -445,88 +497,107 @@ export const toFormattedJSON = (obj: any, indent = 2): string => {
 export const toYAML = (obj: any): string => {
   // 简单的 YAML 转换实现
   const yamlify = (value: any, indent = 0): string => {
-    const spaces = '  '.repeat(indent)
-    
+    const spaces = "  ".repeat(indent);
+
     if (value === null || value === undefined) {
-      return 'null'
+      return "null";
     }
-    
-    if (typeof value === 'string') {
-      return value.includes('\n') || value.includes('"') || value.includes("'") 
-        ? `"${value.replace(/"/g, '\\"')}"` 
-        : value
+
+    if (typeof value === "string") {
+      return value.includes("\n") || value.includes('"') || value.includes("'")
+        ? `"${value.replace(/"/g, '\\"')}"`
+        : value;
     }
-    
-    if (typeof value === 'number' || typeof value === 'boolean') {
-      return String(value)
+
+    if (typeof value === "number" || typeof value === "boolean") {
+      return String(value);
     }
-    
+
     if (Array.isArray(value)) {
-      if (value.length === 0) return '[]'
-      return '\n' + value.map(item => `${spaces}- ${yamlify(item, indent + 1)}`).join('\n')
+      if (value.length === 0) return "[]";
+      return (
+        "\n" +
+        value
+          .map((item) => `${spaces}- ${yamlify(item, indent + 1)}`)
+          .join("\n")
+      );
     }
-    
-    if (typeof value === 'object') {
-      const entries = Object.entries(value)
-      if (entries.length === 0) return '{}'
-      
-      return '\n' + entries.map(([key, val]) => {
-        const yamlValue = yamlify(val, indent + 1)
-        return yamlValue.startsWith('\n') 
-          ? `${spaces}${key}:${yamlValue}`
-          : `${spaces}${key}: ${yamlValue}`
-      }).join('\n')
+
+    if (typeof value === "object") {
+      const entries = Object.entries(value);
+      if (entries.length === 0) return "{}";
+
+      return (
+        "\n" +
+        entries
+          .map(([key, val]) => {
+            const yamlValue = yamlify(val, indent + 1);
+            return yamlValue.startsWith("\n")
+              ? `${spaces}${key}:${yamlValue}`
+              : `${spaces}${key}: ${yamlValue}`;
+          })
+          .join("\n")
+      );
     }
-    
-    return String(value)
-  }
-  
-  return yamlify(obj).trim()
-}
+
+    return String(value);
+  };
+
+  return yamlify(obj).trim();
+};
 
 /**
  * 从 JSON 或 YAML 字符串解析对象
  */
 export const parseConfigString = (content: string): any => {
-  const trimmed = content.trim()
-  
+  const trimmed = content.trim();
+
   // 尝试解析 JSON
-  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
     try {
-      return JSON.parse(trimmed)
+      return JSON.parse(trimmed);
     } catch (error) {
-      throw new Error(`JSON 解析失败: ${error instanceof Error ? error.message : '未知错误'}`)
+      throw new Error(
+        `JSON 解析失败: ${error instanceof Error ? error.message : "未知错误"}`,
+      );
     }
   }
-  
+
   // 简单的 YAML 解析（仅支持基本格式）
   try {
-    const lines = trimmed.split('\n')
-    const result: any = {}
-    let currentPath: string[] = []
-    
+    const lines = trimmed.split("\n");
+    const result: any = {};
+    const currentPath: string[] = [];
+
     for (const line of lines) {
-      const trimmedLine = line.trim()
-      if (!trimmedLine || trimmedLine.startsWith('#')) continue
-      
-      const indent = line.length - line.trimStart().length
-      const colonIndex = trimmedLine.indexOf(':')
-      
+      const trimmedLine = line.trim();
+      if (!trimmedLine || trimmedLine.startsWith("#")) continue;
+
+      const indent = line.length - line.trimStart().length;
+      const colonIndex = trimmedLine.indexOf(":");
+
       if (colonIndex > 0) {
-        const key = trimmedLine.substring(0, colonIndex).trim()
-        const value = trimmedLine.substring(colonIndex + 1).trim()
-        
+        const key = trimmedLine.substring(0, colonIndex).trim();
+        const value = trimmedLine.substring(colonIndex + 1).trim();
+
         // 简化处理，仅支持一级对象
         if (value) {
-          result[key] = value === 'true' ? true : 
-                      value === 'false' ? false :
-                      !isNaN(Number(value)) ? Number(value) : value
+          result[key] =
+            value === "true"
+              ? true
+              : value === "false"
+                ? false
+                : !isNaN(Number(value))
+                  ? Number(value)
+                  : value;
         }
       }
     }
-    
-    return result
+
+    return result;
   } catch (error) {
-    throw new Error(`YAML 解析失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    throw new Error(
+      `YAML 解析失败: ${error instanceof Error ? error.message : "未知错误"}`,
+    );
   }
-}
+};

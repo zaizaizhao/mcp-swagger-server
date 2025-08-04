@@ -5,45 +5,45 @@
         复制
       </el-button>
     </div>
-    
+
     <div class="json-content">
-      <pre :class="{ 'expanded': expanded > 0 }">{{ formattedData }}</pre>
+      <pre :class="{ expanded: expanded > 0 }">{{ formattedData }}</pre>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { ElMessage } from 'element-plus'
-import { CopyDocument } from '@element-plus/icons-vue'
+import { computed } from "vue";
+import { ElMessage } from "element-plus";
+import { CopyDocument } from "@element-plus/icons-vue";
 
 interface Props {
-  data: any
-  expanded?: number
-  showCopy?: boolean
+  data: any;
+  expanded?: number;
+  showCopy?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   expanded: 1,
-  showCopy: true
-})
+  showCopy: true,
+});
 
 const formattedData = computed(() => {
   try {
-    return JSON.stringify(props.data, null, 2)
+    return JSON.stringify(props.data, null, 2);
   } catch (error) {
-    return 'Invalid JSON data'
+    return "Invalid JSON data";
   }
-})
+});
 
 const copyToClipboard = async () => {
   try {
-    await navigator.clipboard.writeText(formattedData.value)
-    ElMessage.success('已复制到剪贴板')
+    await navigator.clipboard.writeText(formattedData.value);
+    ElMessage.success("已复制到剪贴板");
   } catch (error) {
-    ElMessage.error('复制失败')
+    ElMessage.error("复制失败");
   }
-}
+};
 </script>
 
 <style scoped>
@@ -69,7 +69,7 @@ const copyToClipboard = async () => {
 pre {
   margin: 0;
   padding: 16px;
-  font-family: 'Courier New', Consolas, monospace;
+  font-family: "Courier New", Consolas, monospace;
   font-size: 13px;
   line-height: 1.5;
   color: var(--el-text-color-primary);

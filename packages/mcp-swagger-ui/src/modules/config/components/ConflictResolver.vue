@@ -22,8 +22,8 @@
           <el-button @click="selectAllResolution('merge')" size="small">
             全部智能合并
           </el-button>
-          <el-button 
-            @click="showPreview = !showPreview" 
+          <el-button
+            @click="showPreview = !showPreview"
             :type="showPreview ? 'primary' : 'default'"
             size="small"
           >
@@ -38,7 +38,7 @@
           v-for="(conflict, index) in conflicts"
           :key="conflict.id"
           class="conflict-card"
-          :class="{ 'resolved': isConflictResolved(conflict.id) }"
+          :class="{ resolved: isConflictResolved(conflict.id) }"
         >
           <!-- 冲突头部 -->
           <div class="conflict-header">
@@ -50,18 +50,23 @@
               </el-tag>
             </div>
             <div class="conflict-actions">
-              <el-button 
-                size="small" 
+              <el-button
+                size="small"
                 @click="toggleConflictExpanded(conflict.id)"
-                :icon="expandedConflicts.has(conflict.id) ? 'ArrowUp' : 'ArrowDown'"
+                :icon="
+                  expandedConflicts.has(conflict.id) ? 'ArrowUp' : 'ArrowDown'
+                "
               >
-                {{ expandedConflicts.has(conflict.id) ? '收起' : '展开' }}
+                {{ expandedConflicts.has(conflict.id) ? "收起" : "展开" }}
               </el-button>
             </div>
           </div>
 
           <!-- 冲突内容 -->
-          <div v-show="expandedConflicts.has(conflict.id)" class="conflict-body">
+          <div
+            v-show="expandedConflicts.has(conflict.id)"
+            class="conflict-body"
+          >
             <div class="conflict-comparison">
               <!-- 当前配置 -->
               <div class="config-section current">
@@ -70,8 +75,8 @@
                   <el-tag size="small" type="info">Current</el-tag>
                 </div>
                 <div class="config-content">
-                  <JsonViewer 
-                    :data="conflict.current" 
+                  <JsonViewer
+                    :data="conflict.current"
                     :expanded="2"
                     :show-copy="false"
                   />
@@ -92,8 +97,8 @@
                   <el-tag size="small" type="warning">Incoming</el-tag>
                 </div>
                 <div class="config-content">
-                  <JsonViewer 
-                    :data="conflict.incoming" 
+                  <JsonViewer
+                    :data="conflict.incoming"
                     :expanded="2"
                     :show-copy="false"
                   />
@@ -104,32 +109,36 @@
             <!-- 解决方案选择 -->
             <div class="resolution-section">
               <h5>选择解决方案：</h5>
-              <el-radio-group 
-                v-model="resolutions[conflict.id]" 
+              <el-radio-group
+                v-model="resolutions[conflict.id]"
                 @change="updateResolution(conflict.id, $event)"
                 class="resolution-options"
               >
                 <el-radio label="keep" class="resolution-option">
                   <div class="option-content">
                     <div class="option-title">保留当前配置</div>
-                    <div class="option-description">使用现有的配置，忽略导入的更改</div>
+                    <div class="option-description">
+                      使用现有的配置，忽略导入的更改
+                    </div>
                   </div>
                 </el-radio>
-                
+
                 <el-radio label="replace" class="resolution-option">
                   <div class="option-content">
                     <div class="option-title">使用导入配置</div>
                     <div class="option-description">完全替换为导入的配置</div>
                   </div>
                 </el-radio>
-                
+
                 <el-radio label="merge" class="resolution-option">
                   <div class="option-content">
                     <div class="option-title">智能合并</div>
-                    <div class="option-description">自动合并两个配置，保留最佳部分</div>
+                    <div class="option-description">
+                      自动合并两个配置，保留最佳部分
+                    </div>
                   </div>
                 </el-radio>
-                
+
                 <el-radio label="custom" class="resolution-option">
                   <div class="option-content">
                     <div class="option-title">自定义配置</div>
@@ -139,13 +148,13 @@
               </el-radio-group>
 
               <!-- 合并预览 -->
-              <div 
-                v-if="resolutions[conflict.id] === 'merge'" 
+              <div
+                v-if="resolutions[conflict.id] === 'merge'"
                 class="merge-preview"
               >
                 <h6>合并预览：</h6>
                 <div class="preview-content">
-                  <JsonViewer 
+                  <JsonViewer
                     :data="getMergePreview(conflict)"
                     :expanded="1"
                     :show-copy="false"
@@ -154,8 +163,8 @@
               </div>
 
               <!-- 自定义编辑器 -->
-              <div 
-                v-if="resolutions[conflict.id] === 'custom'" 
+              <div
+                v-if="resolutions[conflict.id] === 'custom'"
                 class="custom-editor"
               >
                 <h6>自定义配置：</h6>
@@ -170,12 +179,15 @@
                       fontSize: 13,
                       lineNumbers: 'on',
                       folding: true,
-                      wordWrap: 'on'
+                      wordWrap: 'on',
                     }"
                     @change="validateCustomConfig(conflict.id)"
                   />
                 </div>
-                <div v-if="customConfigErrors[conflict.id]" class="editor-error">
+                <div
+                  v-if="customConfigErrors[conflict.id]"
+                  class="editor-error"
+                >
                   <el-alert
                     :title="customConfigErrors[conflict.id]"
                     type="error"
@@ -210,19 +222,19 @@
               </el-button>
             </div>
           </template>
-          
+
           <div class="preview-tabs">
             <el-tabs v-model="previewTab" type="border-card">
               <el-tab-pane label="完整配置" name="full">
                 <div class="preview-content">
-                  <JsonViewer 
+                  <JsonViewer
                     :data="resolvedConfig"
                     :expanded="2"
                     :show-copy="true"
                   />
                 </div>
               </el-tab-pane>
-              
+
               <el-tab-pane label="变更摘要" name="summary">
                 <div class="change-summary">
                   <div
@@ -232,11 +244,16 @@
                   >
                     <div class="change-path">{{ change.path }}</div>
                     <div class="change-action" :class="change.action">
-                      <el-tag :type="getChangeTypeColor(change.action)" size="small">
+                      <el-tag
+                        :type="getChangeTypeColor(change.action)"
+                        size="small"
+                      >
                         {{ getChangeActionText(change.action) }}
                       </el-tag>
                     </div>
-                    <div class="change-description">{{ change.description }}</div>
+                    <div class="change-description">
+                      {{ change.description }}
+                    </div>
                   </div>
                 </div>
               </el-tab-pane>
@@ -259,12 +276,12 @@
           :show-text="false"
         />
       </div>
-      
+
       <div class="footer-actions">
         <el-button @click="cancelResolution">取消</el-button>
         <el-button @click="resetResolutions">重置</el-button>
-        <el-button 
-          type="primary" 
+        <el-button
+          type="primary"
           @click="applyResolutions"
           :disabled="!allConflictsResolved"
           :loading="applying"
@@ -277,314 +294,338 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Warning } from '@element-plus/icons-vue'
-import { useConfigStore, type ConfigConflict, type ConfigConflictResolution } from '@/stores/config'
+import { ref, computed, watch, onMounted } from "vue";
+import { ElMessage } from "element-plus";
+import { Warning } from "@element-plus/icons-vue";
+import {
+  useConfigStore,
+  type ConfigConflict,
+  type ConfigConflictResolution,
+} from "@/stores/config";
 
 // 引入JSON查看器组件 (需要安装或创建)
-import JsonViewer from '@/shared/components/ui/JsonViewer.vue'
-import MonacoEditor from '@/shared/components/MonacoEditor.vue'
+import JsonViewer from "@/shared/components/ui/JsonViewer.vue";
+import MonacoEditor from "@/shared/components/MonacoEditor.vue";
 
 interface ChangeItem {
-  path: string
-  action: 'added' | 'modified' | 'removed' | 'merged'
-  description: string
+  path: string;
+  action: "added" | "modified" | "removed" | "merged";
+  description: string;
 }
 
 interface Props {
-  conflicts: ConfigConflict[]
-  modelValue: boolean
+  conflicts: ConfigConflict[];
+  modelValue: boolean;
 }
 
 interface Emits {
-  (e: 'update:modelValue', value: boolean): void
-  (e: 'resolved', resolutions: ConfigConflictResolution[]): void
-  (e: 'cancelled'): void
+  (e: "update:modelValue", value: boolean): void;
+  (e: "resolved", resolutions: ConfigConflictResolution[]): void;
+  (e: "cancelled"): void;
 }
 
-const props = defineProps<Props>()
-const emit = defineEmits<Emits>()
+const props = defineProps<Props>();
+const emit = defineEmits<Emits>();
 
 // Store
-const configStore = useConfigStore()
+const configStore = useConfigStore();
 
 // 状态
-const showPreview = ref(false)
-const previewTab = ref('full')
-const applying = ref(false)
-const expandedConflicts = ref(new Set<string>())
+const showPreview = ref(false);
+const previewTab = ref("full");
+const applying = ref(false);
+const expandedConflicts = ref(new Set<string>());
 
 // 解决方案
-const resolutions = ref<Record<string, string>>({})
-const customConfigs = ref<Record<string, string>>({})
-const customConfigErrors = ref<Record<string, string>>({})
+const resolutions = ref<Record<string, string>>({});
+const customConfigs = ref<Record<string, string>>({});
+const customConfigErrors = ref<Record<string, string>>({});
 
 // 计算属性
 const resolvedCount = computed(() => {
-  return Object.keys(resolutions.value).length
-})
+  return Object.keys(resolutions.value).length;
+});
 
 const resolutionProgress = computed(() => {
-  if (props.conflicts.length === 0) return 100
-  return Math.round((resolvedCount.value / props.conflicts.length) * 100)
-})
+  if (props.conflicts.length === 0) return 100;
+  return Math.round((resolvedCount.value / props.conflicts.length) * 100);
+});
 
 const allConflictsResolved = computed(() => {
-  return props.conflicts.every(conflict => 
-    resolutions.value[conflict.id] && 
-    (resolutions.value[conflict.id] !== 'custom' || 
-     (customConfigs.value[conflict.id] && !customConfigErrors.value[conflict.id]))
-  )
-})
+  return props.conflicts.every(
+    (conflict) =>
+      resolutions.value[conflict.id] &&
+      (resolutions.value[conflict.id] !== "custom" ||
+        (customConfigs.value[conflict.id] &&
+          !customConfigErrors.value[conflict.id])),
+  );
+});
 
 const resolvedConfig = computed(() => {
-  if (!allConflictsResolved.value) return {}
-  
-  const resolved: any = {}
-  
+  if (!allConflictsResolved.value) return {};
+
+  const resolved: any = {};
+
   for (const conflict of props.conflicts) {
-    const resolution = resolutions.value[conflict.id]
-    
+    const resolution = resolutions.value[conflict.id];
+
     switch (resolution) {
-      case 'keep':
-        resolved[conflict.type] = conflict.current
-        break
-      case 'replace':
-        resolved[conflict.type] = conflict.incoming
-        break
-      case 'merge':
+      case "keep":
+        resolved[conflict.type] = conflict.current;
+        break;
+      case "replace":
+        resolved[conflict.type] = conflict.incoming;
+        break;
+      case "merge":
         resolved[conflict.type] = configStore.mergeConfigurations(
           conflict.current,
-          conflict.incoming
-        )
-        break
-      case 'custom':
+          conflict.incoming,
+        );
+        break;
+      case "custom":
         try {
-          resolved[conflict.type] = JSON.parse(customConfigs.value[conflict.id] || '{}')
+          resolved[conflict.type] = JSON.parse(
+            customConfigs.value[conflict.id] || "{}",
+          );
         } catch {
-          resolved[conflict.type] = conflict.current
+          resolved[conflict.type] = conflict.current;
         }
-        break
+        break;
     }
   }
-  
-  return resolved
-})
+
+  return resolved;
+});
 
 const changeSummary = computed((): ChangeItem[] => {
-  const changes: ChangeItem[] = []
-  
+  const changes: ChangeItem[] = [];
+
   for (const conflict of props.conflicts) {
-    const resolution = resolutions.value[conflict.id]
-    const path = `${conflict.type}`
-    
+    const resolution = resolutions.value[conflict.id];
+    const path = `${conflict.type}`;
+
     switch (resolution) {
-      case 'keep':
+      case "keep":
         changes.push({
           path,
-          action: 'modified',
-          description: '保留当前配置，忽略导入更改'
-        })
-        break
-      case 'replace':
+          action: "modified",
+          description: "保留当前配置，忽略导入更改",
+        });
+        break;
+      case "replace":
         changes.push({
           path,
-          action: 'modified',
-          description: '使用导入配置替换当前配置'
-        })
-        break
-      case 'merge':
+          action: "modified",
+          description: "使用导入配置替换当前配置",
+        });
+        break;
+      case "merge":
         changes.push({
           path,
-          action: 'merged',
-          description: '智能合并当前配置和导入配置'
-        })
-        break
-      case 'custom':
+          action: "merged",
+          description: "智能合并当前配置和导入配置",
+        });
+        break;
+      case "custom":
         changes.push({
           path,
-          action: 'modified',
-          description: '使用自定义配置'
-        })
-        break
+          action: "modified",
+          description: "使用自定义配置",
+        });
+        break;
     }
   }
-  
-  return changes
-})
+
+  return changes;
+});
 
 // 方法
 const selectAllResolution = (resolution: string) => {
   for (const conflict of props.conflicts) {
-    resolutions.value[conflict.id] = resolution
-    
-    if (resolution === 'custom') {
-      initializeCustomConfig(conflict.id, conflict)
+    resolutions.value[conflict.id] = resolution;
+
+    if (resolution === "custom") {
+      initializeCustomConfig(conflict.id, conflict);
     }
   }
-}
+};
 
 const updateResolution = (conflictId: string, resolution: string) => {
-  resolutions.value[conflictId] = resolution
-  
-  if (resolution === 'custom') {
-    const conflict = props.conflicts.find(c => c.id === conflictId)
+  resolutions.value[conflictId] = resolution;
+
+  if (resolution === "custom") {
+    const conflict = props.conflicts.find((c) => c.id === conflictId);
     if (conflict) {
-      initializeCustomConfig(conflictId, conflict)
+      initializeCustomConfig(conflictId, conflict);
     }
   }
-}
+};
 
-const initializeCustomConfig = (conflictId: string, conflict: ConfigConflict) => {
+const initializeCustomConfig = (
+  conflictId: string,
+  conflict: ConfigConflict,
+) => {
   // 使用合并后的配置作为自定义配置的起点
-  const merged = configStore.mergeConfigurations(conflict.current, conflict.incoming)
-  customConfigs.value[conflictId] = JSON.stringify(merged, null, 2)
-  validateCustomConfig(conflictId)
-}
+  const merged = configStore.mergeConfigurations(
+    conflict.current,
+    conflict.incoming,
+  );
+  customConfigs.value[conflictId] = JSON.stringify(merged, null, 2);
+  validateCustomConfig(conflictId);
+};
 
 const validateCustomConfig = (conflictId: string) => {
   try {
-    JSON.parse(customConfigs.value[conflictId] || '{}')
-    delete customConfigErrors.value[conflictId]
+    JSON.parse(customConfigs.value[conflictId] || "{}");
+    delete customConfigErrors.value[conflictId];
   } catch (error) {
-    customConfigErrors.value[conflictId] = 'JSON格式错误: ' + 
-      (error instanceof Error ? error.message : '语法错误')
+    customConfigErrors.value[conflictId] =
+      "JSON格式错误: " + (error instanceof Error ? error.message : "语法错误");
   }
-}
+};
 
 const toggleConflictExpanded = (conflictId: string) => {
   if (expandedConflicts.value.has(conflictId)) {
-    expandedConflicts.value.delete(conflictId)
+    expandedConflicts.value.delete(conflictId);
   } else {
-    expandedConflicts.value.add(conflictId)
+    expandedConflicts.value.add(conflictId);
   }
-}
+};
 
 const isConflictResolved = (conflictId: string): boolean => {
-  return !!resolutions.value[conflictId]
-}
+  return !!resolutions.value[conflictId];
+};
 
 const getMergePreview = (conflict: ConfigConflict): any => {
-  return configStore.mergeConfigurations(conflict.current, conflict.incoming)
-}
+  return configStore.mergeConfigurations(conflict.current, conflict.incoming);
+};
 
 const getResolutionDescription = (conflictId: string): string => {
-  const resolution = resolutions.value[conflictId]
-  
+  const resolution = resolutions.value[conflictId];
+
   const descriptions: Record<string, string> = {
-    keep: '将保留现有配置，导入的更改将被忽略',
-    replace: '将使用导入的配置完全替换现有配置',
-    merge: '将智能合并两个配置，保留最佳部分',
-    custom: '将使用您自定义编辑的配置'
-  }
-  
-  return descriptions[resolution] || '请选择一个解决方案'
-}
+    keep: "将保留现有配置，导入的更改将被忽略",
+    replace: "将使用导入的配置完全替换现有配置",
+    merge: "将智能合并两个配置，保留最佳部分",
+    custom: "将使用您自定义编辑的配置",
+  };
+
+  return descriptions[resolution] || "请选择一个解决方案";
+};
 
 const refreshPreview = () => {
   // 强制刷新预览
-  showPreview.value = false
+  showPreview.value = false;
   setTimeout(() => {
-    showPreview.value = true
-  }, 100)
-}
+    showPreview.value = true;
+  }, 100);
+};
 
 const applyResolutions = async () => {
-  applying.value = true
-  
+  applying.value = true;
+
   try {
-    const resolutionList: ConfigConflictResolution[] = props.conflicts.map(conflict => ({
-      conflictId: conflict.id,
-      resolution: resolutions.value[conflict.id] as any,
-      customValue: resolutions.value[conflict.id] === 'custom' 
-        ? JSON.parse(customConfigs.value[conflict.id] || '{}')
-        : undefined,
-      description: getResolutionDescription(conflict.id)
-    }))
-    
-    emit('resolved', resolutionList)
-    ElMessage.success('冲突解决方案已应用')
+    const resolutionList: ConfigConflictResolution[] = props.conflicts.map(
+      (conflict) => ({
+        conflictId: conflict.id,
+        resolution: resolutions.value[conflict.id] as any,
+        customValue:
+          resolutions.value[conflict.id] === "custom"
+            ? JSON.parse(customConfigs.value[conflict.id] || "{}")
+            : undefined,
+        description: getResolutionDescription(conflict.id),
+      }),
+    );
+
+    emit("resolved", resolutionList);
+    ElMessage.success("冲突解决方案已应用");
   } catch (error) {
-    ElMessage.error('应用解决方案失败: ' + (error instanceof Error ? error.message : '未知错误'))
+    ElMessage.error(
+      "应用解决方案失败: " +
+        (error instanceof Error ? error.message : "未知错误"),
+    );
   } finally {
-    applying.value = false
+    applying.value = false;
   }
-}
+};
 
 const cancelResolution = () => {
-  emit('cancelled')
-}
+  emit("cancelled");
+};
 
 const resetResolutions = () => {
-  resolutions.value = {}
-  customConfigs.value = {}
-  customConfigErrors.value = {}
-}
+  resolutions.value = {};
+  customConfigs.value = {};
+  customConfigErrors.value = {};
+};
 
 const getConfigTypeLabel = (type: string): string => {
   const labels: Record<string, string> = {
-    servers: '服务器配置',
-    auth: '认证配置',
-    openapi: 'OpenAPI规范',
-    testcases: '测试用例',
-    settings: '系统设置'
-  }
-  return labels[type] || type
-}
+    servers: "服务器配置",
+    auth: "认证配置",
+    openapi: "OpenAPI规范",
+    testcases: "测试用例",
+    settings: "系统设置",
+  };
+  return labels[type] || type;
+};
 
 const getConflictTypeColor = (type: string): string => {
   const colors: Record<string, string> = {
-    servers: 'primary',
-    auth: 'warning',
-    openapi: 'success',
-    testcases: 'info',
-    settings: 'danger'
-  }
-  return colors[type] || 'default'
-}
+    servers: "primary",
+    auth: "warning",
+    openapi: "success",
+    testcases: "info",
+    settings: "danger",
+  };
+  return colors[type] || "default";
+};
 
 const getChangeTypeColor = (action: string): string => {
   const colors: Record<string, string> = {
-    added: 'success',
-    modified: 'warning',
-    removed: 'danger',
-    merged: 'primary'
-  }
-  return colors[action] || 'info'
-}
+    added: "success",
+    modified: "warning",
+    removed: "danger",
+    merged: "primary",
+  };
+  return colors[action] || "info";
+};
 
 const getChangeActionText = (action: string): string => {
   const texts: Record<string, string> = {
-    added: '新增',
-    modified: '修改',
-    removed: '删除',
-    merged: '合并'
-  }
-  return texts[action] || action
-}
+    added: "新增",
+    modified: "修改",
+    removed: "删除",
+    merged: "合并",
+  };
+  return texts[action] || action;
+};
 
 // 初始化
 onMounted(() => {
   // 默认展开第一个冲突
   if (props.conflicts.length > 0) {
-    expandedConflicts.value.add(props.conflicts[0].id)
+    expandedConflicts.value.add(props.conflicts[0].id);
   }
-})
+});
 
 // 监听冲突变化
-watch(() => props.conflicts, (newConflicts) => {
-  // 清理不存在的冲突的解决方案
-  const conflictIds = new Set(newConflicts.map(c => c.id))
-  
-  Object.keys(resolutions.value).forEach(id => {
-    if (!conflictIds.has(id)) {
-      delete resolutions.value[id]
-      delete customConfigs.value[id]
-      delete customConfigErrors.value[id]
-    }
-  })
-}, { immediate: true })
+watch(
+  () => props.conflicts,
+  (newConflicts) => {
+    // 清理不存在的冲突的解决方案
+    const conflictIds = new Set(newConflicts.map((c) => c.id));
+
+    Object.keys(resolutions.value).forEach((id) => {
+      if (!conflictIds.has(id)) {
+        delete resolutions.value[id];
+        delete customConfigs.value[id];
+        delete customConfigErrors.value[id];
+      }
+    });
+  },
+  { immediate: true },
+);
 </script>
 
 <style scoped>

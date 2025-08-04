@@ -8,23 +8,19 @@
           MCP 服务器管理
         </h1>
         <div class="header-actions">
-          <el-button 
-            type="primary" 
+          <el-button
+            type="primary"
             @click="showCreateDialog = true"
             :icon="Plus"
           >
             创建服务器
           </el-button>
-          <el-button 
-            @click="refreshServers"
-            :loading="loading"
-            :icon="Refresh"
-          >
+          <el-button @click="refreshServers" :loading="loading" :icon="Refresh">
             刷新
           </el-button>
         </div>
       </div>
-      
+
       <!-- 搜索和过滤 -->
       <div class="filter-bar">
         <el-input
@@ -34,8 +30,8 @@
           clearable
           class="search-input"
         />
-        <el-select 
-          v-model="statusFilter" 
+        <el-select
+          v-model="statusFilter"
           placeholder="状态筛选"
           clearable
           class="status-filter"
@@ -47,12 +43,12 @@
           <el-option label="停止中" value="stopping" />
         </el-select>
         <el-button-group class="view-toggle">
-          <el-button 
+          <el-button
             :type="viewMode === 'grid' ? 'primary' : 'default'"
             @click="viewMode = 'grid'"
             :icon="Grid"
           />
-          <el-button 
+          <el-button
             :type="viewMode === 'list' ? 'primary' : 'default'"
             @click="viewMode = 'list'"
             :icon="List"
@@ -124,13 +120,13 @@
       <!-- 网格视图 -->
       <div v-if="viewMode === 'grid'" class="grid-view">
         <el-row :gutter="16">
-          <el-col 
-            v-for="server in filteredServers" 
+          <el-col
+            v-for="server in filteredServers"
             :key="server.id"
             :span="8"
             class="server-card-col"
           >
-            <el-card 
+            <el-card
               class="server-card"
               :class="[`status-${server.status}`]"
               @click="goToServerDetail(server.id)"
@@ -143,40 +139,36 @@
                   </div>
                   <div class="server-actions">
                     <el-dropdown @command="handleServerAction">
-                      <el-button 
-                        text 
-                        :icon="More"
-                        @click.stop
-                      />
+                      <el-button text :icon="More" @click.stop />
                       <template #dropdown>
                         <el-dropdown-menu>
-                          <el-dropdown-item 
-                            :command="{action: 'start', server}"
+                          <el-dropdown-item
+                            :command="{ action: 'start', server }"
                             :disabled="server.status === 'running'"
                           >
                             启动服务器
                           </el-dropdown-item>
-                          <el-dropdown-item 
-                            :command="{action: 'stop', server}"
+                          <el-dropdown-item
+                            :command="{ action: 'stop', server }"
                             :disabled="server.status === 'stopped'"
                           >
                             停止服务器
                           </el-dropdown-item>
-                          <el-dropdown-item 
-                            :command="{action: 'restart', server}"
+                          <el-dropdown-item
+                            :command="{ action: 'restart', server }"
                             :disabled="server.status !== 'running'"
                           >
                             重启服务器
                           </el-dropdown-item>
                           <el-dropdown-item divided>
-                            <el-dropdown-item 
-                              :command="{action: 'edit', server}"
+                            <el-dropdown-item
+                              :command="{ action: 'edit', server }"
                             >
                               编辑配置
                             </el-dropdown-item>
                           </el-dropdown-item>
-                          <el-dropdown-item 
-                            :command="{action: 'delete', server}"
+                          <el-dropdown-item
+                            :command="{ action: 'delete', server }"
                             class="danger-action"
                           >
                             删除服务器
@@ -187,10 +179,10 @@
                   </div>
                 </div>
               </template>
-              
+
               <div class="card-content">
                 <div class="server-status">
-                  <el-tag 
+                  <el-tag
                     :type="getStatusType(server.status)"
                     :icon="getStatusIcon(server.status)"
                   >
@@ -200,39 +192,44 @@
                     运行时间: {{ formatUptime(server.metrics?.uptime || 0) }}
                   </span>
                 </div>
-                
+
                 <div class="server-info">
-                <div class="info-item" v-if="server.endpoint">
-                  <span class="label">端点:</span>
-                  <span class="value">{{ server.endpoint || 'N/A' }}</span>
+                  <div class="info-item" v-if="server.endpoint">
+                    <span class="label">端点:</span>
+                    <span class="value">{{ server.endpoint || "N/A" }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="label">端口:</span>
+                    <span class="value">{{ server.port }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="label">传输:</span>
+                    <span class="value">{{ server.transport }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="label">工具数量:</span>
+                    <span class="value">{{ server.toolCount || 0 }}</span>
+                  </div>
+                  <div class="info-item" v-if="server.autoStart !== undefined">
+                    <span class="label">自动启动:</span>
+                    <span class="value">{{
+                      server.autoStart ? "是" : "否"
+                    }}</span>
+                  </div>
                 </div>
-                <div class="info-item">
-                  <span class="label">端口:</span>
-                  <span class="value">{{ server.port }}</span>
-                </div>
-                <div class="info-item">
-                  <span class="label">传输:</span>
-                  <span class="value">{{ server.transport }}</span>
-                </div>
-                <div class="info-item">
-                  <span class="label">工具数量:</span>
-                  <span class="value">{{ server.toolCount || 0 }}</span>
-                </div>
-                <div class="info-item" v-if="server.autoStart !== undefined">
-                  <span class="label">自动启动:</span>
-                  <span class="value">{{ server.autoStart ? '是' : '否' }}</span>
-                </div>
-              </div>
-                
+
                 <div class="server-metrics" v-if="server.status === 'running'">
-                  <el-progress 
-                    :percentage="Math.min(100, (server.metrics?.errorRate || 0) * 100)"
+                  <el-progress
+                    :percentage="
+                      Math.min(100, (server.metrics?.errorRate || 0) * 100)
+                    "
                     :color="getErrorRateColor(server.metrics?.errorRate || 0)"
                     :show-text="false"
                     :stroke-width="4"
                   />
                   <span class="metrics-text">
-                    错误率: {{ ((server.metrics?.errorRate || 0) * 100).toFixed(1) }}%
+                    错误率:
+                    {{ ((server.metrics?.errorRate || 0) * 100).toFixed(1) }}%
                   </span>
                 </div>
               </div>
@@ -243,7 +240,7 @@
 
       <!-- 列表视图 -->
       <div v-else class="list-view">
-        <el-table 
+        <el-table
           :data="filteredServers"
           v-loading="loading"
           @row-click="goToServerDetail"
@@ -257,10 +254,10 @@
               </div>
             </template>
           </el-table-column>
-          
+
           <el-table-column prop="status" label="状态" width="120">
             <template #default="{ row }">
-              <el-tag 
+              <el-tag
                 :type="getStatusType(row.status)"
                 :icon="getStatusIcon(row.status)"
                 size="small"
@@ -269,60 +266,63 @@
               </el-tag>
             </template>
           </el-table-column>
-          
+
           <el-table-column prop="endpoint" label="端点" min-width="200">
             <template #default="{ row }">
-              {{ row.endpoint || `${row.transport}://${row.host || 'localhost'}:${row.port}` }}
+              {{
+                row.endpoint ||
+                `${row.transport}://${row.host || "localhost"}:${row.port}`
+              }}
             </template>
           </el-table-column>
-          
+
           <el-table-column prop="transport" label="传输" width="100" />
-          
+
           <el-table-column prop="port" label="端口" width="80" />
-          
+
           <el-table-column prop="toolCount" label="工具数量" width="100">
             <template #default="{ row }">
               {{ row.toolCount || 0 }}
             </template>
           </el-table-column>
-          
+
           <el-table-column prop="autoStart" label="自动启动" width="100">
             <template #default="{ row }">
               <el-tag :type="row.autoStart ? 'success' : 'info'" size="small">
-                {{ row.autoStart ? '是' : '否' }}
+                {{ row.autoStart ? "是" : "否" }}
               </el-tag>
             </template>
           </el-table-column>
-          
+
           <el-table-column prop="updatedAt" label="最后更新" width="160">
             <template #default="{ row }">
               {{ formatDateTime(row.updatedAt) }}
             </template>
           </el-table-column>
-          
+
           <el-table-column fixed="right" label="操作" width="120">
             <template #default="{ row }">
               <el-button-group>
-                <el-button 
+                <el-button
                   v-if="row.status === 'stopped'"
                   size="small"
                   type="success"
                   @click.stop="startServer(row)"
                   :icon="VideoPlay"
                 />
-                <el-button 
+                <el-button
                   v-else-if="row.status === 'running'"
                   size="small"
                   type="warning"
                   @click.stop="stopServer(row)"
                   :icon="VideoPause"
                 />
-                <el-button 
+                <el-button
                   size="small"
                   @click.stop="editServer(row)"
                   :icon="Edit"
                 />
-                <el-button 
+                <el-button
                   size="small"
                   type="danger"
                   @click.stop="deleteServer(row)"
@@ -333,18 +333,14 @@
           </el-table-column>
         </el-table>
       </div>
-      
+
       <!-- 空状态 -->
-      <el-empty 
+      <el-empty
         v-if="filteredServers.length === 0 && !loading"
         description="暂无服务器"
         :image-size="200"
       >
-        <el-button 
-          type="primary" 
-          @click="showCreateDialog = true"
-          :icon="Plus"
-        >
+        <el-button type="primary" @click="showCreateDialog = true" :icon="Plus">
           创建第一个服务器
         </el-button>
       </el-empty>
@@ -360,271 +356,296 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { 
-  Monitor, Plus, Refresh, Search, Grid, List, More, Edit, Delete,
-  CircleCheck, CircleClose, VideoPlay, VideoPause, RefreshRight,
-  WarningFilled, MoreFilled
-} from '@element-plus/icons-vue'
-import type { MCPServer, ServerStatus } from '@/types'
-import { useServerStore } from '@/stores/server'
-import { useWebSocketStore } from '@/stores/websocket'
-import ServerFormDialog from './components/ServerFormDialog.vue'
+import { ref, computed, onMounted, onUnmounted } from "vue";
+import { useRouter } from "vue-router";
+import { ElMessage, ElMessageBox } from "element-plus";
+import {
+  Monitor,
+  Plus,
+  Refresh,
+  Search,
+  Grid,
+  List,
+  More,
+  Edit,
+  Delete,
+  CircleCheck,
+  CircleClose,
+  VideoPlay,
+  VideoPause,
+  RefreshRight,
+  WarningFilled,
+  MoreFilled,
+} from "@element-plus/icons-vue";
+import type { MCPServer, ServerStatus } from "@/types";
+import { useServerStore } from "@/stores/server";
+import { useWebSocketStore } from "@/stores/websocket";
+import ServerFormDialog from "./components/ServerFormDialog.vue";
 
 // 导入全局功能
-import { useConfirmation } from '@/composables/useConfirmation'
-import { useFormValidation } from '@/composables/useFormValidation'
-import { usePerformanceMonitor } from '@/composables/usePerformance'
-import LoadingOverlay from '@/shared/components/ui/LoadingOverlay.vue'
+import { useConfirmation } from "@/composables/useConfirmation";
+import { useFormValidation } from "@/composables/useFormValidation";
+import { usePerformanceMonitor } from "@/composables/usePerformance";
+import LoadingOverlay from "@/shared/components/ui/LoadingOverlay.vue";
 
 // 路由和状态
-const router = useRouter()
-const serverStore = useServerStore()
-const websocketStore = useWebSocketStore()
+const router = useRouter();
+const serverStore = useServerStore();
+const websocketStore = useWebSocketStore();
 
 // 全局功能
-const { 
-  confirmDelete: globalConfirmDelete, 
+const {
+  confirmDelete: globalConfirmDelete,
   confirmDangerousAction,
-  confirmBatchDelete 
-} = useConfirmation()
+  confirmBatchDelete,
+} = useConfirmation();
 
-const { 
-  startMonitoring,
-  stopMonitoring,
-  measureFunction 
-} = usePerformanceMonitor()
+const { startMonitoring, stopMonitoring, measureFunction } =
+  usePerformanceMonitor();
 
 // 响应式数据
-const loading = ref(false)
-const searchQuery = ref('')
-const statusFilter = ref<ServerStatus | ''>('')
-const viewMode = ref<'grid' | 'list'>('grid')
-const showCreateDialog = ref(false)
-const editingServer = ref<MCPServer | null>(null)
+const loading = ref(false);
+const searchQuery = ref("");
+const statusFilter = ref<ServerStatus | "">("");
+const viewMode = ref<"grid" | "list">("grid");
+const showCreateDialog = ref(false);
+const editingServer = ref<MCPServer | null>(null);
 
 // 计算属性
-const servers = computed(() => serverStore.servers)
+const servers = computed(() => serverStore.servers);
 
 const filteredServers = computed(() => {
-  let filtered = servers.value
+  let filtered = servers.value;
 
   // 搜索过滤
   if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(server => 
-      server.name.toLowerCase().includes(query) ||
-      (server.endpoint || '').toLowerCase().includes(query) ||
-      (server.config?.description || '').toLowerCase().includes(query)
-    )
+    const query = searchQuery.value.toLowerCase();
+    filtered = filtered.filter(
+      (server) =>
+        server.name.toLowerCase().includes(query) ||
+        (server.endpoint || "").toLowerCase().includes(query) ||
+        (server.config?.description || "").toLowerCase().includes(query),
+    );
   }
 
   // 状态过滤
   if (statusFilter.value) {
-    filtered = filtered.filter(server => server.status === statusFilter.value)
+    filtered = filtered.filter(
+      (server) => server.status === statusFilter.value,
+    );
   }
 
-  return filtered
-})
+  return filtered;
+});
 
-const totalServers = computed(() => servers.value.length)
-const runningServers = computed(() => servers.value.filter(s => s.status === 'running').length)
-const stoppedServers = computed(() => servers.value.filter(s => s.status === 'stopped').length)
-const errorServers = computed(() => servers.value.filter(s => s.status === 'error').length)
+const totalServers = computed(() => servers.value.length);
+const runningServers = computed(
+  () => servers.value.filter((s) => s.status === "running").length,
+);
+const stoppedServers = computed(
+  () => servers.value.filter((s) => s.status === "stopped").length,
+);
+const errorServers = computed(
+  () => servers.value.filter((s) => s.status === "error").length,
+);
 
 // 方法
 const refreshServers = async () => {
-  loading.value = true
+  loading.value = true;
   try {
-    await measureFunction('refreshServers', async () => {
-      await serverStore.fetchServers()
-    })
+    await measureFunction("refreshServers", async () => {
+      await serverStore.fetchServers();
+    });
   } catch (error) {
-    ElMessage.error(`刷新服务器列表失败: ${error}`)
+    ElMessage.error(`刷新服务器列表失败: ${error}`);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const goToServerDetail = (serverId: string) => {
-  router.push(`/servers/${serverId}`)
-}
+  router.push(`/servers/${serverId}`);
+};
 
 const getStatusType = (status: ServerStatus) => {
   const statusMap = {
-    running: 'success',
-    stopped: 'info',
-    error: 'danger',
-    starting: 'warning',
-    stopping: 'warning'
-  }
-  return statusMap[status] || 'info'
-}
+    running: "success",
+    stopped: "info",
+    error: "danger",
+    starting: "warning",
+    stopping: "warning",
+  };
+  return statusMap[status] || "info";
+};
 
 const getStatusIcon = (status: ServerStatus) => {
   const iconMap = {
-    running: 'CircleCheck',
-    stopped: 'CircleClose', 
-    error: 'CircleClose',
-    starting: 'Loading',
-    stopping: 'Loading'
-  }
-  return iconMap[status] || 'CircleClose'
-}
+    running: "CircleCheck",
+    stopped: "CircleClose",
+    error: "CircleClose",
+    starting: "Loading",
+    stopping: "Loading",
+  };
+  return iconMap[status] || "CircleClose";
+};
 
 const getStatusText = (status: ServerStatus) => {
   const textMap = {
-    running: '运行中',
-    stopped: '已停止',
-    error: '错误',
-    starting: '启动中',
-    stopping: '停止中'
-  }
-  return textMap[status] || '未知'
-}
+    running: "运行中",
+    stopped: "已停止",
+    error: "错误",
+    starting: "启动中",
+    stopping: "停止中",
+  };
+  return textMap[status] || "未知";
+};
 
 const formatUptime = (uptime: number) => {
-  const hours = Math.floor(uptime / 3600000)
-  const minutes = Math.floor((uptime % 3600000) / 60000)
-  return `${hours}h ${minutes}m`
-}
+  const hours = Math.floor(uptime / 3600000);
+  const minutes = Math.floor((uptime % 3600000) / 60000);
+  return `${hours}h ${minutes}m`;
+};
 
 const formatDateTime = (date: Date) => {
-  return new Intl.DateTimeFormat('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  }).format(date)
-}
+  return new Intl.DateTimeFormat("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+};
 
 const getErrorRateColor = (errorRate: number) => {
-  if (errorRate < 0.01) return '#67C23A'
-  if (errorRate < 0.05) return '#E6A23C'
-  return '#F56C6C'
-}
+  if (errorRate < 0.01) return "#67C23A";
+  if (errorRate < 0.05) return "#E6A23C";
+  return "#F56C6C";
+};
 
-const handleServerAction = async ({ action, server }: { action: string, server: MCPServer }) => {
+const handleServerAction = async ({
+  action,
+  server,
+}: {
+  action: string;
+  server: MCPServer;
+}) => {
   switch (action) {
-    case 'start':
-      await startServer(server)
-      break
-    case 'stop':
-      await stopServer(server)
-      break
-    case 'restart':
-      await restartServer(server)
-      break
-    case 'health':
-      await serverStore.performHealthCheck(server.id)
-      break
-    case 'edit':
-      editServer(server)
-      break
-    case 'delete':
-      deleteServer(server)
-      break
+    case "start":
+      await startServer(server);
+      break;
+    case "stop":
+      await stopServer(server);
+      break;
+    case "restart":
+      await restartServer(server);
+      break;
+    case "health":
+      await serverStore.performHealthCheck(server.id);
+      break;
+    case "edit":
+      editServer(server);
+      break;
+    case "delete":
+      deleteServer(server);
+      break;
   }
-}
+};
 
 const startServer = async (server: MCPServer) => {
   try {
-    await measureFunction('startServer', async () => {
-      await serverStore.startServer(server.id)
-    })
-    ElMessage.success(`服务器 ${server.name} 启动成功`)
+    await measureFunction("startServer", async () => {
+      await serverStore.startServer(server.id);
+    });
+    ElMessage.success(`服务器 ${server.name} 启动成功`);
   } catch (error) {
-    ElMessage.error(`启动服务器失败: ${error}`)
+    ElMessage.error(`启动服务器失败: ${error}`);
   }
-}
+};
 
 const stopServer = async (server: MCPServer) => {
   const confirmed = await confirmDangerousAction(
-    `确定要停止服务器 "${server.name}" 吗？这将中断所有正在进行的请求。`
-  )
-  if (!confirmed) return
+    `确定要停止服务器 "${server.name}" 吗？这将中断所有正在进行的请求。`,
+  );
+  if (!confirmed) return;
 
   try {
-    await measureFunction('stopServer', async () => {
-      await serverStore.stopServer(server.id)
-    })
-    ElMessage.success(`服务器 ${server.name} 停止成功`)
+    await measureFunction("stopServer", async () => {
+      await serverStore.stopServer(server.id);
+    });
+    ElMessage.success(`服务器 ${server.name} 停止成功`);
   } catch (error) {
-    ElMessage.error(`停止服务器失败: ${error}`)
+    ElMessage.error(`停止服务器失败: ${error}`);
   }
-}
+};
 
 const restartServer = async (server: MCPServer) => {
   const confirmed = await confirmDangerousAction(
-    `确定要重启服务器 "${server.name}" 吗？这将临时中断服务。`
-  )
-  if (!confirmed) return
+    `确定要重启服务器 "${server.name}" 吗？这将临时中断服务。`,
+  );
+  if (!confirmed) return;
 
   try {
-    await measureFunction('restartServer', async () => {
-      await serverStore.restartServer(server.id)
-    })
-    ElMessage.success(`服务器 ${server.name} 重启成功`)
+    await measureFunction("restartServer", async () => {
+      await serverStore.restartServer(server.id);
+    });
+    ElMessage.success(`服务器 ${server.name} 重启成功`);
   } catch (error) {
-    ElMessage.error(`重启服务器失败: ${error}`)
+    ElMessage.error(`重启服务器失败: ${error}`);
   }
-}
+};
 
 const editServer = (server: MCPServer) => {
-  editingServer.value = server
-  showCreateDialog.value = true
-}
+  editingServer.value = server;
+  showCreateDialog.value = true;
+};
 
 const deleteServer = async (server: MCPServer) => {
-  const confirmed = await globalConfirmDelete(server.name)
-  if (!confirmed) return
-  
+  const confirmed = await globalConfirmDelete(server.name);
+  if (!confirmed) return;
+
   try {
-    await measureFunction('deleteServer', async () => {
-      await serverStore.deleteServer(server.id)
-    })
-    ElMessage.success(`服务器 ${server.name} 删除成功`)
+    await measureFunction("deleteServer", async () => {
+      await serverStore.deleteServer(server.id);
+    });
+    ElMessage.success(`服务器 ${server.name} 删除成功`);
   } catch (error) {
-    ElMessage.error(`删除服务器失败: ${error}`)
+    ElMessage.error(`删除服务器失败: ${error}`);
   }
-}
+};
 
 const handleFormSuccess = () => {
-  showCreateDialog.value = false
-  editingServer.value = null
-  refreshServers()
-}
+  showCreateDialog.value = false;
+  editingServer.value = null;
+  refreshServers();
+};
 
 // 生命周期
 onMounted(async () => {
   // 启动性能监控
-  startMonitoring()
-  
-  await refreshServers()
-  
+  startMonitoring();
+
+  await refreshServers();
+
   // 订阅 WebSocket 实时更新
-  websocketStore.subscribe('server-status', handleServerStatusUpdate)
-  websocketStore.subscribe('server-metrics', handleServerMetricsUpdate)
-})
+  websocketStore.subscribe("server-status", handleServerStatusUpdate);
+  websocketStore.subscribe("server-metrics", handleServerMetricsUpdate);
+});
 
 onUnmounted(() => {
   // 停止性能监控
-  stopMonitoring()
-  
-  websocketStore.unsubscribe('server-status')
-  websocketStore.unsubscribe('server-metrics')
-})
+  stopMonitoring();
+
+  websocketStore.unsubscribe("server-status");
+  websocketStore.unsubscribe("server-metrics");
+});
 
 const handleServerStatusUpdate = (data: any) => {
-  serverStore.updateServerStatus(data.serverId, data.status)
-}
+  serverStore.updateServerStatus(data.serverId, data.status);
+};
 
 const handleServerMetricsUpdate = (data: any) => {
-  serverStore.updateServerMetrics(data.serverId, data.metrics)
-}
+  serverStore.updateServerMetrics(data.serverId, data.metrics);
+};
 </script>
 
 <style scoped>
@@ -902,36 +923,36 @@ const handleServerMetricsUpdate = (data: any) => {
   .server-manager {
     padding: 16px;
   }
-  
+
   .title-bar {
     flex-direction: column;
     align-items: stretch;
     gap: 16px;
   }
-  
+
   .header-actions {
     justify-content: center;
   }
-  
+
   .filter-bar {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .search-input,
   .status-filter {
     width: 100%;
   }
-  
+
   .view-toggle {
     margin-left: 0;
     align-self: center;
   }
-  
+
   .server-card-col {
     padding: 0 8px;
   }
-  
+
   .servers-section {
     padding: 16px;
   }

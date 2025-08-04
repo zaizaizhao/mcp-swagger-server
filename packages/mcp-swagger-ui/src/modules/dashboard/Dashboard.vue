@@ -5,25 +5,21 @@
       <div class="title-section">
         <h1>
           <el-icon><Monitor /></el-icon>
-          {{ $t('dashboard.title') }}
+          {{ $t("dashboard.title") }}
         </h1>
-        <p class="subtitle">{{ $t('dashboard.systemStatus') }}</p>
+        <p class="subtitle">{{ $t("dashboard.systemStatus") }}</p>
       </div>
-      
+
       <div class="header-actions">
-        <el-button 
+        <el-button
           :type="isMonitoring ? 'danger' : 'primary'"
           @click="togglePerformanceMonitoring"
           :icon="isMonitoring ? VideoPause : VideoPlay"
         >
-          {{ isMonitoring ? $t('logs.pause') : $t('dashboard.refresh') }}
+          {{ isMonitoring ? $t("logs.pause") : $t("dashboard.refresh") }}
         </el-button>
-        <el-button 
-          @click="refreshData"
-          :loading="loading"
-          :icon="Refresh"
-        >
-          {{ $t('dashboard.refresh') }}
+        <el-button @click="refreshData" :loading="loading" :icon="Refresh">
+          {{ $t("dashboard.refresh") }}
         </el-button>
       </div>
     </div>
@@ -39,12 +35,14 @@
               </div>
               <div class="metric-data">
                 <div class="metric-value">{{ systemStats.runningServers }}</div>
-                <div class="metric-label">{{ $t('dashboard.activeServers') }}</div>
+                <div class="metric-label">
+                  {{ $t("dashboard.activeServers") }}
+                </div>
               </div>
             </div>
           </el-card>
         </el-col>
-        
+
         <el-col :span="6">
           <el-card class="metric-card">
             <div class="metric-content">
@@ -53,12 +51,12 @@
               </div>
               <div class="metric-data">
                 <div class="metric-value">{{ systemStats.totalTools }}</div>
-                <div class="metric-label">{{ $t('tester.toolList') }}</div>
+                <div class="metric-label">{{ $t("tester.toolList") }}</div>
               </div>
             </div>
           </el-card>
         </el-col>
-        
+
         <el-col :span="6">
           <el-card class="metric-card">
             <div class="metric-content">
@@ -66,13 +64,17 @@
                 <el-icon><DataLine /></el-icon>
               </div>
               <div class="metric-data">
-                <div class="metric-value">{{ formatNumber(systemStats.totalRequests) }}</div>
-                <div class="metric-label">{{ $t('dashboard.totalRequests') }}</div>
+                <div class="metric-value">
+                  {{ formatNumber(systemStats.totalRequests) }}
+                </div>
+                <div class="metric-label">
+                  {{ $t("dashboard.totalRequests") }}
+                </div>
               </div>
             </div>
           </el-card>
         </el-col>
-        
+
         <el-col :span="6">
           <el-card class="metric-card">
             <div class="metric-content">
@@ -81,7 +83,7 @@
               </div>
               <div class="metric-data">
                 <div class="metric-value">{{ systemStats.errorCount }}</div>
-                <div class="metric-label">{{ $t('common.error') }}</div>
+                <div class="metric-label">{{ $t("common.error") }}</div>
               </div>
             </div>
           </el-card>
@@ -94,21 +96,31 @@
       <el-card :header="$t('dashboard.performanceMetrics')">
         <el-row :gutter="16">
           <el-col :span="6">
-            <el-statistic :title="$t('dashboard.responseTime')" :value="performanceMetrics.renderTime" suffix="ms" />
-          </el-col>
-          <el-col :span="6">
-            <el-statistic 
-              title="内存使用" 
-              :value="performanceMetrics.memoryUsage" 
-              suffix="MB" 
-              precision="2" 
+            <el-statistic
+              :title="$t('dashboard.responseTime')"
+              :value="performanceMetrics.renderTime"
+              suffix="ms"
             />
           </el-col>
           <el-col :span="6">
-            <el-statistic title="组件数量" :value="performanceMetrics.componentCount" />
+            <el-statistic
+              title="内存使用"
+              :value="performanceMetrics.memoryUsage"
+              suffix="MB"
+              precision="2"
+            />
           </el-col>
           <el-col :span="6">
-            <el-statistic title="更新次数" :value="performanceMetrics.updateCount" />
+            <el-statistic
+              title="组件数量"
+              :value="performanceMetrics.componentCount"
+            />
+          </el-col>
+          <el-col :span="6">
+            <el-statistic
+              title="更新次数"
+              :value="performanceMetrics.updateCount"
+            />
           </el-col>
         </el-row>
       </el-card>
@@ -120,8 +132,8 @@
         <el-col :span="12">
           <el-card header="系统健康状态">
             <div class="health-grid">
-              <div 
-                v-for="(status, service) in systemHealth" 
+              <div
+                v-for="(status, service) in systemHealth"
                 :key="service"
                 class="health-item"
                 :class="status.status"
@@ -135,7 +147,9 @@
                 </div>
                 <div class="health-info">
                   <div class="service-name">{{ status.name }}</div>
-                  <div class="service-status">{{ getStatusText(status.status) }}</div>
+                  <div class="service-status">
+                    {{ getStatusText(status.status) }}
+                  </div>
                   <div class="response-time" v-if="status.responseTime">
                     响应时间: {{ status.responseTime }}ms
                   </div>
@@ -144,12 +158,12 @@
             </div>
           </el-card>
         </el-col>
-        
+
         <el-col :span="12">
           <el-card header="最近活动">
             <div class="activity-list">
-              <div 
-                v-for="activity in recentActivities" 
+              <div
+                v-for="activity in recentActivities"
                 :key="activity.id"
                 class="activity-item"
               >
@@ -158,10 +172,15 @@
                 </div>
                 <div class="activity-content">
                   <div class="activity-title">{{ activity.title }}</div>
-                  <div class="activity-description">{{ activity.description }}</div>
+                  <div class="activity-description">
+                    {{ activity.description }}
+                  </div>
                 </div>
                 <div class="activity-status" :class="activity.type">
-                  <el-tag :type="getActivityTagType(activity.type)" size="small">
+                  <el-tag
+                    :type="getActivityTagType(activity.type)"
+                    size="small"
+                  >
                     {{ activity.type }}
                   </el-tag>
                 </div>
@@ -184,29 +203,25 @@
               <el-option label="信息" value="info" />
               <el-option label="调试" value="debug" />
             </el-select>
-            
-            <el-button 
-              @click="clearLogs" 
-              size="small"
-              :icon="Delete"
-            >
+
+            <el-button @click="clearLogs" size="small" :icon="Delete">
               清空日志
             </el-button>
-            
-            <el-button 
+
+            <el-button
               @click="pauseLogs = !pauseLogs"
               :type="pauseLogs ? 'primary' : 'default'"
               size="small"
               :icon="pauseLogs ? VideoPlay : VideoPause"
             >
-              {{ pauseLogs ? '继续' : '暂停' }}
+              {{ pauseLogs ? "继续" : "暂停" }}
             </el-button>
           </div>
         </div>
-        
+
         <div class="logs-container">
-          <div 
-            v-for="log in filteredLogs" 
+          <div
+            v-for="log in filteredLogs"
             :key="log.id"
             class="log-entry"
             :class="log.level"
@@ -220,7 +235,7 @@
     </div>
 
     <!-- 加载遮罩 -->
-    <LoadingOverlay 
+    <LoadingOverlay
       v-model="showLoadingOverlay"
       message="正在加载系统数据..."
     />
@@ -228,199 +243,207 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { 
-  Monitor, Refresh, VideoPlay, VideoPause, CircleCheck, Warning, 
-  CircleClose, Tools, DataLine, Delete
-} from '@element-plus/icons-vue'
-import { usePerformanceMonitor } from '@/composables/usePerformance'
-import { useWebSocketStore } from '@/stores/websocket'
-import LoadingOverlay from '@/shared/components/ui/LoadingOverlay.vue'
+import { ref, computed, onMounted, onUnmounted } from "vue";
+import {
+  Monitor,
+  Refresh,
+  VideoPlay,
+  VideoPause,
+  CircleCheck,
+  Warning,
+  CircleClose,
+  Tools,
+  DataLine,
+  Delete,
+} from "@element-plus/icons-vue";
+import { usePerformanceMonitor } from "@/composables/usePerformance";
+import { useWebSocketStore } from "@/stores/websocket";
+import LoadingOverlay from "@/shared/components/ui/LoadingOverlay.vue";
 
 // 全局功能
-const { 
+const {
   metrics: performanceMetrics,
   isMonitoring,
   startMonitoring,
   stopMonitoring,
-  measureFunction 
-} = usePerformanceMonitor()
+  measureFunction,
+} = usePerformanceMonitor();
 
-const websocketStore = useWebSocketStore()
+const websocketStore = useWebSocketStore();
 
 // 状态数据
-const loading = ref(false)
-const showLoadingOverlay = ref(false)
-const pauseLogs = ref(false)
-const logLevel = ref('')
+const loading = ref(false);
+const showLoadingOverlay = ref(false);
+const pauseLogs = ref(false);
+const logLevel = ref("");
 
 // 系统统计数据
 const systemStats = ref({
   runningServers: 0,
   totalTools: 0,
   totalRequests: 0,
-  errorCount: 0
-})
+  errorCount: 0,
+});
 
 // 系统健康状态
 const systemHealth = ref({
-  database: { name: '数据库', status: 'healthy', responseTime: 12 },
-  websocket: { name: 'WebSocket', status: 'healthy', responseTime: 8 },
-  api: { name: 'API服务', status: 'healthy', responseTime: 15 },
-  storage: { name: '存储服务', status: 'warning', responseTime: 45 }
-})
+  database: { name: "数据库", status: "healthy", responseTime: 12 },
+  websocket: { name: "WebSocket", status: "healthy", responseTime: 8 },
+  api: { name: "API服务", status: "healthy", responseTime: 15 },
+  storage: { name: "存储服务", status: "warning", responseTime: 45 },
+});
 
 // 最近活动
 const recentActivities = ref([
   {
     id: 1,
     timestamp: new Date(),
-    title: '服务器启动',
+    title: "服务器启动",
     description: 'MCP服务器 "api-server" 已成功启动',
-    type: 'success'
+    type: "success",
   },
   {
     id: 2,
     timestamp: new Date(Date.now() - 300000),
-    title: '工具调用',
+    title: "工具调用",
     description: '执行了工具 "get-weather" 请求',
-    type: 'info'
+    type: "info",
   },
   {
     id: 3,
     timestamp: new Date(Date.now() - 600000),
-    title: '配置更新',
-    description: '更新了OpenAPI规范配置',
-    type: 'warning'
-  }
-])
+    title: "配置更新",
+    description: "更新了OpenAPI规范配置",
+    type: "warning",
+  },
+]);
 
 // 日志数据
 const logs = ref([
-  { id: 1, timestamp: new Date(), level: 'info', message: '系统启动完成' },
-  { id: 2, timestamp: new Date(), level: 'debug', message: '加载配置文件' },
-  { id: 3, timestamp: new Date(), level: 'warn', message: '检测到高内存使用' }
-])
+  { id: 1, timestamp: new Date(), level: "info", message: "系统启动完成" },
+  { id: 2, timestamp: new Date(), level: "debug", message: "加载配置文件" },
+  { id: 3, timestamp: new Date(), level: "warn", message: "检测到高内存使用" },
+]);
 
 // 计算属性
 const filteredLogs = computed(() => {
-  if (!logLevel.value) return logs.value
-  return logs.value.filter(log => log.level === logLevel.value)
-})
+  if (!logLevel.value) return logs.value;
+  return logs.value.filter((log) => log.level === logLevel.value);
+});
 
 // 方法
 const togglePerformanceMonitoring = () => {
   if (isMonitoring.value) {
-    stopMonitoring()
+    stopMonitoring();
   } else {
-    startMonitoring()
+    startMonitoring();
   }
-}
+};
 
 const refreshData = async () => {
-  loading.value = true
-  showLoadingOverlay.value = true
-  
+  loading.value = true;
+  showLoadingOverlay.value = true;
+
   try {
-    await measureFunction('refreshDashboardData', async () => {
+    await measureFunction("refreshDashboardData", async () => {
       // 模拟API调用
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       // 更新统计数据
       systemStats.value = {
         runningServers: Math.floor(Math.random() * 10) + 1,
         totalTools: Math.floor(Math.random() * 50) + 10,
         totalRequests: Math.floor(Math.random() * 10000) + 1000,
-        errorCount: Math.floor(Math.random() * 20)
-      }
-    })
+        errorCount: Math.floor(Math.random() * 20),
+      };
+    });
   } catch (error) {
-    console.error('刷新数据失败:', error)
+    console.error("刷新数据失败:", error);
   } finally {
-    loading.value = false
-    showLoadingOverlay.value = false
+    loading.value = false;
+    showLoadingOverlay.value = false;
   }
-}
+};
 
 const formatNumber = (num: number) => {
-  return new Intl.NumberFormat().format(num)
-}
+  return new Intl.NumberFormat().format(num);
+};
 
 const formatTime = (date: Date) => {
-  return new Intl.DateTimeFormat('zh-CN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  }).format(date)
-}
+  return new Intl.DateTimeFormat("zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(date);
+};
 
 const getStatusText = (status: string) => {
   const statusMap: Record<string, string> = {
-    healthy: '正常',
-    warning: '警告',
-    error: '错误'
-  }
-  return statusMap[status] || '未知'
-}
+    healthy: "正常",
+    warning: "警告",
+    error: "错误",
+  };
+  return statusMap[status] || "未知";
+};
 
 const getActivityTagType = (type: string) => {
   const typeMap: Record<string, string> = {
-    success: 'success',
-    info: 'info',
-    warning: 'warning',
-    error: 'danger'
-  }
-  return typeMap[type] || 'info'
-}
+    success: "success",
+    info: "info",
+    warning: "warning",
+    error: "danger",
+  };
+  return typeMap[type] || "info";
+};
 
 const clearLogs = () => {
-  logs.value = []
-}
+  logs.value = [];
+};
 
 // 模拟实时日志
 const simulateLogs = () => {
-  if (pauseLogs.value) return
-  
-  const levels = ['info', 'debug', 'warn', 'error']
+  if (pauseLogs.value) return;
+
+  const levels = ["info", "debug", "warn", "error"];
   const messages = [
-    '用户请求处理完成',
-    '缓存更新成功',
-    '检测到慢查询',
-    '网络连接超时',
-    '数据同步完成'
-  ]
-  
+    "用户请求处理完成",
+    "缓存更新成功",
+    "检测到慢查询",
+    "网络连接超时",
+    "数据同步完成",
+  ];
+
   const newLog = {
     id: Date.now(),
     timestamp: new Date(),
     level: levels[Math.floor(Math.random() * levels.length)],
-    message: messages[Math.floor(Math.random() * messages.length)]
-  }
-  
-  logs.value.unshift(newLog)
-  
+    message: messages[Math.floor(Math.random() * messages.length)],
+  };
+
+  logs.value.unshift(newLog);
+
   // 保持最多100条日志
   if (logs.value.length > 100) {
-    logs.value = logs.value.slice(0, 100)
+    logs.value = logs.value.slice(0, 100);
   }
-}
+};
 
 // 生命周期
 onMounted(async () => {
   // 启动性能监控
-  startMonitoring()
-  
+  startMonitoring();
+
   // 加载初始数据
-  await refreshData()
-  
+  await refreshData();
+
   // 启动日志模拟
-  const logInterval = setInterval(simulateLogs, 3000)
-  
+  const logInterval = setInterval(simulateLogs, 3000);
+
   onUnmounted(() => {
-    stopMonitoring()
-    clearInterval(logInterval)
-  })
-})
+    stopMonitoring();
+    clearInterval(logInterval);
+  });
+});
 </script>
 
 <style scoped>
@@ -641,7 +664,7 @@ onMounted(async () => {
   background: var(--el-fill-color-darker);
   border-radius: 4px;
   padding: 12px;
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
   font-size: 12px;
 }
 
@@ -691,17 +714,17 @@ onMounted(async () => {
     align-items: flex-start;
     gap: 16px;
   }
-  
+
   .metric-content {
     flex-direction: column;
     text-align: center;
     gap: 8px;
   }
-  
+
   .health-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .activity-item {
     flex-direction: column;
     align-items: flex-start;

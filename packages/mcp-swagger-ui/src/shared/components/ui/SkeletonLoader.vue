@@ -3,17 +3,24 @@
     <!-- 预定义骨架屏类型 -->
     <template v-if="type === 'card'">
       <div class="skeleton-card">
-        <div class="skeleton-avatar" :style="{ width: avatarSize, height: avatarSize }"></div>
+        <div
+          class="skeleton-avatar"
+          :style="{ width: avatarSize, height: avatarSize }"
+        ></div>
         <div class="skeleton-content">
           <div class="skeleton-title" :style="{ width: titleWidth }"></div>
           <div class="skeleton-paragraph">
-            <div v-for="n in paragraphRows" :key="n" class="skeleton-line" 
-                 :style="{ width: n === paragraphRows ? lastLineWidth : '100%' }"></div>
+            <div
+              v-for="n in paragraphRows"
+              :key="n"
+              class="skeleton-line"
+              :style="{ width: n === paragraphRows ? lastLineWidth : '100%' }"
+            ></div>
           </div>
         </div>
       </div>
     </template>
-    
+
     <template v-else-if="type === 'list'">
       <div v-for="n in rows" :key="n" class="skeleton-list-item">
         <div v-if="avatar" class="skeleton-avatar-small"></div>
@@ -23,18 +30,22 @@
         </div>
       </div>
     </template>
-    
+
     <template v-else-if="type === 'table'">
       <div class="skeleton-table">
         <div class="skeleton-table-header">
-          <div v-for="n in columns" :key="n" class="skeleton-table-cell header"></div>
+          <div
+            v-for="n in columns"
+            :key="n"
+            class="skeleton-table-cell header"
+          ></div>
         </div>
         <div v-for="n in rows" :key="n" class="skeleton-table-row">
           <div v-for="c in columns" :key="c" class="skeleton-table-cell"></div>
         </div>
       </div>
     </template>
-    
+
     <template v-else-if="type === 'form'">
       <div class="skeleton-form">
         <div v-for="n in rows" :key="n" class="skeleton-form-item">
@@ -43,30 +54,38 @@
         </div>
       </div>
     </template>
-    
+
     <template v-else-if="type === 'chart'">
       <div class="skeleton-chart">
         <div class="skeleton-chart-title"></div>
         <div class="skeleton-chart-content">
           <div class="skeleton-chart-bars">
-            <div v-for="n in 8" :key="n" class="skeleton-bar" 
-                 :style="{ height: Math.random() * 60 + 20 + '%' }"></div>
+            <div
+              v-for="n in 8"
+              :key="n"
+              class="skeleton-bar"
+              :style="{ height: Math.random() * 60 + 20 + '%' }"
+            ></div>
           </div>
           <div class="skeleton-chart-axis"></div>
         </div>
       </div>
     </template>
-    
+
     <!-- 自定义骨架屏 -->
     <template v-else-if="type === 'custom'">
       <slot></slot>
     </template>
-    
+
     <!-- 默认文本骨架屏 -->
     <template v-else>
       <div class="skeleton-paragraph">
-        <div v-for="n in rows" :key="n" class="skeleton-line" 
-             :style="{ width: n === rows ? lastLineWidth : '100%' }"></div>
+        <div
+          v-for="n in rows"
+          :key="n"
+          class="skeleton-line"
+          :style="{ width: n === rows ? lastLineWidth : '100%' }"
+        ></div>
       </div>
     </template>
   </div>
@@ -74,28 +93,28 @@
 
 <script setup lang="ts">
 interface Props {
-  type?: 'text' | 'card' | 'list' | 'table' | 'form' | 'chart' | 'custom'
-  rows?: number
-  columns?: number
-  animated?: boolean
-  avatar?: boolean
-  avatarSize?: string
-  titleWidth?: string
-  paragraphRows?: number
-  lastLineWidth?: string
+  type?: "text" | "card" | "list" | "table" | "form" | "chart" | "custom";
+  rows?: number;
+  columns?: number;
+  animated?: boolean;
+  avatar?: boolean;
+  avatarSize?: string;
+  titleWidth?: string;
+  paragraphRows?: number;
+  lastLineWidth?: string;
 }
 
 withDefaults(defineProps<Props>(), {
-  type: 'text',
+  type: "text",
   rows: 3,
   columns: 4,
   animated: true,
   avatar: false,
-  avatarSize: '40px',
-  titleWidth: '60%',
+  avatarSize: "40px",
+  titleWidth: "60%",
   paragraphRows: 3,
-  lastLineWidth: '70%'
-})
+  lastLineWidth: "70%",
+});
 </script>
 
 <style scoped>
@@ -291,17 +310,17 @@ withDefaults(defineProps<Props>(), {
     flex-direction: column;
     text-align: center;
   }
-  
+
   .skeleton-avatar {
     align-self: center;
   }
-  
+
   .skeleton-table-row,
   .skeleton-table-header {
     flex-direction: column;
     gap: 8px;
   }
-  
+
   .skeleton-chart-bars {
     height: 150px;
   }
