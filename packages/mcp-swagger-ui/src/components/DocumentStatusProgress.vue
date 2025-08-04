@@ -1,11 +1,14 @@
 <template>
   <div class="document-status-progress">
     <div class="progress-container">
-      <div class="progress-line" :class="{ 'progress-line--active': isProgressActive }"></div>
-      
+      <div
+        class="progress-line"
+        :class="{ 'progress-line--active': isProgressActive }"
+      ></div>
+
       <!-- 进度节点 -->
-      <div 
-        v-for="(step, index) in steps" 
+      <div
+        v-for="(step, index) in steps"
         :key="step.key"
         class="progress-step"
         :class="getStepClass(step, index)"
@@ -19,9 +22,12 @@
         <div class="step-label">{{ step.label }}</div>
       </div>
     </div>
-    
+
     <!-- 状态描述 -->
-    <div class="status-description" :class="`status-description--${currentStatus}`">
+    <div
+      class="status-description"
+      :class="`status-description--${currentStatus}`"
+    >
       <span class="status-text">{{ getStatusText(status) }}</span>
       <el-icon v-if="status === 'pending'" class="loading-icon">
         <Loading />
@@ -31,125 +37,125 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { 
-  DocumentAdd, 
-  Clock, 
-  Loading, 
-  Check, 
-  Close 
-} from '@element-plus/icons-vue'
+import { computed } from "vue";
+import { useI18n } from "vue-i18n";
+import {
+  DocumentAdd,
+  Clock,
+  Loading,
+  Check,
+  Close,
+} from "@element-plus/icons-vue";
 
 interface Props {
-  status: 'valid' | 'invalid' | 'pending' | 'unknown'
-  size?: 'small' | 'default' | 'large'
+  status: "valid" | "invalid" | "pending" | "unknown";
+  size?: "small" | "default" | "large";
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  size: 'default'
-})
+  size: "default",
+});
 
-const { t } = useI18n()
+const { t } = useI18n();
 
 // 进度步骤定义
 const steps = computed(() => [
   {
-    key: 'created',
-    label: t('openapi.progress.created'),
-    icon: DocumentAdd
+    key: "created",
+    label: t("openapi.progress.created"),
+    icon: DocumentAdd,
   },
   {
-    key: 'pending',
-    label: t('openapi.progress.pending'),
-    icon: Clock
+    key: "pending",
+    label: t("openapi.progress.pending"),
+    icon: Clock,
   },
   {
-    key: 'validating',
-    label: t('openapi.progress.validating'),
-    icon: Loading
+    key: "validating",
+    label: t("openapi.progress.validating"),
+    icon: Loading,
   },
   {
-    key: 'completed',
-    label: t('openapi.progress.completed'),
-    icon: props.status === 'valid' ? Check : Close
-  }
-])
+    key: "completed",
+    label: t("openapi.progress.completed"),
+    icon: props.status === "valid" ? Check : Close,
+  },
+]);
 
 // 当前状态映射到步骤索引
 const currentStepIndex = computed(() => {
   switch (props.status) {
-    case 'unknown':
-      return 0 // 创建状态
-    case 'pending':
-      return 2 // 验证中状态
-    case 'valid':
-    case 'invalid':
-      return 3 // 完成状态
+    case "unknown":
+      return 0; // 创建状态
+    case "pending":
+      return 2; // 验证中状态
+    case "valid":
+    case "invalid":
+      return 3; // 完成状态
     default:
-      return 0
+      return 0;
   }
-})
+});
 
 // 计算进度条填充百分比
 const progressPercentage = computed(() => {
   switch (props.status) {
-    case 'unknown':
-      return 0
-    case 'pending':
-      return 66 // 到验证中节点
-    case 'valid':
-    case 'invalid':
-      return 100 // 完成状态充满
+    case "unknown":
+      return 0;
+    case "pending":
+      return 66; // 到验证中节点
+    case "valid":
+    case "invalid":
+      return 100; // 完成状态充满
     default:
-      return 0
+      return 0;
   }
-})
+});
 
-const currentStatus = computed(() => props.status)
+const currentStatus = computed(() => props.status);
 
 // 判断进度线是否激活
 const isProgressActive = computed(() => {
-  return props.status !== 'unknown'
-})
+  return props.status !== "unknown";
+});
 
 // 判断是否已完成
 const isCompleted = computed(() => {
-  return props.status === 'valid' || props.status === 'invalid'
-})
+  return props.status === "valid" || props.status === "invalid";
+});
 
 // 获取步骤样式类
 const getStepClass = (step: any, index: number) => {
-  const classes = [`step-${props.size}`]
-  
+  const classes = [`step-${props.size}`];
+
   if (index < currentStepIndex.value) {
-    classes.push('step--completed')
+    classes.push("step--completed");
   } else if (index === currentStepIndex.value) {
-    classes.push('step--current')
-    if (props.status === 'valid') {
-      classes.push('step--success')
-    } else if (props.status === 'invalid') {
-      classes.push('step--error')
-    } else if (props.status === 'pending') {
-      classes.push('step--processing')
+    classes.push("step--current");
+    if (props.status === "valid") {
+      classes.push("step--success");
+    } else if (props.status === "invalid") {
+      classes.push("step--error");
+    } else if (props.status === "pending") {
+      classes.push("step--processing");
     }
   } else {
-    classes.push('step--pending')
+    classes.push("step--pending");
   }
-  
-  return classes
-}
+
+  return classes;
+};
 
 // 获取状态文本
 const getStatusText = (status: string) => {
   const statusMap: Record<string, string> = {
-    'valid': t('openapi.status.valid'),
-    'invalid': t('openapi.status.invalid'),
-    'pending': t('openapi.status.pending'),
-    'unknown': t('openapi.status.unknown')
-  }
-  return statusMap[status] || t('openapi.status.unknown')
-}
+    valid: t("openapi.status.valid"),
+    invalid: t("openapi.status.invalid"),
+    pending: t("openapi.status.pending"),
+    unknown: t("openapi.status.unknown"),
+  };
+  return statusMap[status] || t("openapi.status.unknown");
+};
 </script>
 
 <style scoped>
@@ -184,8 +190,8 @@ const getStatusText = (status: string) => {
   background: linear-gradient(
     to right,
     var(--el-color-success) 0%,
-    var(--el-color-success) v-bind(progressPercentage + '%'),
-    var(--el-border-color-light) v-bind(progressPercentage + '%'),
+    var(--el-color-success) v-bind(progressPercentage + "%"),
+    var(--el-border-color-light) v-bind(progressPercentage + "%"),
     var(--el-border-color-light) 100%
   );
 }
@@ -363,7 +369,8 @@ const getStatusText = (status: string) => {
 
 /* 动画效果 */
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
   }
   50% {
@@ -385,11 +392,11 @@ const getStatusText = (status: string) => {
   .progress-container {
     padding: 0 4px;
   }
-  
+
   .step-label {
     font-size: 10px;
   }
-  
+
   .status-description {
     font-size: 11px;
   }

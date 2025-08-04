@@ -16,13 +16,13 @@
           <component :is="iconComponent" />
         </el-icon>
       </div>
-      
+
       <!-- 主要消息 -->
       <div class="confirmation-message">
         <h3 v-if="title" class="confirmation-title">{{ title }}</h3>
         <p class="confirmation-text">{{ message }}</p>
       </div>
-      
+
       <!-- 详细信息 -->
       <div v-if="details" class="confirmation-details">
         <el-collapse v-model="detailsExpanded">
@@ -31,7 +31,7 @@
           </el-collapse-item>
         </el-collapse>
       </div>
-      
+
       <!-- 危险操作警告 -->
       <div v-if="dangerous" class="danger-warning">
         <el-alert
@@ -42,7 +42,7 @@
           :closable="false"
         />
       </div>
-      
+
       <!-- 确认输入 -->
       <div v-if="requireConfirmation" class="confirmation-input">
         <p class="input-hint">{{ confirmationHint }}</p>
@@ -52,7 +52,7 @@
           @keyup.enter="handleConfirm"
         />
       </div>
-      
+
       <!-- 倒计时 -->
       <div v-if="countdown > 0" class="countdown">
         <el-progress
@@ -64,7 +64,7 @@
         <p class="countdown-text">{{ countdown }}秒后自动{{ autoAction }}</p>
       </div>
     </div>
-    
+
     <template #footer>
       <div class="confirmation-footer">
         <!-- 取消按钮 -->
@@ -76,7 +76,7 @@
         >
           {{ cancelText }}
         </el-button>
-        
+
         <!-- 确认按钮 -->
         <el-button
           :type="confirmButtonType"
@@ -93,209 +93,212 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { 
-  QuestionFilled, 
-  WarningFilled, 
-  InfoFilled, 
+import { ref, computed, watch, onMounted, onUnmounted } from "vue";
+import {
+  QuestionFilled,
+  WarningFilled,
+  InfoFilled,
   CircleCheckFilled,
   Delete,
-  Lock
-} from '@element-plus/icons-vue'
+  Lock,
+} from "@element-plus/icons-vue";
 
 interface Props {
-  modelValue?: boolean
-  type?: 'confirm' | 'warning' | 'danger' | 'info' | 'success'
-  title?: string
-  message: string
-  details?: string
-  confirmText?: string
-  cancelText?: string
-  showCancel?: boolean
-  width?: string
-  center?: boolean
-  dangerous?: boolean
-  dangerTitle?: string
-  dangerDescription?: string
-  requireConfirmation?: boolean
-  confirmationText?: string
-  confirmationHint?: string
-  confirmationPlaceholder?: string
-  countdown?: number
-  autoAction?: 'confirm' | 'cancel'
-  buttonSize?: 'large' | 'default' | 'small'
+  modelValue?: boolean;
+  type?: "confirm" | "warning" | "danger" | "info" | "success";
+  title?: string;
+  message: string;
+  details?: string;
+  confirmText?: string;
+  cancelText?: string;
+  showCancel?: boolean;
+  width?: string;
+  center?: boolean;
+  dangerous?: boolean;
+  dangerTitle?: string;
+  dangerDescription?: string;
+  requireConfirmation?: boolean;
+  confirmationText?: string;
+  confirmationHint?: string;
+  confirmationPlaceholder?: string;
+  countdown?: number;
+  autoAction?: "confirm" | "cancel";
+  buttonSize?: "large" | "default" | "small";
 }
 
 interface Emits {
-  (e: 'update:modelValue', value: boolean): void
-  (e: 'confirm'): void
-  (e: 'cancel'): void
+  (e: "update:modelValue", value: boolean): void;
+  (e: "confirm"): void;
+  (e: "cancel"): void;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: false,
-  type: 'confirm',
-  confirmText: '确定',
-  cancelText: '取消',
+  type: "confirm",
+  confirmText: "确定",
+  cancelText: "取消",
   showCancel: true,
-  width: '420px',
+  width: "420px",
   center: true,
   dangerous: false,
-  dangerTitle: '危险操作警告',
-  dangerDescription: '此操作不可撤销，请谨慎确认',
+  dangerTitle: "危险操作警告",
+  dangerDescription: "此操作不可撤销，请谨慎确认",
   requireConfirmation: false,
-  confirmationText: 'DELETE',
-  confirmationHint: '请输入以下文本以确认操作：',
-  confirmationPlaceholder: '输入确认文本',
+  confirmationText: "DELETE",
+  confirmationHint: "请输入以下文本以确认操作：",
+  confirmationPlaceholder: "输入确认文本",
   countdown: 0,
-  autoAction: 'cancel',
-  buttonSize: 'default'
-})
+  autoAction: "cancel",
+  buttonSize: "default",
+});
 
-const emit = defineEmits<Emits>()
+const emit = defineEmits<Emits>();
 
 // 响应式数据
-const visible = ref(false)
-const loading = ref(false)
-const confirmationInput = ref('')
-const detailsExpanded = ref<string[]>([])
-const currentCountdown = ref(0)
-let countdownTimer: ReturnType<typeof setInterval> | null = null
+const visible = ref(false);
+const loading = ref(false);
+const confirmationInput = ref("");
+const detailsExpanded = ref<string[]>([]);
+const currentCountdown = ref(0);
+let countdownTimer: ReturnType<typeof setInterval> | null = null;
 
 // 计算属性
 const iconType = computed(() => {
   switch (props.type) {
-    case 'warning':
-    case 'danger':
-      return 'warning'
-    case 'info':
-      return 'info'
-    case 'success':
-      return 'success'
+    case "warning":
+    case "danger":
+      return "warning";
+    case "info":
+      return "info";
+    case "success":
+      return "success";
     default:
-      return 'question'
+      return "question";
   }
-})
+});
 
 const iconComponent = computed(() => {
   switch (props.type) {
-    case 'warning':
-    case 'danger':
-      return WarningFilled
-    case 'info':
-      return InfoFilled
-    case 'success':
-      return CircleCheckFilled
+    case "warning":
+    case "danger":
+      return WarningFilled;
+    case "info":
+      return InfoFilled;
+    case "success":
+      return CircleCheckFilled;
     default:
-      return QuestionFilled
+      return QuestionFilled;
   }
-})
+});
 
 const confirmButtonType = computed(() => {
   switch (props.type) {
-    case 'danger':
-      return 'danger'
-    case 'warning':
-      return 'warning'
-    case 'success':
-      return 'success'
+    case "danger":
+      return "danger";
+    case "warning":
+      return "warning";
+    case "success":
+      return "success";
     default:
-      return 'primary'
+      return "primary";
   }
-})
+});
 
 const canConfirm = computed(() => {
-  if (loading.value) return false
-  
+  if (loading.value) return false;
+
   if (props.requireConfirmation) {
-    return confirmationInput.value === props.confirmationText
+    return confirmationInput.value === props.confirmationText;
   }
-  
-  return true
-})
+
+  return true;
+});
 
 const countdownPercentage = computed(() => {
-  if (props.countdown === 0) return 0
-  return ((props.countdown - currentCountdown.value) / props.countdown) * 100
-})
+  if (props.countdown === 0) return 0;
+  return ((props.countdown - currentCountdown.value) / props.countdown) * 100;
+});
 
 // 方法
 const handleConfirm = () => {
-  if (!canConfirm.value) return
-  
-  loading.value = true
-  emit('confirm')
-  
+  if (!canConfirm.value) return;
+
+  loading.value = true;
+  emit("confirm");
+
   // 模拟异步操作
   setTimeout(() => {
-    loading.value = false
-    visible.value = false
-  }, 300)
-}
+    loading.value = false;
+    visible.value = false;
+  }, 300);
+};
 
 const handleCancel = () => {
-  emit('cancel')
-  visible.value = false
-}
+  emit("cancel");
+  visible.value = false;
+};
 
 const startCountdown = () => {
-  if (props.countdown <= 0) return
-  
-  currentCountdown.value = props.countdown
+  if (props.countdown <= 0) return;
+
+  currentCountdown.value = props.countdown;
   countdownTimer = setInterval(() => {
-    currentCountdown.value--
-    
+    currentCountdown.value--;
+
     if (currentCountdown.value <= 0) {
-      clearInterval(countdownTimer!)
-      
-      if (props.autoAction === 'confirm') {
-        handleConfirm()
+      clearInterval(countdownTimer!);
+
+      if (props.autoAction === "confirm") {
+        handleConfirm();
       } else {
-        handleCancel()
+        handleCancel();
       }
     }
-  }, 1000)
-}
+  }, 1000);
+};
 
 const stopCountdown = () => {
   if (countdownTimer) {
-    clearInterval(countdownTimer)
-    countdownTimer = null
+    clearInterval(countdownTimer);
+    countdownTimer = null;
   }
-  currentCountdown.value = 0
-}
+  currentCountdown.value = 0;
+};
 
 // 监听器
-watch(() => props.modelValue, (newValue) => {
-  visible.value = newValue
-  
-  if (newValue) {
-    confirmationInput.value = ''
-    detailsExpanded.value = []
-    loading.value = false
-    
-    if (props.countdown > 0) {
-      startCountdown()
+watch(
+  () => props.modelValue,
+  (newValue) => {
+    visible.value = newValue;
+
+    if (newValue) {
+      confirmationInput.value = "";
+      detailsExpanded.value = [];
+      loading.value = false;
+
+      if (props.countdown > 0) {
+        startCountdown();
+      }
+    } else {
+      stopCountdown();
     }
-  } else {
-    stopCountdown()
-  }
-})
+  },
+);
 
 watch(visible, (newValue) => {
-  emit('update:modelValue', newValue)
-})
+  emit("update:modelValue", newValue);
+});
 
 // 生命周期
 onMounted(() => {
   if (props.modelValue) {
-    visible.value = true
+    visible.value = true;
   }
-})
+});
 
 onUnmounted(() => {
-  stopCountdown()
-})
+  stopCountdown();
+});
 </script>
 
 <style scoped>
@@ -417,20 +420,20 @@ onUnmounted(() => {
       margin: 5vh auto;
     }
   }
-  
+
   .confirmation-icon {
     width: 60px;
     height: 60px;
   }
-  
+
   .confirmation-icon .el-icon {
     font-size: 32px !important;
   }
-  
+
   .confirmation-footer {
     flex-direction: column-reverse;
   }
-  
+
   .confirmation-footer .el-button {
     width: 100%;
   }

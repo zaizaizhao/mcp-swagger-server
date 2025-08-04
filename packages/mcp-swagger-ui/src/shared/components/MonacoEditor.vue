@@ -12,37 +12,37 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref } from "vue";
 
 interface Props {
-  modelValue: string
-  language?: string
-  height?: number
-  options?: any
-  placeholder?: string
+  modelValue: string;
+  language?: string;
+  height?: number;
+  options?: any;
+  placeholder?: string;
 }
 
 interface Emits {
-  (e: 'update:modelValue', value: string): void
-  (e: 'change', value: string): void
+  (e: "update:modelValue", value: string): void;
+  (e: "change", value: string): void;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  language: 'json',
+  language: "json",
   height: 200,
-  placeholder: '请输入内容...'
-})
+  placeholder: "请输入内容...",
+});
 
-const emit = defineEmits<Emits>()
+const emit = defineEmits<Emits>();
 
-const textareaRef = ref<HTMLTextAreaElement>()
+const textareaRef = ref<HTMLTextAreaElement>();
 
 const handleInput = (event: Event) => {
-  const target = event.target as HTMLTextAreaElement
-  const value = target.value
-  emit('update:modelValue', value)
-  emit('change', value)
-}
+  const target = event.target as HTMLTextAreaElement;
+  const value = target.value;
+  emit("update:modelValue", value);
+  emit("change", value);
+};
 </script>
 
 <style scoped>
@@ -58,7 +58,7 @@ const handleInput = (event: Event) => {
   outline: none;
   resize: none;
   padding: 12px;
-  font-family: 'Courier New', Consolas, monospace;
+  font-family: "Courier New", Consolas, monospace;
   font-size: 13px;
   line-height: 1.5;
   color: var(--el-text-color-primary);

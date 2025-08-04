@@ -5,10 +5,10 @@
       <div class="loading-spinner">
         <component :is="spinnerComponent" :size="spinnerSize" />
       </div>
-      
+
       <!-- 加载文本 -->
       <div v-if="text" class="loading-text">{{ text }}</div>
-      
+
       <!-- 进度条 -->
       <div v-if="showProgress" class="loading-progress">
         <el-progress
@@ -19,45 +19,50 @@
         />
         <div v-if="progressText" class="progress-text">{{ progressText }}</div>
       </div>
-      
+
       <!-- 详细信息 -->
       <div v-if="details" class="loading-details">{{ details }}</div>
-      
+
       <!-- 取消按钮 -->
       <div v-if="cancelable" class="loading-actions">
         <el-button size="small" @click="handleCancel">取消</el-button>
       </div>
     </div>
-    
+
     <!-- 背景遮罩 -->
     <div v-if="mask" class="loading-mask" @click="handleMaskClick"></div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { Loading, CircleCheck, CircleClose, Warning } from '@element-plus/icons-vue'
+import { computed } from "vue";
+import {
+  Loading,
+  CircleCheck,
+  CircleClose,
+  Warning,
+} from "@element-plus/icons-vue";
 
 interface Props {
-  visible?: boolean
-  text?: string
-  fullscreen?: boolean
-  mask?: boolean
-  maskClosable?: boolean
-  spinner?: 'loading' | 'dots' | 'circle' | 'bars'
-  size?: 'small' | 'default' | 'large'
-  showProgress?: boolean
-  progress?: number
-  progressText?: string
-  progressStatus?: 'success' | 'exception' | 'warning' | ''
-  showProgressText?: boolean
-  details?: string
-  cancelable?: boolean
+  visible?: boolean;
+  text?: string;
+  fullscreen?: boolean;
+  mask?: boolean;
+  maskClosable?: boolean;
+  spinner?: "loading" | "dots" | "circle" | "bars";
+  size?: "small" | "default" | "large";
+  showProgress?: boolean;
+  progress?: number;
+  progressText?: string;
+  progressStatus?: "success" | "exception" | "warning" | "";
+  showProgressText?: boolean;
+  details?: string;
+  cancelable?: boolean;
 }
 
 interface Emits {
-  (e: 'cancel'): void
-  (e: 'mask-click'): void
+  (e: "cancel"): void;
+  (e: "mask-click"): void;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -65,52 +70,52 @@ const props = withDefaults(defineProps<Props>(), {
   fullscreen: false,
   mask: true,
   maskClosable: false,
-  spinner: 'loading',
-  size: 'default',
+  spinner: "loading",
+  size: "default",
   showProgress: false,
   progress: 0,
-  progressStatus: '',
+  progressStatus: "",
   showProgressText: true,
-  cancelable: false
-})
+  cancelable: false,
+});
 
-const emit = defineEmits<Emits>()
+const emit = defineEmits<Emits>();
 
 // 计算属性
 const spinnerComponent = computed(() => {
   switch (props.spinner) {
-    case 'loading':
-      return Loading
-    case 'circle':
-      return Loading
-    case 'dots':
-      return Loading
-    case 'bars':
-      return Loading
+    case "loading":
+      return Loading;
+    case "circle":
+      return Loading;
+    case "dots":
+      return Loading;
+    case "bars":
+      return Loading;
     default:
-      return Loading
+      return Loading;
   }
-})
+});
 
 const spinnerSize = computed(() => {
   const sizes = {
     small: 24,
     default: 32,
-    large: 48
-  }
-  return sizes[props.size]
-})
+    large: 48,
+  };
+  return sizes[props.size];
+});
 
 // 事件处理
 const handleCancel = () => {
-  emit('cancel')
-}
+  emit("cancel");
+};
 
 const handleMaskClick = () => {
   if (props.maskClosable) {
-    emit('mask-click')
+    emit("mask-click");
   }
-}
+};
 </script>
 
 <style scoped>

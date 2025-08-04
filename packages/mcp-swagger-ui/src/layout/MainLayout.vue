@@ -1,15 +1,15 @@
 <template>
   <el-container class="main-layout">
     <!-- 移动端遮罩层 -->
-    <div 
-      v-if="isMobile && !sidebarCollapsed" 
+    <div
+      v-if="isMobile && !sidebarCollapsed"
       class="mobile-overlay"
       @click="toggleSidebar"
     />
-    
+
     <!-- 侧边栏 -->
-    <el-aside 
-      :width="sidebarWidth" 
+    <el-aside
+      :width="sidebarWidth"
       class="sidebar"
       :class="{ 'mobile-sidebar': isMobile }"
     >
@@ -25,7 +25,7 @@
           <span class="logo-text">MCP Gateway</span>
         </template>
       </div>
-      
+
       <!-- 导航菜单 -->
       <el-scrollbar class="menu-scrollbar">
         <el-menu
@@ -36,16 +36,15 @@
           :unique-opened="true"
         >
           <template v-for="route in menuRoutes" :key="route.name">
-            <el-menu-item 
-              :index="route.path"
-              v-if="!route.meta?.hidden"
-            >
+            <el-menu-item :index="route.path" v-if="!route.meta?.hidden">
               <el-icon>
                 <component :is="getIconComponent(route.meta?.icon)" />
               </el-icon>
               <template #title>
-                <span>{{ $t(`menu.${String(route.name)}`) || route.meta?.title }}</span>
-                <el-tooltip 
+                <span>{{
+                  $t(`menu.${String(route.name)}`) || route.meta?.title
+                }}</span>
+                <el-tooltip
                   v-if="route.meta?.description && !sidebarCollapsed"
                   :content="route.meta.description"
                   placement="right"
@@ -59,10 +58,10 @@
           </template>
         </el-menu>
       </el-scrollbar>
-      
+
       <!-- 侧边栏底部 -->
       <div class="sidebar-footer">
-        <el-button 
+        <el-button
           :icon="sidebarCollapsed ? Expand : Fold"
           @click="toggleSidebar"
           text
@@ -78,48 +77,57 @@
       <el-header class="header">
         <div class="header-left">
           <!-- 移动端菜单按钮 -->
-          <el-button 
+          <el-button
             v-if="isMobile"
-            :icon="Menu" 
+            :icon="Menu"
             @click="toggleSidebar"
             text
             class="mobile-menu-btn"
           />
-          
+
           <!-- 面包屑导航 -->
           <el-breadcrumb separator="/" class="breadcrumb">
-            <el-breadcrumb-item :to="{ path: '/' }">{{ $t('breadcrumb.home') }}</el-breadcrumb-item>
+            <el-breadcrumb-item :to="{ path: '/' }">{{
+              $t("breadcrumb.home")
+            }}</el-breadcrumb-item>
             <el-breadcrumb-item v-if="currentRoute?.meta?.title">
-              {{ $t(`menu.${String(currentRoute.name)}`) || currentRoute.meta.title }}
+              {{
+                $t(`menu.${String(currentRoute.name)}`) ||
+                currentRoute.meta.title
+              }}
             </el-breadcrumb-item>
           </el-breadcrumb>
         </div>
-        
+
         <div class="header-right">
           <!-- 系统状态指示器 -->
-          <el-badge 
-            :value="systemStatus.errorCount" 
+          <el-badge
+            :value="systemStatus.errorCount"
             :hidden="systemStatus.errorCount === 0"
             class="status-badge"
           >
-            <el-button 
+            <el-button
               :icon="systemStatus.isHealthy ? SuccessFilled : WarningFilled"
               :type="systemStatus.isHealthy ? 'success' : 'warning'"
               text
               @click="showSystemStatus"
-              :title="systemStatus.isHealthy ? $t('common.healthy') : $t('common.unhealthy')"
+              :title="
+                systemStatus.isHealthy
+                  ? $t('common.healthy')
+                  : $t('common.unhealthy')
+              "
             />
           </el-badge>
-          
+
           <!-- 刷新按钮 -->
-          <el-button 
-            :icon="Refresh" 
+          <el-button
+            :icon="Refresh"
             @click="refreshData"
             text
             :loading="isRefreshing"
             :title="$t('common.refresh')"
           />
-          
+
           <!-- 语言切换 -->
           <el-dropdown @command="handleLanguageChange" trigger="click">
             <el-button text class="language-btn">
@@ -128,8 +136,8 @@
             </el-button>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item 
-                  v-for="locale in supportedLocales" 
+                <el-dropdown-item
+                  v-for="locale in supportedLocales"
                   :key="locale.value"
                   :command="locale.value"
                   :disabled="locale.value === currentLanguage.value"
@@ -139,49 +147,55 @@
               </el-dropdown-menu>
             </template>
           </el-dropdown>
-          
+
           <!-- 主题切换 -->
-          <el-button 
+          <el-button
             :icon="isDark ? Sunny : Moon"
             @click="toggleTheme"
             text
             :title="isDark ? $t('theme.light') : $t('theme.dark')"
           />
-          
+
           <!-- 设置按钮 -->
-          <el-button 
-            :icon="Setting" 
+          <el-button
+            :icon="Setting"
             @click="openSettings"
             text
             :title="$t('common.settings')"
           />
-          
+
           <!-- 用户信息 -->
-          <el-dropdown @command="handleUserAction" trigger="click" class="user-dropdown">
+          <el-dropdown
+            @command="handleUserAction"
+            trigger="click"
+            class="user-dropdown"
+          >
             <div class="user-info">
-              <el-avatar 
-                :size="32" 
-                :src="currentUser?.avatar" 
+              <el-avatar
+                :size="32"
+                :src="currentUser?.avatar"
                 class="user-avatar"
               >
                 <el-icon><User /></el-icon>
               </el-avatar>
-              <span v-if="!isMobile" class="username">{{ currentUser?.username }}</span>
+              <span v-if="!isMobile" class="username">{{
+                currentUser?.username
+              }}</span>
               <el-icon class="el-icon--right"><CaretBottom /></el-icon>
             </div>
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item command="profile">
                   <el-icon><User /></el-icon>
-                  {{ t('userAuth.user.profile') }}
+                  {{ t("userAuth.user.profile") }}
                 </el-dropdown-item>
                 <el-dropdown-item command="settings">
                   <el-icon><Setting /></el-icon>
-                  {{ t('userAuth.user.accountSettings') }}
+                  {{ t("userAuth.user.accountSettings") }}
                 </el-dropdown-item>
                 <el-dropdown-item divided command="logout">
                   <el-icon><SwitchButton /></el-icon>
-                  {{ t('userAuth.user.logout') }}
+                  {{ t("userAuth.user.logout") }}
                 </el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -202,10 +216,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, inject } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { useI18n } from 'vue-i18n'
+import { ref, computed, onMounted, onUnmounted, inject } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { ElMessage } from "element-plus";
+import { useI18n } from "vue-i18n";
 import {
   Monitor,
   HelpFilled as Server,
@@ -226,82 +240,93 @@ import {
   Moon,
   CaretBottom,
   User,
-  SwitchButton
-} from '@element-plus/icons-vue'
-import { useAppStore } from '@/stores/app'
-import { useThemeStore } from '@/stores/theme'
-import { useLocaleStore } from '@/stores/locale'
-import { useAuthStore } from '@/stores/auth'
-import { SUPPORT_LOCALES, type Locale } from '@/locales'
+  SwitchButton,
+} from "@element-plus/icons-vue";
+import { useAppStore } from "@/stores/app";
+import { useThemeStore } from "@/stores/theme";
+import { useLocaleStore } from "@/stores/locale";
+import { useAuthStore } from "@/stores/auth";
+import { SUPPORT_LOCALES, type Locale } from "@/locales";
 
 // 国际化
-const { t } = useI18n()
+const { t } = useI18n();
 
 // 全局功能注入
-const globalErrorHandler = inject('$globalErrorHandler') as any
+const globalErrorHandler = inject("$globalErrorHandler") as any;
 
 // 简化的性能监控函数
-const measureFunction = (fn: () => void | Promise<void>, name: string, metadata?: any) => {
-  const startTime = performance.now()
+const measureFunction = (
+  fn: () => void | Promise<void>,
+  name: string,
+  metadata?: any,
+) => {
+  const startTime = performance.now();
   try {
-    const result = fn()
+    const result = fn();
     if (result instanceof Promise) {
       return result.finally(() => {
-        const duration = performance.now() - startTime
-        console.log(`[Performance] ${name}: ${duration.toFixed(2)}ms`, metadata)
-      })
+        const duration = performance.now() - startTime;
+        console.log(
+          `[Performance] ${name}: ${duration.toFixed(2)}ms`,
+          metadata,
+        );
+      });
     } else {
-      const duration = performance.now() - startTime
-      console.log(`[Performance] ${name}: ${duration.toFixed(2)}ms`, metadata)
-      return result
+      const duration = performance.now() - startTime;
+      console.log(`[Performance] ${name}: ${duration.toFixed(2)}ms`, metadata);
+      return result;
     }
   } catch (error) {
-    const duration = performance.now() - startTime
-    console.error(`[Performance] ${name} failed after ${duration.toFixed(2)}ms`, error, metadata)
-    throw error
+    const duration = performance.now() - startTime;
+    console.error(
+      `[Performance] ${name} failed after ${duration.toFixed(2)}ms`,
+      error,
+      metadata,
+    );
+    throw error;
   }
-}
+};
 
 // 路由和状态管理
-const route = useRoute()
-const router = useRouter()
-const appStore = useAppStore()
-const themeStore = useThemeStore()
-const localeStore = useLocaleStore()
-const authStore = useAuthStore()
+const route = useRoute();
+const router = useRouter();
+const appStore = useAppStore();
+const themeStore = useThemeStore();
+const localeStore = useLocaleStore();
+const authStore = useAuthStore();
 
 // 响应式状态
-const sidebarCollapsed = ref(false)
-const isMobile = ref(false)
-const isRefreshing = ref(false)
+const sidebarCollapsed = ref(false);
+const isMobile = ref(false);
+const isRefreshing = ref(false);
 
 // 系统状态
 const systemStatus = ref({
   isHealthy: true,
   errorCount: 0,
-  lastUpdate: new Date()
-})
+  lastUpdate: new Date(),
+});
 
 // 计算属性
-const activeRoute = computed(() => route.path)
-const currentRoute = computed(() => route)
-const isDark = computed(() => themeStore.isDark)
-const currentLanguage = computed(() => localeStore.currentLanguage)
-const supportedLocales = computed(() => SUPPORT_LOCALES)
-const currentUser = computed(() => authStore.currentUser)
+const activeRoute = computed(() => route.path);
+const currentRoute = computed(() => route);
+const isDark = computed(() => themeStore.isDark);
+const currentLanguage = computed(() => localeStore.currentLanguage);
+const supportedLocales = computed(() => SUPPORT_LOCALES);
+const currentUser = computed(() => authStore.currentUser);
 
 const sidebarWidth = computed(() => {
   if (isMobile.value) {
-    return sidebarCollapsed.value ? '0px' : '240px'
+    return sidebarCollapsed.value ? "0px" : "240px";
   }
-  return sidebarCollapsed.value ? '64px' : '240px'
-})
+  return sidebarCollapsed.value ? "64px" : "240px";
+});
 
 // 获取菜单路由
 const menuRoutes = computed(() => {
-  const mainRoute = router.getRoutes().find(r => r.path === '/')
-  return mainRoute?.children || []
-})
+  const mainRoute = router.getRoutes().find((r) => r.path === "/");
+  return mainRoute?.children || [];
+});
 
 // 图标组件映射
 const iconComponents = {
@@ -312,173 +337,184 @@ const iconComponents = {
   Lock,
   Setting,
   List,
-  ChatDotRound
-}
+  ChatDotRound,
+};
 
 // 方法
 const getIconComponent = (iconName?: string | unknown) => {
-  if (!iconName || typeof iconName !== 'string' || !iconComponents[iconName as keyof typeof iconComponents]) {
-    return Monitor
+  if (
+    !iconName ||
+    typeof iconName !== "string" ||
+    !iconComponents[iconName as keyof typeof iconComponents]
+  ) {
+    return Monitor;
   }
-  return iconComponents[iconName as keyof typeof iconComponents]
-}
+  return iconComponents[iconName as keyof typeof iconComponents];
+};
 
 const toggleSidebar = () => {
-  sidebarCollapsed.value = !sidebarCollapsed.value
+  sidebarCollapsed.value = !sidebarCollapsed.value;
   // 在移动端，保存侧边栏状态到本地存储
   if (isMobile.value) {
-    localStorage.setItem('sidebar-collapsed-mobile', String(sidebarCollapsed.value))
+    localStorage.setItem(
+      "sidebar-collapsed-mobile",
+      String(sidebarCollapsed.value),
+    );
   } else {
-    localStorage.setItem('sidebar-collapsed', String(sidebarCollapsed.value))
+    localStorage.setItem("sidebar-collapsed", String(sidebarCollapsed.value));
   }
-}
+};
 
 const goHome = () => {
-  if (route.path !== '/dashboard') {
-    router.push('/dashboard')
+  if (route.path !== "/dashboard") {
+    router.push("/dashboard");
   }
-}
+};
 
 const refreshData = async () => {
-  isRefreshing.value = true
+  isRefreshing.value = true;
   try {
     await measureFunction(
       async () => {
-        await appStore.refreshData()
+        await appStore.refreshData();
       },
-      'layout-refresh-data',
-      { currentRoute: route.path }
-    )
-    ElMessage.success(t('common.refreshSuccess'))
+      "layout-refresh-data",
+      { currentRoute: route.path },
+    );
+    ElMessage.success(t("common.refreshSuccess"));
   } catch (error: any) {
     globalErrorHandler?.captureError(error, {
-      context: 'layout-refresh-data',
+      context: "layout-refresh-data",
       currentRoute: route.path,
-      action: 'refresh_app_data'
-    })
-    ElMessage.error(t('common.refreshFailed'))
+      action: "refresh_app_data",
+    });
+    ElMessage.error(t("common.refreshFailed"));
   } finally {
-    isRefreshing.value = false
+    isRefreshing.value = false;
   }
-}
+};
 
 const toggleTheme = () => {
   try {
     measureFunction(
       () => {
-        themeStore.toggleTheme()
+        themeStore.toggleTheme();
       },
-      'layout-toggle-theme',
-      { newTheme: !themeStore.isDark ? 'dark' : 'light' }
-    )
-    ElMessage.success(t('theme.switched', { theme: themeStore.isDark ? t('theme.dark') : t('theme.light') }))
+      "layout-toggle-theme",
+      { newTheme: !themeStore.isDark ? "dark" : "light" },
+    );
+    ElMessage.success(
+      t("theme.switched", {
+        theme: themeStore.isDark ? t("theme.dark") : t("theme.light"),
+      }),
+    );
   } catch (error: any) {
     globalErrorHandler?.captureError(error, {
-      context: 'layout-toggle-theme',
-      action: 'theme_toggle'
-    })
-    ElMessage.error(t('error.operationFailed'))
+      context: "layout-toggle-theme",
+      action: "theme_toggle",
+    });
+    ElMessage.error(t("error.operationFailed"));
   }
-}
+};
 
 const handleLanguageChange = (locale: Locale) => {
   try {
     measureFunction(
       () => {
-        localeStore.changeLocale(locale)
+        localeStore.changeLocale(locale);
       },
-      'layout-change-language',
-      { newLocale: locale }
-    )
-    const language = SUPPORT_LOCALES.find(l => l.value === locale)
-    ElMessage.success(t('language.switched', { language: language?.label || locale }))
+      "layout-change-language",
+      { newLocale: locale },
+    );
+    const language = SUPPORT_LOCALES.find((l) => l.value === locale);
+    ElMessage.success(
+      t("language.switched", { language: language?.label || locale }),
+    );
   } catch (error: any) {
     globalErrorHandler?.captureError(error, {
-      context: 'layout-change-language',
-      action: 'language_change'
-    })
-    ElMessage.error(t('error.operationFailed'))
+      context: "layout-change-language",
+      action: "language_change",
+    });
+    ElMessage.error(t("error.operationFailed"));
   }
-}
+};
 
 const openSettings = () => {
   try {
-    measureFunction(
-      () => {
-        // TODO: 实现设置对话框
-        ElMessage.info(t('common.info'))
-      },
-      'layout-open-settings'
-    )
+    measureFunction(() => {
+      // TODO: 实现设置对话框
+      ElMessage.info(t("common.info"));
+    }, "layout-open-settings");
   } catch (error: any) {
     globalErrorHandler?.captureError(error, {
-      context: 'layout-open-settings',
-      action: 'open_settings'
-    })
+      context: "layout-open-settings",
+      action: "open_settings",
+    });
   }
-}
+};
 
 const showSystemStatus = () => {
   try {
     if (systemStatus.value.isHealthy) {
-      ElMessage.success(t('dashboard.systemStatus') + ': ' + t('common.healthy'))
+      ElMessage.success(
+        t("dashboard.systemStatus") + ": " + t("common.healthy"),
+      );
     } else {
-      ElMessage.warning(t('dashboard.systemStatus') + ': ' + t('common.unhealthy'))
+      ElMessage.warning(
+        t("dashboard.systemStatus") + ": " + t("common.unhealthy"),
+      );
     }
   } catch (error: any) {
     globalErrorHandler?.captureError(error, {
-      context: 'layout-show-system-status',
-      action: 'show_status'
-    })
+      context: "layout-show-system-status",
+      action: "show_status",
+    });
   }
-}
+};
 
 // 处理用户操作
 const handleUserAction = async (command: string) => {
   try {
     switch (command) {
-      case 'profile':
+      case "profile":
         // TODO: 打开个人资料页面
-        ElMessage.info(t('userAuth.messages.profileInDevelopment'))
-        break
-      case 'settings':
+        ElMessage.info(t("userAuth.messages.profileInDevelopment"));
+        break;
+      case "settings":
         // TODO: 打开账户设置页面
-        ElMessage.info(t('userAuth.messages.settingsInDevelopment'))
-        break
-      case 'logout':
-        await measureFunction(
-          async () => {
-            await authStore.logout()
-            router.push('/login')
-          },
-          'layout-user-logout'
-        )
-        break
+        ElMessage.info(t("userAuth.messages.settingsInDevelopment"));
+        break;
+      case "logout":
+        await measureFunction(async () => {
+          await authStore.logout();
+          router.push("/login");
+        }, "layout-user-logout");
+        break;
       default:
-        console.warn('Unknown user action:', command)
+        console.warn("Unknown user action:", command);
     }
   } catch (error: any) {
     globalErrorHandler?.captureError(error, {
-      context: 'layout-user-action',
-      action: command
-    })
-    ElMessage.error(t('userAuth.errors.operationFailed'))
+      context: "layout-user-action",
+      action: command,
+    });
+    ElMessage.error(t("userAuth.errors.operationFailed"));
   }
-}
+};
 
 // 检测屏幕尺寸
 const checkScreenSize = () => {
-  isMobile.value = window.innerWidth < 768
-  
+  isMobile.value = window.innerWidth < 768;
+
   // 移动端默认收起侧边栏
   if (isMobile.value) {
-    const savedState = localStorage.getItem('sidebar-collapsed-mobile')
-    sidebarCollapsed.value = savedState ? savedState === 'true' : true
+    const savedState = localStorage.getItem("sidebar-collapsed-mobile");
+    sidebarCollapsed.value = savedState ? savedState === "true" : true;
   } else {
-    const savedState = localStorage.getItem('sidebar-collapsed')
-    sidebarCollapsed.value = savedState ? savedState === 'true' : false
+    const savedState = localStorage.getItem("sidebar-collapsed");
+    sidebarCollapsed.value = savedState ? savedState === "true" : false;
   }
-}
+};
 
 // 更新系统状态
 const updateSystemStatus = () => {
@@ -486,27 +522,27 @@ const updateSystemStatus = () => {
   systemStatus.value = {
     isHealthy: appStore.isHealthy,
     errorCount: appStore.systemHealth.errorCount,
-    lastUpdate: new Date()
-  }
-}
+    lastUpdate: new Date(),
+  };
+};
 
 // 生命周期
 onMounted(() => {
-  checkScreenSize()
-  updateSystemStatus()
-  
+  checkScreenSize();
+  updateSystemStatus();
+
   // 监听窗口大小变化
-  window.addEventListener('resize', checkScreenSize)
-  
+  window.addEventListener("resize", checkScreenSize);
+
   // 定期更新系统状态
-  const statusInterval = setInterval(updateSystemStatus, 30000) // 30秒更新一次
-  
+  const statusInterval = setInterval(updateSystemStatus, 30000); // 30秒更新一次
+
   // 清理函数
   onUnmounted(() => {
-    window.removeEventListener('resize', checkScreenSize)
-    clearInterval(statusInterval)
-  })
-})
+    window.removeEventListener("resize", checkScreenSize);
+    clearInterval(statusInterval);
+  });
+});
 </script>
 
 <style scoped>
@@ -594,7 +630,11 @@ onMounted(() => {
 }
 
 .sidebar-menu .el-menu-item:hover {
-  background: linear-gradient(90deg, rgba(64, 158, 255, 0.1) 0%, rgba(64, 158, 255, 0.05) 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(64, 158, 255, 0.1) 0%,
+    rgba(64, 158, 255, 0.05) 100%
+  );
   color: #409eff;
   transform: translateX(4px);
 }
@@ -606,7 +646,7 @@ onMounted(() => {
 }
 
 .sidebar-menu .el-menu-item.is-active::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   top: 50%;
@@ -766,19 +806,19 @@ onMounted(() => {
   .header {
     padding: 0 16px;
   }
-  
+
   .main-content {
     padding: 16px;
   }
-  
+
   .breadcrumb {
     display: none;
   }
-  
+
   .header-right {
     gap: 8px;
   }
-  
+
   .header-right .el-button {
     padding: 8px;
   }
@@ -788,7 +828,7 @@ onMounted(() => {
   .header-right {
     gap: 4px;
   }
-  
+
   .main-content {
     padding: 12px;
   }

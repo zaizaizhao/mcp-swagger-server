@@ -4,8 +4,8 @@
       <div class="chart-header">
         <span class="chart-title">{{ title }}</span>
         <div class="chart-controls">
-          <el-select 
-            v-model="selectedPeriod" 
+          <el-select
+            v-model="selectedPeriod"
             size="small"
             style="width: 120px"
             @change="handlePeriodChange"
@@ -16,16 +16,16 @@
             <el-option label="最近7天" value="7d" />
             <el-option label="最近30天" value="30d" />
           </el-select>
-          
-          <el-button 
-            size="small" 
+
+          <el-button
+            size="small"
             :icon="Refresh"
             @click="handleRefresh"
             :loading="loading"
           >
             刷新
           </el-button>
-          
+
           <el-dropdown @command="handleExport">
             <el-button size="small" :icon="Download">
               导出<el-icon class="el-icon--right"><ArrowDown /></el-icon>
@@ -55,11 +55,11 @@
             <span class="cores">{{ cpuCores }}核</span>
           </div>
         </div>
-        <VChart 
+        <VChart
           ref="cpuChartRef"
-          class="chart" 
-          :option="cpuChartOption" 
-          autoresize 
+          class="chart"
+          :option="cpuChartOption"
+          autoresize
         />
         <div class="chart-stats">
           <div class="stat-item">
@@ -88,11 +88,11 @@
             <span class="cores">{{ formatBytes(totalMemory) }}</span>
           </div>
         </div>
-        <VChart 
+        <VChart
           ref="memoryChartRef"
-          class="chart" 
-          :option="memoryChartOption" 
-          autoresize 
+          class="chart"
+          :option="memoryChartOption"
+          autoresize
         />
         <div class="chart-stats">
           <div class="stat-item">
@@ -123,11 +123,11 @@
             </span>
           </div>
         </div>
-        <VChart 
+        <VChart
           ref="networkChartRef"
-          class="chart" 
-          :option="networkChartOption" 
-          autoresize 
+          class="chart"
+          :option="networkChartOption"
+          autoresize
         />
         <div class="chart-stats">
           <div class="stat-item">
@@ -156,11 +156,11 @@
             <span class="cores">{{ formatBytes(totalDisk) }}</span>
           </div>
         </div>
-        <VChart 
+        <VChart
           ref="diskChartRef"
-          class="chart" 
-          :option="diskChartOption" 
-          autoresize 
+          class="chart"
+          :option="diskChartOption"
+          autoresize
         />
         <div class="chart-stats">
           <div class="stat-item">
@@ -236,410 +236,459 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import VChart from 'vue-echarts'
-import { 
-  Refresh, 
-  Download, 
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import VChart from "vue-echarts";
+import {
+  Refresh,
+  Download,
   ArrowDown,
   Cpu,
   Monitor,
   Connection,
-  FolderOpened
-} from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
-import { useMonitoringStore } from '@/stores/monitoring'
-import type { DetailedSystemMetrics } from '@/types'
+  FolderOpened,
+} from "@element-plus/icons-vue";
+import { ElMessage } from "element-plus";
+import { useMonitoringStore } from "@/stores/monitoring";
+import type { DetailedSystemMetrics } from "@/types";
 
 interface Props {
-  title?: string
-  height?: string
+  title?: string;
+  height?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  title: '性能监控统计',
-  height: '400px'
-})
+  title: "性能监控统计",
+  height: "400px",
+});
 
 interface Emits {
-  (e: 'periodChange', period: string): void
-  (e: 'refresh'): void
+  (e: "periodChange", period: string): void;
+  (e: "refresh"): void;
 }
 
-const emit = defineEmits<Emits>()
+const emit = defineEmits<Emits>();
 
-const monitoringStore = useMonitoringStore()
+const monitoringStore = useMonitoringStore();
 
 // 响应式状态
-const selectedPeriod = ref('24h')
-const loading = ref(false)
-const cpuChartRef = ref()
-const memoryChartRef = ref()
-const networkChartRef = ref()
-const diskChartRef = ref()
+const selectedPeriod = ref("24h");
+const loading = ref(false);
+const cpuChartRef = ref();
+const memoryChartRef = ref();
+const networkChartRef = ref();
+const diskChartRef = ref();
 
 // 计算属性 - 当前值
-const currentMetrics = computed(() => monitoringStore.currentMetrics)
-const currentCpuUsage = computed(() => currentMetrics.value?.cpu?.usage || 0)
-const currentCpuTemp = computed(() => currentMetrics.value?.cpu?.temperature || 0)
-const cpuCores = computed(() => currentMetrics.value?.cpu?.cores || 0)
+const currentMetrics = computed(() => monitoringStore.currentMetrics);
+const currentCpuUsage = computed(() => currentMetrics.value?.cpu?.usage || 0);
+const currentCpuTemp = computed(
+  () => currentMetrics.value?.cpu?.temperature || 0,
+);
+const cpuCores = computed(() => currentMetrics.value?.cpu?.cores || 0);
 
-const currentMemoryUsage = computed(() => currentMetrics.value?.memory?.usage || 0)
-const totalMemory = computed(() => currentMetrics.value?.memory?.total || 0)
-const usedMemory = computed(() => currentMetrics.value?.memory?.used || 0)
-const freeMemory = computed(() => currentMetrics.value?.memory?.free || 0)
-const cachedMemory = computed(() => usedMemory.value * 0.3) // 模拟缓存内存
+const currentMemoryUsage = computed(
+  () => currentMetrics.value?.memory?.usage || 0,
+);
+const totalMemory = computed(() => currentMetrics.value?.memory?.total || 0);
+const usedMemory = computed(() => currentMetrics.value?.memory?.used || 0);
+const freeMemory = computed(() => currentMetrics.value?.memory?.free || 0);
+const cachedMemory = computed(() => usedMemory.value * 0.3); // 模拟缓存内存
 
-const currentNetworkIn = computed(() => currentMetrics.value?.network?.bytesIn || 0)
-const currentNetworkOut = computed(() => currentMetrics.value?.network?.bytesOut || 0)
-const currentConnections = computed(() => currentMetrics.value?.network?.connections || 0)
+const currentNetworkIn = computed(
+  () => currentMetrics.value?.network?.bytesIn || 0,
+);
+const currentNetworkOut = computed(
+  () => currentMetrics.value?.network?.bytesOut || 0,
+);
+const currentConnections = computed(
+  () => currentMetrics.value?.network?.connections || 0,
+);
 
-const currentDiskUsage = computed(() => currentMetrics.value?.disk?.usage || 0)
-const totalDisk = computed(() => currentMetrics.value?.disk?.total || 0)
-const freeDisk = computed(() => currentMetrics.value?.disk?.free || 0)
-const diskReadOps = computed(() => currentMetrics.value?.disk?.readOps || 0)
-const diskWriteOps = computed(() => currentMetrics.value?.disk?.writeOps || 0)
+const currentDiskUsage = computed(() => currentMetrics.value?.disk?.usage || 0);
+const totalDisk = computed(() => currentMetrics.value?.disk?.total || 0);
+const freeDisk = computed(() => currentMetrics.value?.disk?.free || 0);
+const diskReadOps = computed(() => currentMetrics.value?.disk?.readOps || 0);
+const diskWriteOps = computed(() => currentMetrics.value?.disk?.writeOps || 0);
 
 // 系统统计
-const systemLoad = computed(() => currentCpuUsage.value / 100 * cpuCores.value)
-const processCount = computed(() => Math.floor(systemLoad.value * 50) + 100) // 基于系统负载估算进程数
-const systemUptime = computed(() => currentMetrics.value?.process?.uptime || 0)
-const fileHandles = computed(() => Math.floor(Math.random() * 1000) + 500) // 模拟数据
+const systemLoad = computed(
+  () => (currentCpuUsage.value / 100) * cpuCores.value,
+);
+const processCount = computed(() => Math.floor(systemLoad.value * 50) + 100); // 基于系统负载估算进程数
+const systemUptime = computed(() => currentMetrics.value?.process?.uptime || 0);
+const fileHandles = computed(() => Math.floor(Math.random() * 1000) + 500); // 模拟数据
 
 // 历史数据统计
-const recentMetrics = computed(() => monitoringStore.metrics.slice(-100))
+const recentMetrics = computed(() => monitoringStore.metrics.slice(-100));
 
 const cpuStats = computed(() => {
-  if (recentMetrics.value.length === 0) return { average: 0, peak: 0 }
-  const values = recentMetrics.value.map(m => m.cpu.usage)
+  if (recentMetrics.value.length === 0) return { average: 0, peak: 0 };
+  const values = recentMetrics.value.map((m) => m.cpu.usage);
   return {
     average: values.reduce((a, b) => a + b, 0) / values.length,
-    peak: Math.max(...values)
-  }
-})
+    peak: Math.max(...values),
+  };
+});
 
 const totalNetworkIn = computed(() => {
-  return recentMetrics.value.reduce((total, m) => total + m.network.bytesIn, 0)
-})
+  return recentMetrics.value.reduce((total, m) => total + m.network.bytesIn, 0);
+});
 
 const totalNetworkOut = computed(() => {
-  return recentMetrics.value.reduce((total, m) => total + m.network.bytesOut, 0)
-})
+  return recentMetrics.value.reduce(
+    (total, m) => total + m.network.bytesOut,
+    0,
+  );
+});
 
 // 图表配置
 const cpuChartOption = computed(() => ({
   title: {
-    text: '',
-    textStyle: { fontSize: 12, color: '#666' }
+    text: "",
+    textStyle: { fontSize: 12, color: "#666" },
   },
   tooltip: {
-    trigger: 'axis',
+    trigger: "axis",
     formatter: (params: any) => {
-      const point = params[0]
+      const point = params[0];
       return `时间: ${new Date(point.data[0]).toLocaleTimeString()}<br/>
               CPU使用率: ${point.data[1].toFixed(1)}%<br/>
-              CPU温度: ${(point.data[1] * 0.5 + 40).toFixed(1)}°C`
-    }
+              CPU温度: ${(point.data[1] * 0.5 + 40).toFixed(1)}°C`;
+    },
   },
   grid: {
-    left: '3%',
-    right: '4%',
-    bottom: '3%',
-    containLabel: true
+    left: "3%",
+    right: "4%",
+    bottom: "3%",
+    containLabel: true,
   },
   xAxis: {
-    type: 'time',
+    type: "time",
     splitLine: { show: false },
-    axisLabel: { fontSize: 10 }
+    axisLabel: { fontSize: 10 },
   },
   yAxis: {
-    type: 'value',
+    type: "value",
     max: 100,
-    axisLabel: { 
+    axisLabel: {
       fontSize: 10,
-      formatter: '{value}%'
+      formatter: "{value}%",
     },
-    splitLine: { 
-      lineStyle: { color: '#f0f0f0' }
-    }
+    splitLine: {
+      lineStyle: { color: "#f0f0f0" },
+    },
   },
-  series: [{
-    name: 'CPU使用率',
-    type: 'line',
-    smooth: true,
-    symbol: 'none',
-    lineStyle: { width: 2, color: '#409EFF' },
-    areaStyle: {
-      color: {
-        type: 'linear',
-        x: 0, y: 0, x2: 0, y2: 1,
-        colorStops: [
-          { offset: 0, color: 'rgba(64, 158, 255, 0.3)' },
-          { offset: 1, color: 'rgba(64, 158, 255, 0.1)' }
-        ]
-      }
+  series: [
+    {
+      name: "CPU使用率",
+      type: "line",
+      smooth: true,
+      symbol: "none",
+      lineStyle: { width: 2, color: "#409EFF" },
+      areaStyle: {
+        color: {
+          type: "linear",
+          x: 0,
+          y: 0,
+          x2: 0,
+          y2: 1,
+          colorStops: [
+            { offset: 0, color: "rgba(64, 158, 255, 0.3)" },
+            { offset: 1, color: "rgba(64, 158, 255, 0.1)" },
+          ],
+        },
+      },
+      data: recentMetrics.value.map((m) => [
+        m.timestamp.getTime(),
+        m.cpu.usage,
+      ]),
     },
-    data: recentMetrics.value.map(m => [m.timestamp.getTime(), m.cpu.usage])
-  }]
-}))
+  ],
+}));
 
 const memoryChartOption = computed(() => ({
   tooltip: {
-    trigger: 'axis',
+    trigger: "axis",
     formatter: (params: any) => {
-      const point = params[0]
-      const used = point.data[1]
-      const total = totalMemory.value
+      const point = params[0];
+      const used = point.data[1];
+      const total = totalMemory.value;
       return `时间: ${new Date(point.data[0]).toLocaleTimeString()}<br/>
               内存使用: ${formatBytes(used)}<br/>
-              使用率: ${(used / total * 100).toFixed(1)}%`
-    }
+              使用率: ${((used / total) * 100).toFixed(1)}%`;
+    },
   },
   grid: {
-    left: '3%',
-    right: '4%',
-    bottom: '3%',
-    containLabel: true
+    left: "3%",
+    right: "4%",
+    bottom: "3%",
+    containLabel: true,
   },
   xAxis: {
-    type: 'time',
+    type: "time",
     splitLine: { show: false },
-    axisLabel: { fontSize: 10 }
+    axisLabel: { fontSize: 10 },
   },
   yAxis: {
-    type: 'value',
-    axisLabel: { 
+    type: "value",
+    axisLabel: {
       fontSize: 10,
-      formatter: (value: number) => formatBytes(value)
+      formatter: (value: number) => formatBytes(value),
     },
-    splitLine: { 
-      lineStyle: { color: '#f0f0f0' }
-    }
+    splitLine: {
+      lineStyle: { color: "#f0f0f0" },
+    },
   },
-  series: [{
-    name: '内存使用',
-    type: 'line',
-    smooth: true,
-    symbol: 'none',
-    lineStyle: { width: 2, color: '#67C23A' },
-    areaStyle: {
-      color: {
-        type: 'linear',
-        x: 0, y: 0, x2: 0, y2: 1,
-        colorStops: [
-          { offset: 0, color: 'rgba(103, 194, 58, 0.3)' },
-          { offset: 1, color: 'rgba(103, 194, 58, 0.1)' }
-        ]
-      }
+  series: [
+    {
+      name: "内存使用",
+      type: "line",
+      smooth: true,
+      symbol: "none",
+      lineStyle: { width: 2, color: "#67C23A" },
+      areaStyle: {
+        color: {
+          type: "linear",
+          x: 0,
+          y: 0,
+          x2: 0,
+          y2: 1,
+          colorStops: [
+            { offset: 0, color: "rgba(103, 194, 58, 0.3)" },
+            { offset: 1, color: "rgba(103, 194, 58, 0.1)" },
+          ],
+        },
+      },
+      data: recentMetrics.value.map((m) => [
+        m.timestamp.getTime(),
+        m.memory.used,
+      ]),
     },
-    data: recentMetrics.value.map(m => [m.timestamp.getTime(), m.memory.used])
-  }]
-}))
+  ],
+}));
 
 const networkChartOption = computed(() => ({
   tooltip: {
-    trigger: 'axis',
+    trigger: "axis",
     formatter: (params: any) => {
-      const inPoint = params[0]
-      const outPoint = params[1]
+      const inPoint = params[0];
+      const outPoint = params[1];
       return `时间: ${new Date(inPoint.data[0]).toLocaleTimeString()}<br/>
               入流量: ${formatBandwidth(inPoint.data[1])}<br/>
-              出流量: ${formatBandwidth(outPoint.data[1])}`
-    }
+              出流量: ${formatBandwidth(outPoint.data[1])}`;
+    },
   },
   legend: {
-    data: ['入流量', '出流量'],
+    data: ["入流量", "出流量"],
     top: 0,
-    textStyle: { fontSize: 10 }
+    textStyle: { fontSize: 10 },
   },
   grid: {
-    left: '3%',
-    right: '4%',
-    bottom: '3%',
-    top: '15%',
-    containLabel: true
+    left: "3%",
+    right: "4%",
+    bottom: "3%",
+    top: "15%",
+    containLabel: true,
   },
   xAxis: {
-    type: 'time',
+    type: "time",
     splitLine: { show: false },
-    axisLabel: { fontSize: 10 }
+    axisLabel: { fontSize: 10 },
   },
   yAxis: {
-    type: 'value',
-    axisLabel: { 
+    type: "value",
+    axisLabel: {
       fontSize: 10,
-      formatter: (value: number) => formatBandwidth(value)
+      formatter: (value: number) => formatBandwidth(value),
     },
-    splitLine: { 
-      lineStyle: { color: '#f0f0f0' }
-    }
+    splitLine: {
+      lineStyle: { color: "#f0f0f0" },
+    },
   },
-  series: [{
-    name: '入流量',
-    type: 'line',
-    smooth: true,
-    symbol: 'none',
-    lineStyle: { width: 2, color: '#E6A23C' },
-    data: recentMetrics.value.map(m => [m.timestamp.getTime(), m.network.bytesIn])
-  }, {
-    name: '出流量',
-    type: 'line',
-    smooth: true,
-    symbol: 'none',
-    lineStyle: { width: 2, color: '#F56C6C' },
-    data: recentMetrics.value.map(m => [m.timestamp.getTime(), m.network.bytesOut])
-  }]
-}))
+  series: [
+    {
+      name: "入流量",
+      type: "line",
+      smooth: true,
+      symbol: "none",
+      lineStyle: { width: 2, color: "#E6A23C" },
+      data: recentMetrics.value.map((m) => [
+        m.timestamp.getTime(),
+        m.network.bytesIn,
+      ]),
+    },
+    {
+      name: "出流量",
+      type: "line",
+      smooth: true,
+      symbol: "none",
+      lineStyle: { width: 2, color: "#F56C6C" },
+      data: recentMetrics.value.map((m) => [
+        m.timestamp.getTime(),
+        m.network.bytesOut,
+      ]),
+    },
+  ],
+}));
 
 const diskChartOption = computed(() => ({
   tooltip: {
-    trigger: 'axis',
+    trigger: "axis",
     formatter: (params: any) => {
-      const readPoint = params[0]
-      const writePoint = params[1]
+      const readPoint = params[0];
+      const writePoint = params[1];
       return `时间: ${new Date(readPoint.data[0]).toLocaleTimeString()}<br/>
               读取IOPS: ${formatIOPS(readPoint.data[1])}<br/>
-              写入IOPS: ${formatIOPS(writePoint.data[1])}`
-    }
+              写入IOPS: ${formatIOPS(writePoint.data[1])}`;
+    },
   },
   legend: {
-    data: ['读取IOPS', '写入IOPS'],
+    data: ["读取IOPS", "写入IOPS"],
     top: 0,
-    textStyle: { fontSize: 10 }
+    textStyle: { fontSize: 10 },
   },
   grid: {
-    left: '3%',
-    right: '4%',
-    bottom: '3%',
-    top: '15%',
-    containLabel: true
+    left: "3%",
+    right: "4%",
+    bottom: "3%",
+    top: "15%",
+    containLabel: true,
   },
   xAxis: {
-    type: 'time',
+    type: "time",
     splitLine: { show: false },
-    axisLabel: { fontSize: 10 }
+    axisLabel: { fontSize: 10 },
   },
   yAxis: {
-    type: 'value',
-    axisLabel: { 
+    type: "value",
+    axisLabel: {
       fontSize: 10,
-      formatter: (value: number) => formatIOPS(value)
+      formatter: (value: number) => formatIOPS(value),
     },
-    splitLine: { 
-      lineStyle: { color: '#f0f0f0' }
-    }
+    splitLine: {
+      lineStyle: { color: "#f0f0f0" },
+    },
   },
-  series: [{
-    name: '读取IOPS',
-    type: 'line',
-    smooth: true,
-    symbol: 'none',
-    lineStyle: { width: 2, color: '#909399' },
-    data: recentMetrics.value.map(m => [m.timestamp.getTime(), m.disk.readOps])
-  }, {
-    name: '写入IOPS',
-    type: 'line',
-    smooth: true,
-    symbol: 'none',
-    lineStyle: { width: 2, color: '#C0C4CC' },
-    data: recentMetrics.value.map(m => [m.timestamp.getTime(), m.disk.writeOps])
-  }]
-}))
+  series: [
+    {
+      name: "读取IOPS",
+      type: "line",
+      smooth: true,
+      symbol: "none",
+      lineStyle: { width: 2, color: "#909399" },
+      data: recentMetrics.value.map((m) => [
+        m.timestamp.getTime(),
+        m.disk.readOps,
+      ]),
+    },
+    {
+      name: "写入IOPS",
+      type: "line",
+      smooth: true,
+      symbol: "none",
+      lineStyle: { width: 2, color: "#C0C4CC" },
+      data: recentMetrics.value.map((m) => [
+        m.timestamp.getTime(),
+        m.disk.writeOps,
+      ]),
+    },
+  ],
+}));
 
 // 方法
 const getCpuStatusClass = () => {
-  if (currentCpuUsage.value >= 90) return 'status-critical'
-  if (currentCpuUsage.value >= 70) return 'status-warning'
-  return 'status-normal'
-}
+  if (currentCpuUsage.value >= 90) return "status-critical";
+  if (currentCpuUsage.value >= 70) return "status-warning";
+  return "status-normal";
+};
 
 const getMemoryStatusClass = () => {
-  if (currentMemoryUsage.value >= 95) return 'status-critical'
-  if (currentMemoryUsage.value >= 80) return 'status-warning'
-  return 'status-normal'
-}
+  if (currentMemoryUsage.value >= 95) return "status-critical";
+  if (currentMemoryUsage.value >= 80) return "status-warning";
+  return "status-normal";
+};
 
 const getDiskStatusClass = () => {
-  if (currentDiskUsage.value >= 95) return 'status-critical'
-  if (currentDiskUsage.value >= 85) return 'status-warning'
-  return 'status-normal'
-}
+  if (currentDiskUsage.value >= 95) return "status-critical";
+  if (currentDiskUsage.value >= 85) return "status-warning";
+  return "status-normal";
+};
 
 const formatBytes = (bytes: number) => {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
-}
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+};
 
 const formatBandwidth = (bytesPerSecond: number) => {
-  return formatBytes(bytesPerSecond) + '/s'
-}
+  return formatBytes(bytesPerSecond) + "/s";
+};
 
 const formatIOPS = (iops: number) => {
   if (iops >= 1000) {
-    return (iops / 1000).toFixed(1) + 'K'
+    return (iops / 1000).toFixed(1) + "K";
   }
-  return iops.toString()
-}
+  return iops.toString();
+};
 
 const formatUptime = (seconds: number) => {
-  const days = Math.floor(seconds / 86400)
-  const hours = Math.floor((seconds % 86400) / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
   if (days > 0) {
-    return `${days}天${hours}小时`
+    return `${days}天${hours}小时`;
   } else if (hours > 0) {
-    return `${hours}小时${minutes}分钟`
+    return `${hours}小时${minutes}分钟`;
   } else {
-    return `${minutes}分钟`
+    return `${minutes}分钟`;
   }
-}
+};
 
 const handlePeriodChange = (period: string) => {
-  emit('periodChange', period)
-}
+  emit("periodChange", period);
+};
 
 const handleRefresh = () => {
-  loading.value = true
-  emit('refresh')
+  loading.value = true;
+  emit("refresh");
   setTimeout(() => {
-    loading.value = false
-    ElMessage.success('数据已刷新')
-  }, 1000)
-}
+    loading.value = false;
+    ElMessage.success("数据已刷新");
+  }, 1000);
+};
 
 const handleExport = (command: string) => {
   switch (command) {
-    case 'png':
-      exportChart('png')
-      break
-    case 'svg':
-      exportChart('svg')
-      break
-    case 'csv':
-      exportData('csv')
-      break
-    case 'json':
-      exportData('json')
-      break
+    case "png":
+      exportChart("png");
+      break;
+    case "svg":
+      exportChart("svg");
+      break;
+    case "csv":
+      exportData("csv");
+      break;
+    case "json":
+      exportData("json");
+      break;
   }
-}
+};
 
 const exportChart = (format: string) => {
   try {
     // 这里可以实现图表导出功能
-    ElMessage.success(`图表已导出为${format.toUpperCase()}格式`)
+    ElMessage.success(`图表已导出为${format.toUpperCase()}格式`);
   } catch (error) {
-    ElMessage.error('导出失败')
+    ElMessage.error("导出失败");
   }
-}
+};
 
 const exportData = (format: string) => {
   try {
-    const data = recentMetrics.value.map(m => ({
+    const data = recentMetrics.value.map((m) => ({
       timestamp: m.timestamp.toISOString(),
       cpu_usage: m.cpu.usage,
       cpu_temperature: m.cpu.temperature,
@@ -650,38 +699,38 @@ const exportData = (format: string) => {
       network_out: m.network.bytesOut,
       disk_usage: m.disk.usage,
       disk_read_ops: m.disk.readOps,
-      disk_write_ops: m.disk.writeOps
-    }))
+      disk_write_ops: m.disk.writeOps,
+    }));
 
-    let content: string
-    let mimeType: string
-    let filename: string
+    let content: string;
+    let mimeType: string;
+    let filename: string;
 
-    if (format === 'csv') {
-      const headers = Object.keys(data[0]).join(',')
-      const rows = data.map(row => Object.values(row).join(','))
-      content = [headers, ...rows].join('\n')
-      mimeType = 'text/csv'
-      filename = `performance-data-${new Date().toISOString().split('T')[0]}.csv`
+    if (format === "csv") {
+      const headers = Object.keys(data[0]).join(",");
+      const rows = data.map((row) => Object.values(row).join(","));
+      content = [headers, ...rows].join("\n");
+      mimeType = "text/csv";
+      filename = `performance-data-${new Date().toISOString().split("T")[0]}.csv`;
     } else {
-      content = JSON.stringify(data, null, 2)
-      mimeType = 'application/json'
-      filename = `performance-data-${new Date().toISOString().split('T')[0]}.json`
+      content = JSON.stringify(data, null, 2);
+      mimeType = "application/json";
+      filename = `performance-data-${new Date().toISOString().split("T")[0]}.json`;
     }
 
-    const blob = new Blob([content], { type: mimeType })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    a.click()
-    URL.revokeObjectURL(url)
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
 
-    ElMessage.success(`数据已导出为${format.toUpperCase()}格式`)
+    ElMessage.success(`数据已导出为${format.toUpperCase()}格式`);
   } catch (error) {
-    ElMessage.error('导出失败')
+    ElMessage.error("导出失败");
   }
-}
+};
 </script>
 
 <style scoped>
@@ -817,19 +866,19 @@ const exportData = (format: string) => {
 }
 
 .overview-icon.cpu {
-  background: linear-gradient(135deg, #409EFF, #66D9EF);
+  background: linear-gradient(135deg, #409eff, #66d9ef);
 }
 
 .overview-icon.memory {
-  background: linear-gradient(135deg, #67C23A, #85CE61);
+  background: linear-gradient(135deg, #67c23a, #85ce61);
 }
 
 .overview-icon.network {
-  background: linear-gradient(135deg, #E6A23C, #EEBE77);
+  background: linear-gradient(135deg, #e6a23c, #eebe77);
 }
 
 .overview-icon.disk {
-  background: linear-gradient(135deg, #909399, #B1B3B8);
+  background: linear-gradient(135deg, #909399, #b1b3b8);
 }
 
 .overview-content h5 {
@@ -857,13 +906,13 @@ const exportData = (format: string) => {
   .charts-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .chart-header {
     flex-direction: column;
     gap: 12px;
     align-items: flex-start;
   }
-  
+
   .chart-controls {
     width: 100%;
     justify-content: flex-end;
@@ -875,12 +924,12 @@ const exportData = (format: string) => {
     flex-wrap: wrap;
     gap: 8px;
   }
-  
+
   .overview-item {
     flex-direction: column;
     text-align: center;
   }
-  
+
   .overview-content .value {
     font-size: 16px;
   }

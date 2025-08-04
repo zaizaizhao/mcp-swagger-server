@@ -24,104 +24,106 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { use } from 'echarts/core'
-import { LineChart } from 'echarts/charts'
-import { GridComponent } from 'echarts/components'
-import { CanvasRenderer } from 'echarts/renderers'
-import VChart from 'vue-echarts'
-import { ArrowUp, ArrowDown, Minus } from '@element-plus/icons-vue'
-import type { ChartDataPoint } from '@/types'
+import { computed } from "vue";
+import { use } from "echarts/core";
+import { LineChart } from "echarts/charts";
+import { GridComponent } from "echarts/components";
+import { CanvasRenderer } from "echarts/renderers";
+import VChart from "vue-echarts";
+import { ArrowUp, ArrowDown, Minus } from "@element-plus/icons-vue";
+import type { ChartDataPoint } from "@/types";
 
-use([LineChart, GridComponent, CanvasRenderer])
+use([LineChart, GridComponent, CanvasRenderer]);
 
 interface Props {
-  title: string
-  value: number | string
-  unit?: string
-  icon?: string
-  trend?: number
-  showChart?: boolean
-  chartData?: ChartDataPoint[]
-  color?: string
-  formatter?: (value: number | string) => string
+  title: string;
+  value: number | string;
+  unit?: string;
+  icon?: string;
+  trend?: number;
+  showChart?: boolean;
+  chartData?: ChartDataPoint[];
+  color?: string;
+  formatter?: (value: number | string) => string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  unit: '',
+  unit: "",
   showChart: true,
   chartData: () => [],
-  color: '#409EFF'
-})
+  color: "#409EFF",
+});
 
 const iconComponent = computed(() => {
   const iconMap: Record<string, any> = {
-    cpu: 'Monitor',
-    memory: 'MemoryCard',
-    disk: 'HardDrive',
-    network: 'Network',
-    server: 'Server'
-  }
-  return iconMap[props.icon || 'Monitor'] || 'Monitor'
-})
+    cpu: "Monitor",
+    memory: "MemoryCard",
+    disk: "HardDrive",
+    network: "Network",
+    server: "Server",
+  };
+  return iconMap[props.icon || "Monitor"] || "Monitor";
+});
 
 const formattedValue = computed(() => {
   if (props.formatter) {
-    return props.formatter(props.value)
+    return props.formatter(props.value);
   }
-  
-  if (typeof props.value === 'number') {
-    return `${props.value.toFixed(1)}${props.unit}`
+
+  if (typeof props.value === "number") {
+    return `${props.value.toFixed(1)}${props.unit}`;
   }
-  
-  return `${props.value}${props.unit}`
-})
+
+  return `${props.value}${props.unit}`;
+});
 
 const trendClass = computed(() => ({
-  'trend-up': props.trend && props.trend > 0,
-  'trend-down': props.trend && props.trend < 0,
-  'trend-neutral': props.trend === 0
-}))
+  "trend-up": props.trend && props.trend > 0,
+  "trend-down": props.trend && props.trend < 0,
+  "trend-neutral": props.trend === 0,
+}));
 
 const chartOption = computed(() => ({
   grid: {
     left: 0,
     right: 0,
     top: 5,
-    bottom: 5
+    bottom: 5,
   },
   xAxis: {
-    type: 'time',
-    show: false
+    type: "time",
+    show: false,
   },
   yAxis: {
-    type: 'value',
-    show: false
+    type: "value",
+    show: false,
   },
-  series: [{
-    type: 'line',
-    data: props.chartData.map(point => [point.timestamp, point.value]),
-    smooth: true,
-    symbol: 'none',
-    lineStyle: {
-      color: props.color,
-      width: 2
+  series: [
+    {
+      type: "line",
+      data: props.chartData.map((point) => [point.timestamp, point.value]),
+      smooth: true,
+      symbol: "none",
+      lineStyle: {
+        color: props.color,
+        width: 2,
+      },
+      areaStyle: {
+        color: {
+          type: "linear",
+          x: 0,
+          y: 0,
+          x2: 0,
+          y2: 1,
+          colorStops: [
+            { offset: 0, color: props.color + "40" },
+            { offset: 1, color: props.color + "10" },
+          ],
+        },
+      },
     },
-    areaStyle: {
-      color: {
-        type: 'linear',
-        x: 0,
-        y: 0,
-        x2: 0,
-        y2: 1,
-        colorStops: [
-          { offset: 0, color: props.color + '40' },
-          { offset: 1, color: props.color + '10' }
-        ]
-      }
-    }
-  }]
-}))
+  ],
+}));
 </script>
 
 <style scoped>
@@ -148,7 +150,11 @@ const chartOption = computed(() => ({
   width: 40px;
   height: 40px;
   border-radius: 8px;
-  background: linear-gradient(135deg, var(--el-color-primary), var(--el-color-primary-light-3));
+  background: linear-gradient(
+    135deg,
+    var(--el-color-primary),
+    var(--el-color-primary-light-3)
+  );
   display: flex;
   align-items: center;
   justify-content: center;

@@ -4,22 +4,18 @@
       <div class="panel-header">
         <div class="header-left">
           <span class="panel-title">系统告警</span>
-          <el-badge 
-            :value="activeAlerts.length" 
+          <el-badge
+            :value="activeAlerts.length"
             :type="badgeType"
             :hidden="activeAlerts.length === 0"
           />
         </div>
         <div class="header-actions">
-          <el-button 
-            size="small" 
-            :icon="Refresh"
-            @click="$emit('refresh')"
-          >
+          <el-button size="small" :icon="Refresh" @click="$emit('refresh')">
             刷新
           </el-button>
-          <el-button 
-            size="small" 
+          <el-button
+            size="small"
             :icon="Delete"
             @click="$emit('clearAcknowledged')"
             :disabled="acknowledgedCount === 0"
@@ -46,9 +42,9 @@
     </div>
 
     <div class="alerts-filters" v-if="alerts.length > 0">
-      <el-select 
-        v-model="selectedLevel" 
-        placeholder="筛选级别" 
+      <el-select
+        v-model="selectedLevel"
+        placeholder="筛选级别"
         size="small"
         clearable
         style="width: 120px"
@@ -57,10 +53,10 @@
         <el-option label="警告" value="warning" />
         <el-option label="信息" value="info" />
       </el-select>
-      
-      <el-select 
-        v-model="selectedType" 
-        placeholder="筛选类型" 
+
+      <el-select
+        v-model="selectedType"
+        placeholder="筛选类型"
         size="small"
         clearable
         style="width: 120px"
@@ -78,23 +74,17 @@
     </div>
 
     <div class="alerts-list">
-      <div 
-        v-if="filteredAlerts.length === 0" 
-        class="empty-state"
-      >
-        <el-empty 
-          :image-size="80"
-          description="暂无告警信息"
-        />
+      <div v-if="filteredAlerts.length === 0" class="empty-state">
+        <el-empty :image-size="80" description="暂无告警信息" />
       </div>
 
-      <div 
-        v-for="alert in filteredAlerts" 
+      <div
+        v-for="alert in filteredAlerts"
         :key="alert.id"
         class="alert-item"
         :class="[
           `alert-${alert.level}`,
-          { 'alert-acknowledged': alert.acknowledged }
+          { 'alert-acknowledged': alert.acknowledged },
         ]"
       >
         <div class="alert-icon">
@@ -118,7 +108,7 @@
         </div>
 
         <div class="alert-actions">
-          <el-button 
+          <el-button
             v-if="!alert.acknowledged"
             size="small"
             type="primary"
@@ -126,7 +116,7 @@
           >
             确认
           </el-button>
-          <el-button 
+          <el-button
             size="small"
             :icon="Delete"
             @click="$emit('dismiss', alert.id)"
@@ -138,116 +128,116 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { 
-  Warning, 
-  InfoFilled, 
-  SuccessFilled, 
-  Refresh, 
-  Delete 
-} from '@element-plus/icons-vue'
-import type { PerformanceAlert } from '@/types'
+import { ref, computed } from "vue";
+import {
+  Warning,
+  InfoFilled,
+  SuccessFilled,
+  Refresh,
+  Delete,
+} from "@element-plus/icons-vue";
+import type { PerformanceAlert } from "@/types";
 
 interface Props {
-  alerts: PerformanceAlert[]
+  alerts: PerformanceAlert[];
 }
 
 interface Emits {
-  (e: 'acknowledge', alertId: string): void
-  (e: 'dismiss', alertId: string): void
-  (e: 'refresh'): void
-  (e: 'clearAcknowledged'): void
+  (e: "acknowledge", alertId: string): void;
+  (e: "dismiss", alertId: string): void;
+  (e: "refresh"): void;
+  (e: "clearAcknowledged"): void;
 }
 
-const props = defineProps<Props>()
-const emit = defineEmits<Emits>()
+const props = defineProps<Props>();
+const emit = defineEmits<Emits>();
 
-const selectedLevel = ref<string>('')
-const selectedType = ref<string>('')
-const showAcknowledged = ref(false)
+const selectedLevel = ref<string>("");
+const selectedType = ref<string>("");
+const showAcknowledged = ref(false);
 
-const activeAlerts = computed(() => 
-  props.alerts.filter(alert => !alert.acknowledged)
-)
+const activeAlerts = computed(() =>
+  props.alerts.filter((alert) => !alert.acknowledged),
+);
 
-const criticalCount = computed(() => 
-  activeAlerts.value.filter(alert => alert.level === 'critical').length
-)
+const criticalCount = computed(
+  () => activeAlerts.value.filter((alert) => alert.level === "critical").length,
+);
 
-const warningCount = computed(() => 
-  activeAlerts.value.filter(alert => alert.level === 'warning').length
-)
+const warningCount = computed(
+  () => activeAlerts.value.filter((alert) => alert.level === "warning").length,
+);
 
-const infoCount = computed(() => 
-  activeAlerts.value.filter(alert => alert.level === 'info').length
-)
+const infoCount = computed(
+  () => activeAlerts.value.filter((alert) => alert.level === "info").length,
+);
 
-const acknowledgedCount = computed(() => 
-  props.alerts.filter(alert => alert.acknowledged).length
-)
+const acknowledgedCount = computed(
+  () => props.alerts.filter((alert) => alert.acknowledged).length,
+);
 
 const badgeType = computed(() => {
-  if (criticalCount.value > 0) return 'danger'
-  if (warningCount.value > 0) return 'warning'
-  return 'primary'
-})
+  if (criticalCount.value > 0) return "danger";
+  if (warningCount.value > 0) return "warning";
+  return "primary";
+});
 
 const filteredAlerts = computed(() => {
-  let filtered = props.alerts
+  let filtered = props.alerts;
 
   if (!showAcknowledged.value) {
-    filtered = filtered.filter(alert => !alert.acknowledged)
+    filtered = filtered.filter((alert) => !alert.acknowledged);
   }
 
   if (selectedLevel.value) {
-    filtered = filtered.filter(alert => alert.level === selectedLevel.value)
+    filtered = filtered.filter((alert) => alert.level === selectedLevel.value);
   }
 
   if (selectedType.value) {
-    filtered = filtered.filter(alert => alert.type === selectedType.value)
+    filtered = filtered.filter((alert) => alert.type === selectedType.value);
   }
 
   return filtered.sort((a, b) => {
     // 先按确认状态排序
     if (a.acknowledged !== b.acknowledged) {
-      return a.acknowledged ? 1 : -1
+      return a.acknowledged ? 1 : -1;
     }
-    
+
     // 再按级别排序
-    const levelOrder = { critical: 0, warning: 1, info: 2 }
-    const levelDiff = levelOrder[a.level] - levelOrder[b.level]
-    if (levelDiff !== 0) return levelDiff
-    
+    const levelOrder = { critical: 0, warning: 1, info: 2 };
+    const levelDiff = levelOrder[a.level] - levelOrder[b.level];
+    if (levelDiff !== 0) return levelDiff;
+
     // 最后按时间排序（新的在前）
-    return b.timestamp.getTime() - a.timestamp.getTime()
-  })
-})
+    return b.timestamp.getTime() - a.timestamp.getTime();
+  });
+});
 
 const getTypeLabel = (type: string) => {
   const typeMap: Record<string, string> = {
-    cpu: 'CPU',
-    memory: '内存',
-    disk: '磁盘',
-    network: '网络',
-    error: '错误'
-  }
-  return typeMap[type] || type
-}
+    cpu: "CPU",
+    memory: "内存",
+    disk: "磁盘",
+    network: "网络",
+    error: "错误",
+  };
+  return typeMap[type] || type;
+};
 
 const formatTime = (date: Date) => {
-  const now = new Date()
-  const diff = now.getTime() - date.getTime()
-  
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+
   if (diff < 60000) {
-    return '刚刚'
+    return "刚刚";
   } else if (diff < 3600000) {
-    return `${Math.floor(diff / 60000)}分钟前`
+    return `${Math.floor(diff / 60000)}分钟前`;
   } else if (diff < 86400000) {
-    return `${Math.floor(diff / 3600000)}小时前`
+    return `${Math.floor(diff / 3600000)}小时前`;
   } else {
-    return date.toLocaleDateString('zh-CN')
+    return date.toLocaleDateString("zh-CN");
   }
-}
+};
 </script>
 
 <style scoped>

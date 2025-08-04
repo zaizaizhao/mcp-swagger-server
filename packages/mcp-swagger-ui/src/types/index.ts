@@ -3,38 +3,43 @@
 // ============================================================================
 
 export interface InputSource {
-  type: 'url' | 'file' | 'text'
-  content: string
+  type: "url" | "file" | "text";
+  content: string;
   auth?: {
-    type: 'bearer' | 'apikey'
-    token: string
-  }
+    type: "bearer" | "apikey";
+    token: string;
+  };
 }
 
 export interface ConvertConfig {
-  name?: string
-  version?: string
-  description?: string
-  port?: number
-  transport?: 'streamable' | 'sse' | 'stdio'
-  includeDeprecated: boolean
-  includeExamples: boolean
-  generateTypes: boolean
-  outputFormat: 'json' | 'yaml'
+  name?: string;
+  version?: string;
+  description?: string;
+  port?: number;
+  transport?: "streamable" | "sse" | "stdio";
+  includeDeprecated: boolean;
+  includeExamples: boolean;
+  generateTypes: boolean;
+  outputFormat: "json" | "yaml";
 }
 
 // ============================================================================
 // 基础类型定义
 // ============================================================================
 
-export type ServerStatus = 'running' | 'stopped' | 'error' | 'starting' | 'stopping'
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
+export type ServerStatus =
+  | "running"
+  | "stopped"
+  | "error"
+  | "starting"
+  | "stopping";
+export type LogLevel = "debug" | "info" | "warn" | "error";
 
 // 服务状态类型
 export interface ServiceStatus {
-  name: string
-  status: 'online' | 'offline' | 'degraded' | 'connecting'
-  icon: any
+  name: string;
+  status: "online" | "offline" | "degraded" | "connecting";
+  icon: any;
 }
 
 // ============================================================================
@@ -42,11 +47,11 @@ export interface ServiceStatus {
 // ============================================================================
 
 export interface ApiResponse<T = any> {
-  success: boolean
-  data?: T
-  error?: string
-  message?: string
-  timestamp?: string
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+  timestamp?: string;
 }
 
 // ============================================================================
@@ -54,66 +59,66 @@ export interface ApiResponse<T = any> {
 // ============================================================================
 
 export interface ServerConfig {
-  name: string
-  version?: string
-  description?: string
-  port?: number
-  transport?: 'streamable' | 'sse' | 'stdio' | 'websocket'
-  openApiData: any
-  config?: any
-  authConfig?: string
-  autoStart?: boolean
-  tags?: string[]
+  name: string;
+  version?: string;
+  description?: string;
+  port?: number;
+  transport?: "streamable" | "sse" | "stdio" | "websocket";
+  openApiData: any;
+  config?: any;
+  authConfig?: string;
+  autoStart?: boolean;
+  tags?: string[];
   // 兼容旧字段
-  endpoint?: string
-  openApiSpec?: string | File
-  authentication?: AuthConfig
-  customHeaders?: Record<string, string>
+  endpoint?: string;
+  openApiSpec?: string | File;
+  authentication?: AuthConfig;
+  customHeaders?: Record<string, string>;
 }
 
 export interface ServerMetrics {
-  totalRequests: number
-  successfulRequests: number
-  failedRequests: number
-  averageResponseTime: number
-  errorRate: number
-  activeConnections: number
-  uptime: number
-  lastRequestTime?: Date
-  resourceUsage?: ResourceUsage
+  totalRequests: number;
+  successfulRequests: number;
+  failedRequests: number;
+  averageResponseTime: number;
+  errorRate: number;
+  activeConnections: number;
+  uptime: number;
+  lastRequestTime?: Date;
+  resourceUsage?: ResourceUsage;
 }
 
 export interface ResourceUsage {
-  cpu: number
-  memory: number
+  cpu: number;
+  memory: number;
   network: {
-    bytesIn: number
-    bytesOut: number
-  }
+    bytesIn: number;
+    bytesOut: number;
+  };
 }
 
 export interface MCPServer {
-  id: string
-  name: string
-  version: string
-  description?: string
-  port: number
-  transport: 'streamable' | 'sse' | 'stdio' | 'websocket'
-  status: ServerStatus
-  healthy: boolean
-  endpoint?: string
-  toolCount: number
-  autoStart: boolean
-  tags: string[]
-  errorMessage?: string
-  lastHealthCheck?: Date
-  createdAt: Date
-  updatedAt: Date
+  id: string;
+  name: string;
+  version: string;
+  description?: string;
+  port: number;
+  transport: "streamable" | "sse" | "stdio" | "websocket";
+  status: ServerStatus;
+  healthy: boolean;
+  endpoint?: string;
+  toolCount: number;
+  autoStart: boolean;
+  tags: string[];
+  errorMessage?: string;
+  lastHealthCheck?: Date;
+  createdAt: Date;
+  updatedAt: Date;
   // 兼容旧字段
-  config?: ServerConfig
-  tools?: MCPTool[]
-  metrics?: ServerMetrics
-  lastError?: string
+  config?: ServerConfig;
+  tools?: MCPTool[];
+  metrics?: ServerMetrics;
+  lastError?: string;
 }
 
 // ============================================================================
@@ -123,26 +128,26 @@ export interface MCPServer {
 // ============================================================================
 
 export interface ApiEndpoint {
-  method: string
-  path: string
-  summary: string
-  description: string
-  operationId: string
-  tags?: string[]
-  deprecated?: boolean
+  method: string;
+  path: string;
+  summary: string;
+  description: string;
+  operationId: string;
+  tags?: string[];
+  deprecated?: boolean;
 }
 
 export interface ValidationError {
-  path: string
-  message: string
-  severity: 'error' | 'warning' | 'info'
-  code: string
+  path: string;
+  message: string;
+  severity: "error" | "warning" | "info";
+  code: string;
 }
 
 export interface ValidationResult {
-  valid: boolean
-  errors?: ValidationError[]
-  warnings?: ValidationError[]
+  valid: boolean;
+  errors?: ValidationError[];
+  warnings?: ValidationError[];
 }
 
 // ============================================================================
@@ -150,40 +155,40 @@ export interface ValidationResult {
 // ============================================================================
 
 export interface OpenAPISpec {
-  id: string
-  name: string
-  version: string
-  description?: string
-  content: string
-  pathCount: number
-  toolCount: number
-  createdAt: string
-  lastModified: string
-  validationStatus: 'valid' | 'invalid' | 'warning'
-  validationErrors?: ValidationError[]
+  id: string;
+  name: string;
+  version: string;
+  description?: string;
+  content: string;
+  pathCount: number;
+  toolCount: number;
+  createdAt: string;
+  lastModified: string;
+  validationStatus: "valid" | "invalid" | "warning";
+  validationErrors?: ValidationError[];
 }
 
 export interface ParsedOpenAPISpec {
-  info: any
-  paths: Record<string, any>
-  endpoints: any[]
-  tools: any[]
-  servers: any[]
-  openapi: string
-  components: any
-  parsedAt: string
-  parseId?: string
+  info: any;
+  paths: Record<string, any>;
+  endpoints: any[];
+  tools: any[];
+  servers: any[];
+  openapi: string;
+  components: any;
+  parsedAt: string;
+  parseId?: string;
 }
 
 export interface MCPConfig {
-  name: string
-  version: string
-  description?: string
-  tools: MCPTool[]
-  servers: any[]
-  transport?: 'streamable' | 'sse' | 'stdio'
-  port?: number
-  metadata?: Record<string, any>
+  name: string;
+  version: string;
+  description?: string;
+  tools: MCPTool[];
+  servers: any[];
+  transport?: "streamable" | "sse" | "stdio";
+  port?: number;
+  metadata?: Record<string, any>;
 }
 
 // ============================================================================
@@ -191,56 +196,56 @@ export interface MCPConfig {
 // ============================================================================
 
 export interface MCPTool {
-  id: string
-  name: string
-  description: string
-  parameters: ParameterSchema
-  serverId: string
-  endpoint?: string
-  method: string
-  path?: string
-  createdAt?: Date
-  updatedAt?: Date
+  id: string;
+  name: string;
+  description: string;
+  parameters: ParameterSchema;
+  serverId: string;
+  endpoint?: string;
+  method: string;
+  path?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface ToolParameter {
-  name: string
-  type: 'string' | 'number' | 'integer' | 'boolean' | 'array' | 'object'
-  description?: string
-  required: boolean
-  default?: any
-  enum?: any[]
+  name: string;
+  type: "string" | "number" | "integer" | "boolean" | "array" | "object";
+  description?: string;
+  required: boolean;
+  default?: any;
+  enum?: any[];
 }
 
 export interface ParameterSchema {
-  type: 'object'
-  properties?: Record<string, PropertySchema>
-  required?: string[]
-  additionalProperties?: boolean
+  type: "object";
+  properties?: Record<string, PropertySchema>;
+  required?: string[];
+  additionalProperties?: boolean;
 }
 
 export interface PropertySchema {
-  type: 'string' | 'number' | 'integer' | 'boolean' | 'array' | 'object'
-  description?: string
-  format?: string
-  enum?: any[]
-  default?: any
-  items?: PropertySchema
-  properties?: Record<string, PropertySchema>
-  required?: string[]
-  minimum?: number
-  maximum?: number
-  minLength?: number
-  maxLength?: number
-  pattern?: string
+  type: "string" | "number" | "integer" | "boolean" | "array" | "object";
+  description?: string;
+  format?: string;
+  enum?: any[];
+  default?: any;
+  items?: PropertySchema;
+  properties?: Record<string, PropertySchema>;
+  required?: string[];
+  minimum?: number;
+  maximum?: number;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
 }
 
 export interface ToolResult {
-  success: boolean
-  data?: any
-  error?: string
-  executionTime: number
-  timestamp: Date
+  success: boolean;
+  data?: any;
+  error?: string;
+  executionTime: number;
+  timestamp: Date;
 }
 
 // ============================================================================
@@ -248,14 +253,14 @@ export interface ToolResult {
 // ============================================================================
 
 export interface TestCase {
-  id: string
-  name: string
-  toolId: string
-  parameters: Record<string, any>
-  expectedResult?: any
-  tags: string[]
-  createdAt: Date
-  updatedAt: Date
+  id: string;
+  name: string;
+  toolId: string;
+  parameters: Record<string, any>;
+  expectedResult?: any;
+  tags: string[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // ============================================================================
@@ -263,43 +268,43 @@ export interface TestCase {
 // ============================================================================
 
 export interface User {
-  id: string
-  username: string
-  email: string
-  avatar?: string
-  status: 'active' | 'pending' | 'locked'
-  emailVerified: boolean
-  createdAt: string
-  updatedAt: string
-  lastLoginAt?: string
-  failedLoginAttempts?: number
+  id: string;
+  username: string;
+  email: string;
+  avatar?: string;
+  status: "active" | "pending" | "locked";
+  emailVerified: boolean;
+  createdAt: string;
+  updatedAt: string;
+  lastLoginAt?: string;
+  failedLoginAttempts?: number;
 }
 
 export interface LoginCredentials {
-  username: string
-  password: string
+  username: string;
+  password: string;
 }
 
 export interface RegisterData {
-  username: string
-  email: string
-  password: string
+  username: string;
+  email: string;
+  password: string;
 }
 
 export interface AuthTokens {
-  accessToken: string
-  refreshToken: string
+  accessToken: string;
+  refreshToken: string;
 }
 
 export interface LoginResponse {
-  accessToken: string
-  refreshToken: string
-  user: User
+  accessToken: string;
+  refreshToken: string;
+  user: User;
 }
 
 export interface RegisterResponse {
-  user: User
-  message: string
+  user: User;
+  message: string;
 }
 
 // ============================================================================
@@ -307,27 +312,27 @@ export interface RegisterResponse {
 // ============================================================================
 
 export interface AuthConfig {
-  type: 'bearer' | 'apikey' | 'basic' | 'oauth2'
+  type: "bearer" | "apikey" | "basic" | "oauth2";
   credentials: {
-    token?: string
-    apiKey?: string
-    username?: string
-    password?: string
-    clientId?: string
-    clientSecret?: string
-  }
-  envVars?: string[]
-  encrypted: boolean
-  expiresAt?: string | Date
-  autoRenewal?: boolean
-  renewalInterval?: number
+    token?: string;
+    apiKey?: string;
+    username?: string;
+    password?: string;
+    clientId?: string;
+    clientSecret?: string;
+  };
+  envVars?: string[];
+  encrypted: boolean;
+  expiresAt?: string | Date;
+  autoRenewal?: boolean;
+  renewalInterval?: number;
 }
 
 export interface AuthTestResult {
-  success: boolean
-  message: string
-  details?: any
-  timestamp: Date
+  success: boolean;
+  message: string;
+  details?: any;
+  timestamp: Date;
 }
 
 // ============================================================================
@@ -335,34 +340,34 @@ export interface AuthTestResult {
 // ============================================================================
 
 export interface SystemMetrics {
-  totalRequests: number
-  averageResponseTime: number
-  errorRate: number
-  activeConnections: number
-  resourceUsage: ResourceUsage
-  timestamp: Date
+  totalRequests: number;
+  averageResponseTime: number;
+  errorRate: number;
+  activeConnections: number;
+  resourceUsage: ResourceUsage;
+  timestamp: Date;
 }
 
 export interface LogEntry {
-  id: string
-  timestamp: Date
-  level: LogLevel
-  message: string
-  serverId?: string
-  metadata?: Record<string, any>
-  source?: string
+  id: string;
+  timestamp: Date;
+  level: LogLevel;
+  message: string;
+  serverId?: string;
+  metadata?: Record<string, any>;
+  source?: string;
 }
 
 export interface LogFilter {
-  level?: LogLevel[]
-  serverId?: string
-  searchTerm?: string
-  timeRange?: TimeRange
+  level?: LogLevel[];
+  serverId?: string;
+  searchTerm?: string;
+  timeRange?: TimeRange;
 }
 
 export interface TimeRange {
-  start: Date
-  end: Date
+  start: Date;
+  end: Date;
 }
 
 // ============================================================================
@@ -370,35 +375,35 @@ export interface TimeRange {
 // ============================================================================
 
 export interface ConfigFile {
-  version: string
-  servers: MCPServer[]
-  globalSettings: GlobalSettings
-  exportedAt: Date
-  encrypted?: boolean
+  version: string;
+  servers: MCPServer[];
+  globalSettings: GlobalSettings;
+  exportedAt: Date;
+  encrypted?: boolean;
 }
 
 export interface ExportOptions {
-  includeServers: boolean
-  includeSensitiveData: boolean
-  encryptSensitiveData: boolean
+  includeServers: boolean;
+  includeSensitiveData: boolean;
+  encryptSensitiveData: boolean;
 }
 
 export interface ImportResult {
-  success: boolean
-  conflicts?: ConfigConflict[]
-  migrationRequired?: boolean
-  importedServers?: number
-  errors?: string[]
+  success: boolean;
+  conflicts?: ConfigConflict[];
+  migrationRequired?: boolean;
+  importedServers?: number;
+  errors?: string[];
 }
 
 export interface ConfigConflict {
-  type: 'server' | 'setting'
-  id: string
-  field: string
-  currentValue: any
-  newValue: any
-  existingValue?: any
-  resolution?: 'keep' | 'replace' | 'merge'
+  type: "server" | "setting";
+  id: string;
+  field: string;
+  currentValue: any;
+  newValue: any;
+  existingValue?: any;
+  resolution?: "keep" | "replace" | "merge";
 }
 
 // ============================================================================
@@ -406,33 +411,33 @@ export interface ConfigConflict {
 // ============================================================================
 
 export interface AIAssistantType {
-  id: string
-  name: string
-  configTemplate: string
-  supportedFeatures: string[]
-  description?: string
+  id: string;
+  name: string;
+  configTemplate: string;
+  supportedFeatures: string[];
+  description?: string;
 }
 
 export interface ConfigTemplate {
-  id: string
-  name: string
-  description: string
-  template: string
-  variables: ConfigVariable[]
-  createdAt: Date
+  id: string;
+  name: string;
+  description: string;
+  template: string;
+  variables: ConfigVariable[];
+  createdAt: Date;
 }
 
 export interface ConfigVariable {
-  name: string
-  type: 'string' | 'number' | 'boolean'
-  description: string
-  required: boolean
-  default?: any
+  name: string;
+  type: "string" | "number" | "boolean";
+  description: string;
+  required: boolean;
+  default?: any;
 }
 
 export interface ConfigOptions {
-  variables: Record<string, any>
-  format: 'json' | 'yaml'
+  variables: Record<string, any>;
+  format: "json" | "yaml";
 }
 
 // ============================================================================
@@ -440,15 +445,15 @@ export interface ConfigOptions {
 // ============================================================================
 
 export interface GlobalSettings {
-  theme: 'light' | 'dark' | 'auto'
-  language: 'zh' | 'en'
-  autoRefresh: boolean
-  refreshInterval: number
-  logLevel: LogLevel
-  maxLogEntries: number
-  enableNotifications: boolean
-  enableWebSocket: boolean
-  enableSounds: boolean
+  theme: "light" | "dark" | "auto";
+  language: "zh" | "en";
+  autoRefresh: boolean;
+  refreshInterval: number;
+  logLevel: LogLevel;
+  maxLogEntries: number;
+  enableNotifications: boolean;
+  enableWebSocket: boolean;
+  enableSounds: boolean;
 }
 
 // ============================================================================
@@ -456,75 +461,75 @@ export interface GlobalSettings {
 // ============================================================================
 
 export interface DetailedSystemMetrics {
-  timestamp: Date
+  timestamp: Date;
   cpu: {
-    usage: number // 百分比
-    cores: number
-    temperature?: number
-    frequency?: number // MHz
-  }
+    usage: number; // 百分比
+    cores: number;
+    temperature?: number;
+    frequency?: number; // MHz
+  };
   memory: {
-    total: number // bytes
-    used: number // bytes
-    free: number // bytes
-    usage: number // 百分比
-  }
+    total: number; // bytes
+    used: number; // bytes
+    free: number; // bytes
+    usage: number; // 百分比
+  };
   network: {
-    bytesIn: number
-    bytesOut: number
-    packetsIn: number
-    packetsOut: number
-    connections: number
-  }
+    bytesIn: number;
+    bytesOut: number;
+    packetsIn: number;
+    packetsOut: number;
+    connections: number;
+  };
   disk: {
-    total: number // bytes
-    used: number // bytes
-    free: number // bytes
-    usage: number // 百分比
-    readOps: number
-    writeOps: number
-  }
+    total: number; // bytes
+    used: number; // bytes
+    free: number; // bytes
+    usage: number; // 百分比
+    readOps: number;
+    writeOps: number;
+  };
   process: {
-    pid: number
-    uptime: number // seconds
-    memory: number // bytes
-    cpu: number // 百分比
-  }
+    pid: number;
+    uptime: number; // seconds
+    memory: number; // bytes
+    cpu: number; // 百分比
+  };
 }
 
 export interface PerformanceAlert {
-  id: string
-  type: 'cpu' | 'memory' | 'disk' | 'network' | 'error'
-  level: 'info' | 'warning' | 'critical'
-  message: string
-  value: number
-  threshold: number
-  timestamp: Date
-  acknowledged: boolean
+  id: string;
+  type: "cpu" | "memory" | "disk" | "network" | "error";
+  level: "info" | "warning" | "critical";
+  message: string;
+  value: number;
+  threshold: number;
+  timestamp: Date;
+  acknowledged: boolean;
 }
 
 export interface MonitoringConfig {
-  refreshInterval: number // milliseconds
+  refreshInterval: number; // milliseconds
   alerts: {
-    cpu: { warning: number; critical: number }
-    memory: { warning: number; critical: number }
-    disk: { warning: number; critical: number }
-    network: { warning: number; critical: number }
-  }
-  enableAlerts: boolean
-  enableSound: boolean
+    cpu: { warning: number; critical: number };
+    memory: { warning: number; critical: number };
+    disk: { warning: number; critical: number };
+    network: { warning: number; critical: number };
+  };
+  enableAlerts: boolean;
+  enableSound: boolean;
 }
 
 export interface ChartDataPoint {
-  timestamp: Date
-  value: number
-  label?: string
+  timestamp: Date;
+  value: number;
+  label?: string;
 }
 
 export interface ChartSeries {
-  name: string
-  data: ChartDataPoint[]
-  color?: string
+  name: string;
+  data: ChartDataPoint[];
+  color?: string;
 }
 
 // ============================================================================
@@ -532,16 +537,16 @@ export interface ChartSeries {
 // ============================================================================
 
 export interface SystemHealth {
-  status: 'healthy' | 'warning' | 'error'
+  status: "healthy" | "warning" | "error";
   services: {
-    api: 'online' | 'offline' | 'degraded'
-    websocket: 'connected' | 'disconnected' | 'reconnecting'
-    database: 'online' | 'offline' | 'degraded'
-  }
-  errorCount: number
-  lastCheck: Date
-  uptime: number
-  version: string
+    api: "online" | "offline" | "degraded";
+    websocket: "connected" | "disconnected" | "reconnecting";
+    database: "online" | "offline" | "degraded";
+  };
+  errorCount: number;
+  lastCheck: Date;
+  uptime: number;
+  version: string;
 }
 
 // ============================================================================
@@ -549,20 +554,20 @@ export interface SystemHealth {
 // ============================================================================
 
 export interface Notification {
-  id: string
-  type: 'success' | 'error' | 'warning' | 'info'
-  title: string
-  message: string
-  duration?: number
-  timestamp: Date
-  read?: boolean
-  actions?: NotificationAction[]
+  id: string;
+  type: "success" | "error" | "warning" | "info";
+  title: string;
+  message: string;
+  duration?: number;
+  timestamp: Date;
+  read?: boolean;
+  actions?: NotificationAction[];
 }
 
 export interface NotificationAction {
-  label: string
-  action: () => void
-  type?: 'primary' | 'default'
+  label: string;
+  action: () => void;
+  type?: "primary" | "default";
 }
 
 // ============================================================================
@@ -570,14 +575,14 @@ export interface NotificationAction {
 // ============================================================================
 
 export interface WebSocketMessage {
-  type: string
-  data: any
-  timestamp: Date
+  type: string;
+  data: any;
+  timestamp: Date;
 }
 
 export interface WebSocketSubscription {
-  type: string
-  filter?: any
+  type: string;
+  filter?: any;
 }
 
 // ============================================================================
@@ -585,21 +590,21 @@ export interface WebSocketSubscription {
 // ============================================================================
 
 export interface FormField {
-  name: string
-  label: string
-  type: 'text' | 'number' | 'select' | 'textarea' | 'switch' | 'file'
-  required?: boolean
-  placeholder?: string
-  options?: Array<{ label: string; value: any }>
-  validation?: FormValidation
+  name: string;
+  label: string;
+  type: "text" | "number" | "select" | "textarea" | "switch" | "file";
+  required?: boolean;
+  placeholder?: string;
+  options?: Array<{ label: string; value: any }>;
+  validation?: FormValidation;
 }
 
 export interface FormValidation {
-  required?: boolean
-  min?: number
-  max?: number
-  pattern?: RegExp
-  custom?: (value: any) => string | null
+  required?: boolean;
+  min?: number;
+  max?: number;
+  pattern?: RegExp;
+  custom?: (value: any) => string | null;
 }
 
 // ============================================================================
@@ -607,9 +612,9 @@ export interface FormValidation {
 // ============================================================================
 
 export interface RouteInfo {
-  path: string
-  name: string
-  title: string
-  icon?: string
-  children?: RouteInfo[]
+  path: string;
+  name: string;
+  title: string;
+  icon?: string;
+  children?: RouteInfo[];
 }
