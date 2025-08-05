@@ -4,6 +4,8 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ConfigModule } from '@nestjs/config';
 import { HttpModule } from '@nestjs/axios';
 
+import { DocumentsModule } from '../documents/documents.module';
+
 import { MonitoringGateway } from './websocket.gateway';
 import { AlertService } from './services/alert.service';
 import { NotificationService } from './services/notification.service';
@@ -26,6 +28,7 @@ import { AppConfigService } from '../../config/app-config.service';
     EventEmitterModule,
     ConfigModule,
     HttpModule,
+    DocumentsModule,
   ],
   providers: [
     MonitoringGateway,

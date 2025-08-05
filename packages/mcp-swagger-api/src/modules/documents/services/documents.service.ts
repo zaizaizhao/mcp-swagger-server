@@ -111,21 +111,22 @@ export class DocumentsService {
   /**
    * 获取单个文档详情
    */
-  async findOne(userId: string, id: string): Promise<DocumentDetailResponseDto> {
+  async findOne(userId: string | null, id: string): Promise<DocumentDetailResponseDto> {
     try {
+      const whereCondition = userId ? { id, userId } : { id };
       const document = await this.documentRepository.findOne({
-        where: { id, userId },
+        where: whereCondition,
       });
 
       if (!document) {
         throw new NotFoundException(`Document with ID ${id} not found`);
       }
 
-      this.logger.log(`Retrieved document ${id} for user ${userId}`);
+      this.logger.log(`Retrieved document ${id}${userId ? ` for user ${userId}` : ''}`);
       
       return this.toDetailResponseDto(document);
     } catch (error) {
-      this.logger.error(`Failed to get document ${id} for user ${userId}: ${error.message}`);
+      this.logger.error(`Failed to get document ${id}${userId ? ` for user ${userId}` : ''}: ${error.message}`);
       throw error;
     }
   }

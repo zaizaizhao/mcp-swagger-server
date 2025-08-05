@@ -63,6 +63,11 @@ export class CreateServerDto {
   @IsArray()
   @IsString({ each: true })
   tags?: string[];
+
+  @ApiPropertyOptional({ description: '服务器端点地址', example: 'http://localhost:3322' })
+  @IsOptional()
+  @IsString()
+  endpoint?: string;
 }
 
 /**
@@ -125,6 +130,11 @@ export class UpdateServerDto {
   @IsArray()
   @IsString({ each: true })
   tags?: string[];
+
+  @ApiPropertyOptional({ description: '服务器端点地址', example: 'http://localhost:3322' })
+  @IsOptional()
+  @IsString()
+  endpoint?: string;
 }
 
 /**

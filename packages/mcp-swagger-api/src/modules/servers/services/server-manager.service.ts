@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOptionsWhere } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -9,6 +9,7 @@ import { LogEntryEntity, LogLevel, LogSource } from '../../../database/entities/
 import { ServerLifecycleService } from './server-lifecycle.service';
 import { CreateServerDto, UpdateServerDto, ServerQueryDto, ServerResponseDto, PaginatedResponseDto } from '../dto/server.dto';
 import { ServerMapper } from '../utils/server-mapper.util';
+import { DocumentsService } from '../../documents/services/documents.service';
 
 export interface ServerInstance {
   id: string;
@@ -31,6 +32,7 @@ export class ServerManagerService {
     private readonly logRepository: Repository<LogEntryEntity>,
     private readonly lifecycleService: ServerLifecycleService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly documentsService: DocumentsService,
   ) {
     this.initializeExistingServers();
   }
@@ -97,11 +99,29 @@ export class ServerManagerService {
       }
     }
 
+    // 处理 OpenAPI 文档
+    let openApiData = createDto.openApiData;
+    
+    // 如果提供了 openApiDocumentId，从文档服务获取内容
+    if (createDto.config?.openApiDocumentId) {
+      try {
+        // 由于当前没有用户认证，暂时跳过用户验证，直接通过ID获取文档
+        const document = await this.documentsService.findOne(null, createDto.config.openApiDocumentId);
+        openApiData = JSON.parse(document.content);
+        this.logger.log(`Retrieved OpenAPI document ${createDto.config.openApiDocumentId} for server ${createDto.name}`);
+      } catch (error) {
+        this.logger.error(`Failed to retrieve OpenAPI document ${createDto.config.openApiDocumentId}: ${error.message}`);
+        throw new BadRequestException(`OpenAPI document with ID ${createDto.config.openApiDocumentId} not found or invalid`);
+      }
+    }
+
     // 验证OpenAPI数据
-    try {
-      await this.lifecycleService.validateOpenApiData(createDto.openApiData);
-    } catch (error) {
-      throw new ConflictException(`Invalid OpenAPI specification: ${error.message}`);
+    if (openApiData && Object.keys(openApiData).length > 0) {
+      try {
+        await this.lifecycleService.validateOpenApiData(openApiData);
+      } catch (error) {
+        throw new ConflictException(`Invalid OpenAPI specification: ${error.message}`);
+      }
     }
 
     // 创建服务器实体
@@ -111,7 +131,7 @@ export class ServerManagerService {
       description: createDto.description,
       port: createDto.port || await this.findAvailablePort(),
       transport: createDto.transport || TransportType.STREAMABLE,
-      openApiData: createDto.openApiData,
+      openApiData: openApiData,
       config: createDto.config,
       status: ServerStatus.STOPPED,
       healthy: false,
