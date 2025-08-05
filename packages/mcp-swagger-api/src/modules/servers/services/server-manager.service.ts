@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ConflictException, BadRequestException, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOptionsWhere } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -21,9 +21,11 @@ export interface ServerInstance {
 }
 
 @Injectable()
-export class ServerManagerService {
+export class ServerManagerService implements OnModuleInit {
   private readonly logger = new Logger(ServerManagerService.name);
   private readonly serverInstances = new Map<string, ServerInstance>();
+  private readonly startingServers = new Set<string>(); // 启动锁机制
+  private isInitialized = false;
 
   constructor(
     @InjectRepository(MCPServerEntity)
@@ -31,10 +33,79 @@ export class ServerManagerService {
     @InjectRepository(LogEntryEntity)
     private readonly logRepository: Repository<LogEntryEntity>,
     private readonly lifecycleService: ServerLifecycleService,
-    private readonly eventEmitter: EventEmitter2,
     private readonly documentsService: DocumentsService,
-  ) {
-    this.initializeExistingServers();
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
+
+  /**
+   * 模块初始化时调用
+   */
+  async onModuleInit(): Promise<void> {
+    if (!this.isInitialized) {
+      this.isInitialized = true;
+      await this.initializeExistingServers();
+    }
+  }
+
+  /**
+   * 检查并清理重复的服务器记录
+   */
+  private async checkAndCleanDuplicateServers(): Promise<void> {
+    try {
+      const servers = await this.serverRepository.find();
+      const serversByName = new Map<string, MCPServerEntity[]>();
+      const serversByPort = new Map<number, MCPServerEntity[]>();
+
+      // 按名称和端口分组
+      for (const server of servers) {
+        // 按名称分组
+        if (!serversByName.has(server.name)) {
+          serversByName.set(server.name, []);
+        }
+        serversByName.get(server.name)!.push(server);
+
+        // 按端口分组
+        if (!serversByPort.has(server.port)) {
+          serversByPort.set(server.port, []);
+        }
+        serversByPort.get(server.port)!.push(server);
+      }
+
+      // 检查重复的服务器名称
+      for (const [name, duplicates] of serversByName) {
+        if (duplicates.length > 1) {
+          this.logger.warn(`Found ${duplicates.length} servers with name '${name}'`);
+          // 保留最新的，删除其他的
+          const sorted = duplicates.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+          const toKeep = sorted[0];
+          const toDelete = sorted.slice(1);
+          
+          for (const server of toDelete) {
+            this.logger.log(`Deleting duplicate server '${server.name}' (ID: ${server.id})`);
+            await this.serverRepository.remove(server);
+          }
+        }
+      }
+
+      // 检查重复的端口
+      for (const [port, duplicates] of serversByPort) {
+        if (duplicates.length > 1) {
+          this.logger.warn(`Found ${duplicates.length} servers using port ${port}`);
+          // 保留最新的，其他的分配新端口
+          const sorted = duplicates.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+          const toKeep = sorted[0];
+          const toReassign = sorted.slice(1);
+          
+          for (const server of toReassign) {
+            const newPort = await this.findAvailablePort();
+            this.logger.log(`Reassigning server '${server.name}' from port ${port} to ${newPort}`);
+            await this.serverRepository.update(server.id, { port: newPort });
+          }
+        }
+      }
+    } catch (error) {
+      this.logger.error('Failed to check and clean duplicate servers:', error);
+    }
   }
 
   /**
@@ -42,16 +113,32 @@ export class ServerManagerService {
    */
   private async initializeExistingServers(): Promise<void> {
     try {
+      // 首先检查并清理重复的服务器记录
+      await this.checkAndCleanDuplicateServers();
+      
       const servers = await this.serverRepository.find({
         where: { autoStart: true },
       });
 
       this.logger.log(`Found ${servers.length} servers with auto-start enabled`);
 
+      // 用于跟踪已占用的端口
+      const usedPorts = new Set<number>();
+      // 用于跟踪已启动的服务器名称
+      const startedServers = new Set<string>();
+
       for (const server of servers) {
-        if (server.status === ServerStatus.RUNNING) {
-          // 重置状态，因为应用重启后服务器实际上已停止
+        // 检查是否已经在启动过程中
+        if (this.startingServers.has(server.id)) {
+          this.logger.warn(`Server '${server.name}' is already starting, skipping`);
+          continue;
+        }
+
+        // 重置状态，因为应用重启后服务器实际上已停止
+        if (server.status === ServerStatus.RUNNING || server.status === ServerStatus.STARTING) {
           await this.updateServerStatus(server.id, ServerStatus.STOPPED);
+          // 更新本地实体状态
+          server.status = ServerStatus.STOPPED;
         }
         
         // 创建服务器实例记录
@@ -60,14 +147,49 @@ export class ServerManagerService {
           entity: server,
         });
 
-        // 如果启用了自动启动，尝试启动服务器
-        if (server.autoStart) {
-          try {
-            await this.startServer(server.id);
-          } catch (error) {
-            this.logger.error(`Failed to auto-start server ${server.name}:`, error);
-            await this.logError(server.id, 'Auto-start failed', error);
+        // 检查是否已经启动过同名服务器
+        if (startedServers.has(server.name)) {
+          this.logger.warn(`Skipping duplicate server '${server.name}' - already started`);
+          continue;
+        }
+
+        // 检查端口是否已被占用（数据库层面）
+        if (usedPorts.has(server.port)) {
+          this.logger.warn(`Skipping server '${server.name}' - port ${server.port} already tracked as used`);
+          await this.logError(server.id, `Auto-start skipped: port ${server.port} already tracked as used`, new Error('Port conflict'));
+          continue;
+        }
+
+        // 检查端口是否真正可用（系统层面）
+        const isPortAvailable = await this.lifecycleService.isPortAvailable(server.port);
+        if (!isPortAvailable) {
+          this.logger.warn(`Skipping server '${server.name}' - port ${server.port} is not available on system`);
+          await this.logError(server.id, `Auto-start skipped: port ${server.port} is not available on system`, new Error('Port not available'));
+          usedPorts.add(server.port); // 标记为已占用
+          continue;
+        }
+
+        // 添加到启动锁
+        this.startingServers.add(server.id);
+
+        // 尝试启动服务器
+        try {
+          this.logger.log(`Starting server '${server.name}' on port ${server.port}`);
+          await this.startServer(server.id);
+          usedPorts.add(server.port);
+          startedServers.add(server.name);
+          this.logger.log(`Successfully started server '${server.name}'`);
+        } catch (error) {
+          this.logger.error(`Failed to auto-start server ${server.name}:`, error);
+          await this.logError(server.id, 'Auto-start failed', error);
+          
+          // 如果是端口冲突错误，记录端口为已占用
+          if (error.message && error.message.includes('EADDRINUSE')) {
+            usedPorts.add(server.port);
           }
+        } finally {
+          // 从启动锁中移除
+          this.startingServers.delete(server.id);
         }
       }
     } catch (error) {
@@ -102,7 +224,7 @@ export class ServerManagerService {
     // 处理 OpenAPI 文档
     let openApiData = createDto.openApiData;
     
-    // 如果提供了 openApiDocumentId，从文档服务获取内容
+    // 如果提供了 openApiDocumentId，从文档服务获取内容（优先级高于直接传入的openApiData）
     if (createDto.config?.openApiDocumentId) {
       try {
         // 由于当前没有用户认证，暂时跳过用户验证，直接通过ID获取文档
@@ -115,13 +237,16 @@ export class ServerManagerService {
       }
     }
 
-    // 验证OpenAPI数据
-    if (openApiData && Object.keys(openApiData).length > 0) {
-      try {
-        await this.lifecycleService.validateOpenApiData(openApiData);
-      } catch (error) {
-        throw new ConflictException(`Invalid OpenAPI specification: ${error.message}`);
-      }
+    // 检查是否有有效的OpenAPI数据
+    if (!openApiData || Object.keys(openApiData).length === 0) {
+      throw new BadRequestException('OpenAPI data is required. Please provide either openApiData or openApiDocumentId in config.');
+    }
+
+    // 验证OpenAPI数据（无论是直接传入还是从数据库获取）
+    try {
+      await this.lifecycleService.validateOpenApiData(openApiData);
+    } catch (error) {
+      throw new ConflictException(`Invalid OpenAPI specification: ${error.message}`);
     }
 
     // 创建服务器实体
@@ -321,6 +446,11 @@ export class ServerManagerService {
   async startServer(id: string): Promise<void> {
     const server = await this.getServerEntityById(id);
     
+    // 检查启动锁
+    if (this.startingServers.has(id)) {
+      throw new ConflictException('Server is already in the process of starting');
+    }
+    
     if (server.status === ServerStatus.RUNNING) {
       throw new ConflictException('Server is already running');
     }
@@ -328,6 +458,15 @@ export class ServerManagerService {
     if (server.status === ServerStatus.STARTING) {
       throw new ConflictException('Server is already starting');
     }
+
+    // 检查端口是否真正可用
+    const isPortAvailable = await this.lifecycleService.isPortAvailable(server.port);
+    if (!isPortAvailable) {
+      throw new ConflictException(`Port ${server.port} is not available`);
+    }
+
+    // 添加到启动锁
+    this.startingServers.add(id);
 
     await this.updateServerStatus(id, ServerStatus.STARTING);
     
@@ -355,6 +494,9 @@ export class ServerManagerService {
       await this.updateServerStatus(id, ServerStatus.ERROR, undefined, error.message);
       await this.logError(id, `Failed to start server '${server.name}'`, error);
       throw error;
+    } finally {
+      // 从启动锁中移除
+      this.startingServers.delete(id);
     }
   }
 
