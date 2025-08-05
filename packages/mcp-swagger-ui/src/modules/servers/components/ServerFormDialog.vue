@@ -17,30 +17,26 @@
         label="服务器名称"
         prop="name"
         required
-        :error="getFieldError('name')"
       >
         <el-input
           v-model="formData.name"
           placeholder="请输入服务器名称"
           clearable
-          @blur="() => validateField('name', formData.name)"
         />
       </el-form-item>
 
       <el-form-item
         label="版本"
         prop="version"
-        :error="getFieldError('version')"
       >
         <el-input
           v-model="formData.version"
           placeholder="请输入服务器版本（可选）"
           clearable
-          @blur="() => validateField('version', formData.version)"
         />
       </el-form-item>
 
-      <el-form-item label="端口" prop="port" :error="getFieldError('port')">
+      <el-form-item label="端口" prop="port">
         <el-input-number
           v-model="formData.port"
           :min="1"
@@ -53,7 +49,6 @@
       <el-form-item
         label="传输类型"
         prop="transport"
-        :error="getFieldError('transport')"
       >
         <el-select
           v-model="formData.transport"
@@ -71,7 +66,6 @@
         label="OpenAPI文档"
         prop="openApiDocumentId"
         required
-        :error="getFieldError('openApiDocumentId')"
       >
         <el-select
           v-model="formData.openApiDocumentId"
@@ -79,9 +73,6 @@
           style="width: 100%"
           :loading="documentsLoading"
           filterable
-          @blur="
-            () => validateField('openApiDocumentId', formData.openApiDocumentId)
-          "
         >
           <el-option
             v-for="doc in availableDocuments"
@@ -141,14 +132,12 @@
       <el-form-item
         label="描述"
         prop="description"
-        :error="getFieldError('description')"
       >
         <el-input
           v-model="formData.description"
           type="textarea"
           :rows="3"
           placeholder="请输入服务器描述（可选）"
-          @blur="() => validateField('description', formData.description)"
         />
       </el-form-item>
 
@@ -238,7 +227,6 @@ import {
 } from "@/api/documents";
 
 // 导入全局功能
-import { useFormValidation } from "@/composables/useFormValidation";
 import { usePerformanceMonitor } from "@/composables/usePerformance";
 
 interface Props {
@@ -288,67 +276,7 @@ const formData = ref<ServerConfig & { openApiDocumentId?: string }>({
   customHeaders: {},
 });
 
-// 使用全局表单验证
-const validationFields = [
-  {
-    name: "name",
-    label: "服务器名称",
-    rules: [
-      { required: true, message: "服务器名称不能为空" },
-      { type: "string" as const, min: 2, message: "服务器名称至少2个字符" },
-      {
-        type: "string" as const,
-        max: 50,
-        message: "服务器名称不能超过50个字符",
-      },
-    ],
-  },
-  {
-    name: "version",
-    label: "版本",
-    rules: [
-      { type: "string" as const, max: 20, message: "版本号不能超过20个字符" },
-    ],
-  },
-  {
-    name: "port",
-    label: "端口",
-    rules: [
-      {
-        type: "number" as const,
-        min: 1,
-        max: 65535,
-        message: "端口号必须在1-65535之间",
-      },
-    ],
-  },
-  {
-    name: "transport",
-    label: "传输类型",
-    rules: [{ required: true, message: "请选择传输类型" }],
-  },
-  {
-    name: "openApiDocumentId",
-    label: "OpenAPI文档",
-    rules: [{ required: true, message: "请选择要转换的OpenAPI文档" }],
-  },
-  {
-    name: "description",
-    label: "描述",
-    rules: [
-      { type: "string" as const, max: 200, message: "描述不能超过200个字符" },
-    ],
-  },
-];
 
-const {
-  formState,
-  validateField,
-  validateForm,
-  getFieldError,
-  resetForm: resetFormValidation,
-  setFieldValue,
-} = useFormValidation(validationFields);
 
 // 自定义头部列表
 const customHeadersList = ref<Array<{ key: string; value: string }>>([]);
@@ -475,8 +403,13 @@ const handleClose = () => {
 
 const handleSubmit = async () => {
   try {
-    // 使用全局表单验证
-    const isValid = await validateForm();
+    // 使用Element Plus表单验证
+    if (!formRef.value) {
+      ElMessage.error("表单引用未找到");
+      return;
+    }
+    
+    const isValid = await formRef.value.validate().catch(() => false);
     if (!isValid) {
       ElMessage.error("请检查表单输入");
       return;
@@ -509,7 +442,7 @@ const handleSubmit = async () => {
       // 兼容旧字段
       endpoint: formData.value.endpoint,
     };
-
+    console.log(serverConfig)
     let success = false;
 
     if (isEdit.value && props.server) {

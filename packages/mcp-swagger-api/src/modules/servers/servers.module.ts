@@ -18,6 +18,7 @@ import { LogEntryEntity } from '../../database/entities/log-entry.entity';
 // 导入其他模块的服务
 import { MCPModule } from '../mcp/mcp.module';
 import { OpenAPIModule } from '../openapi/openapi.module';
+import { DocumentsModule } from '../documents/documents.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { OpenAPIModule } from '../openapi/openapi.module';
     ScheduleModule.forRoot(),
     MCPModule,
     OpenAPIModule,
+    DocumentsModule,
   ],
   controllers: [ServersController],
   providers: [
