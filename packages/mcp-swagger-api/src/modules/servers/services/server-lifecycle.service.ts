@@ -10,9 +10,14 @@ import { MCPServerEntity, TransportType } from '../../../database/entities/mcp-s
 import { ServerInstance } from './server-manager.service';
 
 // 导入MCP相关模块
-// import { MCPService } from '../../mcp/mcp.service'; // TODO: 实现 MCP 服务
 import { ParserService } from '../../openapi/services/parser.service';
 import { ValidatorService } from '../../openapi/services/validator.service';
+
+// 导入mcp-swagger-server包中的transport实现
+import { createMcpServer } from 'mcp-swagger-server/dist/server.js';
+import { startStreamableMcpServer } from 'mcp-swagger-server/dist/transportUtils/stream.js';
+import { startSseMcpServer } from 'mcp-swagger-server/dist/transportUtils/sse.js';
+import { startStdioMcpServer } from 'mcp-swagger-server/dist/transportUtils/stdio.js';
 
 export interface ServerStartResult {
   mcpServer: any;
@@ -194,55 +199,84 @@ export class ServerLifecycleService {
    * 启动Streamable传输的MCP服务器
    */
   private async startStreamableServer(config: any): Promise<{ mcpServer: any; httpServer: any }> {
-    // TODO: 实现 MCP 服务集成
-    // const result = await this.mcpService.createFromOpenAPI({
-    //   openApiData: { tools: config.tools },
-    //   transport: 'streamable',
-    //   port: config.port,
-    //   config: config.config,
-    // });
+    try {
+      // 创建MCP服务器实例
+      const mcpServer = await createMcpServer({
+        openApiData: config.tools,
+        authConfig: config.authConfig,
+        customHeaders: config.config?.customHeaders || {},
+        debugHeaders: config.config?.debugHeaders || false,
+      });
 
-    // return {
-    //   mcpServer: result.mcpServer,
-    //   httpServer: result.httpServer,
-    // };
-    
-    throw new Error('Streamable transport not yet implemented');
+      // 启动Streamable传输
+      const endpoint = config.config?.endpoint || '/mcp';
+      const httpServer = await startStreamableMcpServer(mcpServer, endpoint, config.port);
+
+      return {
+        mcpServer,
+        httpServer,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to start streamable server: ${error.message}`);
+      throw error;
+    }
   }
 
   /**
    * 启动SSE传输的MCP服务器
    */
   private async startSSEServer(config: any): Promise<{ mcpServer: any; httpServer: any }> {
-    // TODO: 实现 MCP 服务集成
-    // const result = await this.mcpService.createFromOpenAPI({
-    //   openApiData: { tools: config.tools },
-    //   transport: 'sse',
-    //   port: config.port,
-    //   config: config.config,
-    // });
+    try {
+      // 创建MCP服务器实例
+      const mcpServer = await createMcpServer({
+        openApiData: config.tools,
+        authConfig: config.authConfig,
+        customHeaders: config.config?.customHeaders || {},
+        debugHeaders: config.config?.debugHeaders || false,
+      });
 
-    // return {
-    //   mcpServer: result.mcpServer,
-    //   httpServer: result.httpServer,
-    // };
-    
-    throw new Error('SSE transport not yet implemented');
+      // 启动SSE传输
+      const endpoint = config.config?.endpoint || '/mcp';
+      const httpServer = await startSseMcpServer(mcpServer, endpoint, config.port);
+
+      return {
+        mcpServer,
+        httpServer,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to start SSE server: ${error.message}`);
+      throw error;
+    }
   }
 
   /**
    * 启动Stdio传输的MCP服务器
    */
   private async startStdioServer(config: any): Promise<any> {
-    // TODO: 实现Stdio传输
-    throw new Error('Stdio transport not yet implemented');
+    try {
+      // 创建MCP服务器实例
+      const mcpServer = await createMcpServer({
+        openApiData: config.tools,
+        authConfig: config.authConfig,
+        customHeaders: config.config?.customHeaders || {},
+        debugHeaders: config.config?.debugHeaders || false,
+      });
+
+      // 启动Stdio传输
+      await startStdioMcpServer(mcpServer);
+
+      return mcpServer;
+    } catch (error) {
+      this.logger.error(`Failed to start stdio server: ${error.message}`);
+      throw error;
+    }
   }
 
   /**
    * 启动WebSocket传输的MCP服务器
    */
   private async startWebSocketServer(config: any): Promise<{ mcpServer: any; httpServer: any }> {
-    // TODO: 实现WebSocket传输
+    // WebSocket传输暂未实现
     throw new Error('WebSocket transport not yet implemented');
   }
 

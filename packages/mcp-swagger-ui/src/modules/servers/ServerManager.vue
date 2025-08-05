@@ -599,11 +599,83 @@ const editServer = (server: MCPServer) => {
   showCreateDialog.value = true;
 };
 
-const deleteServer = async (server: MCPServer) => {
-  const confirmed = await globalConfirmDelete(server.name);
-  if (!confirmed) return;
-
+// 检查服务器是否正在运行
+const checkServerRunning = async (server: MCPServer): Promise<boolean> => {
   try {
+    // 从服务器配置中获取端口，默认使用3004
+    const port = server.config?.port || 3004;
+    const baseUrl = `http://localhost:${port}`;
+    
+    // 检查health接口
+    const healthResponse = await fetch(`${baseUrl}/health`, {
+      method: 'GET',
+      timeout: 5000
+    });
+    
+    if (!healthResponse.ok) {
+      return false;
+    }
+    
+    const healthData = await healthResponse.text();
+    
+    // 检查ping接口
+    const pingResponse = await fetch(`${baseUrl}/ping`, {
+      method: 'GET',
+      timeout: 5000
+    });
+    
+    if (!pingResponse.ok) {
+      return false;
+    }
+    
+    const pingData = await pingResponse.text();
+    
+    // 判断服务器是否运行：health返回'ok'且ping返回'pong'
+    return healthData.trim().toLowerCase() === 'ok' && pingData.trim().toLowerCase() === 'pong';
+  } catch (error) {
+    console.log('检查服务器状态失败:', error);
+    return false;
+  }
+};
+
+const deleteServer = async (server: MCPServer) => {
+  try {
+    // 检查服务器是否正在运行
+    const isRunning = await checkServerRunning(server);
+    
+    if (isRunning) {
+      // 服务器正在运行，提示用户需要先停止服务器
+      const stopConfirmed = await ElMessageBox.confirm(
+        `服务器 "${server.name}" 正在运行中，删除前需要先停止服务器。是否继续？`,
+        '服务器正在运行',
+        {
+          confirmButtonText: '停止并删除',
+          cancelButtonText: '取消',
+          type: 'warning',
+          dangerouslyUseHTMLString: true
+        }
+      ).catch(() => false);
+      
+      if (!stopConfirmed) return;
+      
+      // 先停止服务器
+      try {
+        await serverStore.stopServer(server.id);
+        ElMessage.success(`服务器 ${server.name} 已停止`);
+        
+        // 等待一段时间确保服务器完全停止
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } catch (error) {
+        ElMessage.error(`停止服务器失败: ${error}`);
+        return;
+      }
+    }
+    
+    // 显示删除确认对话框
+    const confirmed = await globalConfirmDelete(server.name);
+    if (!confirmed) return;
+
+    // 执行删除操作
     await measureFunction("deleteServer", async () => {
       await serverStore.deleteServer(server.id);
     });

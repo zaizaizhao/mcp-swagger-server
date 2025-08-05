@@ -64,7 +64,7 @@ export class ServersController {
   async createServer(@Body() createDto: CreateServerDto): Promise<ServerResponseDto> {
     try {
       this.logger.log(`Creating server: ${createDto.name}`);
-      
+      console.log("createDto", createDto);
       const server = await this.serverManager.createServer(createDto);
       
       return server;
