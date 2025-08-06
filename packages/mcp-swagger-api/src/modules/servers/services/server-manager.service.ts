@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, ConflictException, BadRequestException, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ConflictException, BadRequestException, OnModuleInit, OnApplicationShutdown } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOptionsWhere } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -21,11 +21,14 @@ export interface ServerInstance {
 }
 
 @Injectable()
-export class ServerManagerService implements OnModuleInit {
+export class ServerManagerService implements OnModuleInit, OnApplicationShutdown {
   private readonly logger = new Logger(ServerManagerService.name);
   private readonly serverInstances = new Map<string, ServerInstance>();
   private readonly startingServers = new Set<string>(); // 启动锁机制
-  private isInitialized = false;
+  
+  // 使用静态变量防止热重载时重复初始化
+  private static isGloballyInitialized = false;
+  private static initializationLock = false;
 
   constructor(
     @InjectRepository(MCPServerEntity)
@@ -41,9 +44,40 @@ export class ServerManagerService implements OnModuleInit {
    * 模块初始化时调用
    */
   async onModuleInit(): Promise<void> {
-    if (!this.isInitialized) {
-      this.isInitialized = true;
+    // 使用静态变量和锁机制防止热重载时重复初始化
+    if (ServerManagerService.isGloballyInitialized) {
+      this.logger.warn('ServerManagerService already globally initialized, skipping duplicate initialization');
+      return;
+    }
+    
+    // 防止并发初始化
+    if (ServerManagerService.initializationLock) {
+      this.logger.warn('ServerManagerService initialization already in progress, waiting...');
+      // 等待其他初始化完成
+      let attempts = 0;
+      while (ServerManagerService.initializationLock && attempts < 50) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+      
+      if (ServerManagerService.isGloballyInitialized) {
+        this.logger.log('ServerManagerService initialization completed by another instance');
+        return;
+      }
+    }
+    
+    ServerManagerService.initializationLock = true;
+    this.logger.log('Starting ServerManagerService initialization...');
+    
+    try {
       await this.initializeExistingServers();
+      ServerManagerService.isGloballyInitialized = true;
+      this.logger.log('ServerManagerService initialization completed successfully');
+    } catch (error) {
+      this.logger.error('ServerManagerService initialization failed:', error);
+      throw error;
+    } finally {
+      ServerManagerService.initializationLock = false;
     }
   }
 
@@ -650,5 +684,74 @@ export class ServerManagerService implements OnModuleInit {
       component: 'ServerManagerService',
       stackTrace: error.stack,
     });
+  }
+
+  /**
+   * 应用关闭时调用，停止所有运行中的服务器
+   */
+  async onApplicationShutdown(signal?: string): Promise<void> {
+    this.logger.log(`Application shutdown initiated with signal: ${signal || 'unknown'}`);
+    
+    try {
+      // 获取所有运行中的服务器实例
+      const runningInstances = this.getRunningInstances();
+      
+      if (runningInstances.length === 0) {
+        this.logger.log('No running servers to stop');
+        return;
+      }
+
+      this.logger.log(`Stopping ${runningInstances.length} running servers...`);
+      
+      // 并行停止所有运行中的服务器
+      const stopPromises = runningInstances.map(async (instance) => {
+        try {
+          this.logger.log(`Stopping server: ${instance.entity.name} (${instance.id})`);
+          
+          // 更新状态为停止中
+          await this.updateServerStatus(instance.id, ServerStatus.STOPPING);
+          
+          // 停止服务器
+          if (instance.mcpServer || instance.httpServer) {
+            await this.lifecycleService.stopServer(instance);
+          }
+          
+          // 更新状态为已停止
+          await this.updateServerStatus(instance.id, ServerStatus.STOPPED);
+          
+          // 清理内存中的实例
+          this.serverInstances.set(instance.id, {
+            id: instance.id,
+            entity: instance.entity,
+          });
+          
+          await this.logInfo(instance.id, `Server '${instance.entity.name}' stopped during application shutdown`);
+          
+          this.logger.log(`Successfully stopped server: ${instance.entity.name} (${instance.id})`);
+        } catch (error) {
+          this.logger.error(`Failed to stop server ${instance.entity.name} (${instance.id}):`, error);
+          
+          // 即使停止失败，也要更新状态为错误
+          try {
+            await this.updateServerStatus(instance.id, ServerStatus.ERROR, undefined, error.message);
+            await this.logError(instance.id, `Failed to stop server '${instance.entity.name}' during application shutdown`, error);
+          } catch (logError) {
+            this.logger.error(`Failed to log error for server ${instance.id}:`, logError);
+          }
+        }
+      });
+      
+      // 等待所有服务器停止完成（设置超时时间）
+      await Promise.allSettled(stopPromises);
+      
+      this.logger.log('Application shutdown cleanup completed');
+    } catch (error) {
+      this.logger.error('Error during application shutdown:', error);
+    } finally {
+      // 重置静态初始化状态，允许下次启动时重新初始化
+      ServerManagerService.isGloballyInitialized = false;
+      ServerManagerService.initializationLock = false;
+      this.logger.log('Reset global initialization state');
+    }
   }
 }
