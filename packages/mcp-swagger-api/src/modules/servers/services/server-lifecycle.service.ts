@@ -321,8 +321,14 @@ export class ServerLifecycleService {
 
   /**
    * 设置服务器超时监控
+   * 注意：已禁用超时机制，MCP服务器将持续运行不会自动关闭
    */
   private setupServerTimeout(serverId: string, mcpServer: any, httpServer?: any): void {
+    // 超时机制已被禁用，服务器将持续运行
+    this.logger.log(`Server ${serverId} timeout monitoring disabled - server will run indefinitely`);
+    
+    // 原超时逻辑已注释，不再设置任何超时
+    /*
     const timeoutMs = this.configService.get<number>('MCP_SERVER_TIMEOUT', 300000); // 5分钟默认超时
     
     if (timeoutMs > 0) {
@@ -340,6 +346,7 @@ export class ServerLifecycleService {
       
       this.serverTimeouts.set(serverId, timeout);
     }
+    */
   }
 
   /**
