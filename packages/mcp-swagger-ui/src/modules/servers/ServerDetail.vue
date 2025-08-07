@@ -595,12 +595,20 @@ const getStatusText = (status: ServerStatus) => {
 };
 
 const formatUptime = (uptime: number) => {
+  // 如果有startedAt字段，基于它实时计算运行时间
+  if (serverInfo.value?.metrics?.startedAt) {
+    const startTime = new Date(serverInfo.value.metrics.startedAt);
+    const now = new Date();
+    const uptimeMs = now.getTime() - startTime.getTime();
+    const hours = Math.floor(uptimeMs / 3600000);
+    const minutes = Math.floor((uptimeMs % 3600000) / 60000);
+    return `${hours}h ${minutes}m`;
+  }
+  
+  // 兼容旧的uptime字段（毫秒）
   const hours = Math.floor(uptime / 3600000);
   const minutes = Math.floor((uptime % 3600000) / 60000);
-  if (hours > 0) {
-    return `${hours}小时${minutes}分钟`;
-  }
-  return `${minutes}分钟`;
+  return `${hours}h ${minutes}m`;
 };
 
 const formatDateTime = (date: Date) => {

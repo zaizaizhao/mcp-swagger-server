@@ -85,6 +85,7 @@ export interface ServerMetrics {
   activeConnections: number;
   uptime: number;
   lastRequestTime?: Date;
+  startedAt?: Date;
   resourceUsage?: ResourceUsage;
 }
 

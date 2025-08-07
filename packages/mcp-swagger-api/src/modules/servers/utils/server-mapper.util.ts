@@ -27,6 +27,7 @@ export class ServerMapper {
     dto.lastHealthCheck = entity.lastHealthCheck;
     dto.createdAt = entity.createdAt;
     dto.updatedAt = entity.updatedAt;
+    dto.metrics = entity.metrics;
     
     return dto;
   }

@@ -26,8 +26,7 @@ export class ServerManagerService implements OnModuleInit, OnApplicationShutdown
   private readonly serverInstances = new Map<string, ServerInstance>();
   private readonly startingServers = new Set<string>(); // 启动锁机制
   
-  // 使用静态变量防止热重载时重复初始化
-  private static isGloballyInitialized = false;
+  // 防止并发初始化的锁机制
   private static initializationLock = false;
 
   constructor(
@@ -44,12 +43,6 @@ export class ServerManagerService implements OnModuleInit, OnApplicationShutdown
    * 模块初始化时调用
    */
   async onModuleInit(): Promise<void> {
-    // 使用静态变量和锁机制防止热重载时重复初始化
-    if (ServerManagerService.isGloballyInitialized) {
-      this.logger.warn('ServerManagerService already globally initialized, skipping duplicate initialization');
-      return;
-    }
-    
     // 防止并发初始化
     if (ServerManagerService.initializationLock) {
       this.logger.warn('ServerManagerService initialization already in progress, waiting...');
@@ -59,19 +52,15 @@ export class ServerManagerService implements OnModuleInit, OnApplicationShutdown
         await new Promise(resolve => setTimeout(resolve, 100));
         attempts++;
       }
-      
-      if (ServerManagerService.isGloballyInitialized) {
-        this.logger.log('ServerManagerService initialization completed by another instance');
-        return;
-      }
+      this.logger.log('ServerManagerService initialization wait completed');
+      return;
     }
-    
+
     ServerManagerService.initializationLock = true;
     this.logger.log('Starting ServerManagerService initialization...');
     
     try {
       await this.initializeExistingServers();
-      ServerManagerService.isGloballyInitialized = true;
       this.logger.log('ServerManagerService initialization completed successfully');
     } catch (error) {
       this.logger.error('ServerManagerService initialization failed:', error);
@@ -146,6 +135,7 @@ export class ServerManagerService implements OnModuleInit, OnApplicationShutdown
    * 初始化时加载现有服务器
    */
   private async initializeExistingServers(): Promise<void> {
+    this.logger.log(`🚀 [DEBUG] Starting initializeExistingServers process`);
     try {
       // 首先检查并清理重复的服务器记录
       await this.checkAndCleanDuplicateServers();
@@ -154,7 +144,12 @@ export class ServerManagerService implements OnModuleInit, OnApplicationShutdown
         where: { autoStart: true },
       });
 
-      this.logger.log(`Found ${servers.length} servers with auto-start enabled`);
+      this.logger.log(`📊 [DEBUG] Found ${servers.length} servers with auto-start enabled`);
+      
+      // 打印每个服务器的详细信息
+      servers.forEach(server => {
+        this.logger.log(`📋 [DEBUG] Server found - ID: ${server.id}, Name: ${server.name}, Status: ${server.status}, Port: ${server.port}, AutoStart: ${server.autoStart}`);
+      });
 
       // 用于跟踪已占用的端口
       const usedPorts = new Set<number>();
@@ -162,17 +157,21 @@ export class ServerManagerService implements OnModuleInit, OnApplicationShutdown
       const startedServers = new Set<string>();
 
       for (const server of servers) {
+        this.logger.log(`🔄 [DEBUG] Processing server: ${server.name} (${server.id})`);
+        
         // 检查是否已经在启动过程中
         if (this.startingServers.has(server.id)) {
-          this.logger.warn(`Server '${server.name}' is already starting, skipping`);
+          this.logger.warn(`⚠️ [DEBUG] Server '${server.name}' is already starting, skipping`);
           continue;
         }
 
         // 重置状态，因为应用重启后服务器实际上已停止
         if (server.status === ServerStatus.RUNNING || server.status === ServerStatus.STARTING) {
+          this.logger.log(`🔄 [DEBUG] Resetting server '${server.name}' status from ${server.status} to STOPPED`);
           await this.updateServerStatus(server.id, ServerStatus.STOPPED);
           // 更新本地实体状态
           server.status = ServerStatus.STOPPED;
+          this.logger.log(`✅ [DEBUG] Server '${server.name}' status reset completed`);
         }
         
         // 创建服务器实例记录
@@ -203,9 +202,6 @@ export class ServerManagerService implements OnModuleInit, OnApplicationShutdown
           continue;
         }
 
-        // 添加到启动锁
-        this.startingServers.add(server.id);
-
         // 尝试启动服务器
         try {
           this.logger.log(`Starting server '${server.name}' on port ${server.port}`);
@@ -221,9 +217,6 @@ export class ServerManagerService implements OnModuleInit, OnApplicationShutdown
           if (error.message && error.message.includes('EADDRINUSE')) {
             usedPorts.add(server.port);
           }
-        } finally {
-          // 从启动锁中移除
-          this.startingServers.delete(server.id);
         }
       }
     } catch (error) {
@@ -614,22 +607,72 @@ export class ServerManagerService implements OnModuleInit, OnApplicationShutdown
     endpoint?: string,
     errorMessage?: string
   ): Promise<void> {
-    await this.serverRepository.update(id, {
-      status,
-      endpoint,
-      errorMessage,
-      healthy: status === ServerStatus.RUNNING,
-      lastHealthCheck: new Date(),
-    });
+    this.logger.log(`🔄 [DEBUG] Updating server status - ID: ${id}, Status: ${status}, Endpoint: ${endpoint || 'N/A'}, Error: ${errorMessage || 'N/A'}`);
+    
+    try {
+      // 获取当前服务器信息以更新metrics
+      const currentServer = await this.serverRepository.findOne({ where: { id } });
+      if (!currentServer) {
+        throw new Error(`Server ${id} not found`);
+      }
 
-    // 更新内存中的实例
-    const instance = this.serverInstances.get(id);
-    if (instance) {
-      instance.entity.status = status;
-      instance.entity.endpoint = endpoint;
-      instance.entity.errorMessage = errorMessage;
-      instance.entity.healthy = status === ServerStatus.RUNNING;
-      instance.entity.lastHealthCheck = new Date();
+      // 准备更新的metrics
+      let updatedMetrics = currentServer.metrics || {};
+      
+      // 如果状态变为RUNNING，记录启动时间
+      if (status === ServerStatus.RUNNING && currentServer.status !== ServerStatus.RUNNING) {
+        updatedMetrics = {
+          ...updatedMetrics,
+          startedAt: new Date(),
+        };
+        this.logger.log(`🚀 [DEBUG] Recording server start time for ${id}`);
+      }
+      
+      // 如果状态变为STOPPED或ERROR，清除启动时间
+      if ((status === ServerStatus.STOPPED || status === ServerStatus.ERROR) && updatedMetrics.startedAt) {
+        updatedMetrics = {
+          ...updatedMetrics,
+          startedAt: undefined,
+        };
+        this.logger.log(`🛑 [DEBUG] Clearing server start time for ${id}`);
+      }
+
+      // 更新数据库
+      const updateResult = await this.serverRepository.update(id, {
+        status,
+        endpoint,
+        errorMessage,
+        healthy: status === ServerStatus.RUNNING,
+        lastHealthCheck: new Date(),
+        metrics: updatedMetrics,
+      });
+      
+      this.logger.log(`✅ [DEBUG] Database update result - Affected rows: ${updateResult.affected}`);
+      
+      // 验证数据库更新
+      const updatedServer = await this.serverRepository.findOne({ where: { id } });
+      if (updatedServer) {
+        this.logger.log(`📊 [DEBUG] Database verification - Server ${id} status is now: ${updatedServer.status}`);
+      } else {
+        this.logger.error(`❌ [DEBUG] Server ${id} not found in database after update`);
+      }
+
+      // 更新内存中的实例
+      const instance = this.serverInstances.get(id);
+      if (instance) {
+        instance.entity.status = status;
+        instance.entity.endpoint = endpoint;
+        instance.entity.errorMessage = errorMessage;
+        instance.entity.healthy = status === ServerStatus.RUNNING;
+        instance.entity.lastHealthCheck = new Date();
+        instance.entity.metrics = updatedMetrics;
+        this.logger.log(`💾 [DEBUG] Memory instance updated for server ${id}`);
+      } else {
+        this.logger.warn(`⚠️ [DEBUG] No memory instance found for server ${id}`);
+      }
+    } catch (error) {
+      this.logger.error(`❌ [DEBUG] Failed to update server status for ${id}:`, error);
+      throw error;
     }
   }
 
@@ -748,10 +791,9 @@ export class ServerManagerService implements OnModuleInit, OnApplicationShutdown
     } catch (error) {
       this.logger.error('Error during application shutdown:', error);
     } finally {
-      // 重置静态初始化状态，允许下次启动时重新初始化
-      ServerManagerService.isGloballyInitialized = false;
+      // 重置初始化锁状态，允许下次启动时重新初始化
       ServerManagerService.initializationLock = false;
-      this.logger.log('Reset global initialization state');
+      this.logger.log('Reset initialization lock state');
     }
   }
 }

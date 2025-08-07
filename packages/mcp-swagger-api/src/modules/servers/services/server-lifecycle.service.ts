@@ -94,14 +94,14 @@ export class ServerLifecycleService {
           const streamableResult = await this.startStreamableServer(mcpConfig);
           mcpServer = streamableResult.mcpServer;
           httpServer = streamableResult.httpServer;
-          endpoint = `http://localhost:${serverEntity.port}`;
+          endpoint = `http://localhost:${serverEntity.port}/mcp`;
           break;
 
         case TransportType.SSE:
           const sseResult = await this.startSSEServer(mcpConfig);
           mcpServer = sseResult.mcpServer;
           httpServer = sseResult.httpServer;
-          endpoint = `http://localhost:${serverEntity.port}`;
+          endpoint = `http://localhost:${serverEntity.port}/mcp`;
           break;
 
         case TransportType.STDIO:

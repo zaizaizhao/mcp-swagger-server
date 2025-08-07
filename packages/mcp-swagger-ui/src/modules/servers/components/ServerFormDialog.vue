@@ -57,8 +57,6 @@
         >
           <el-option label="Streamable" value="streamable" />
           <el-option label="Server-Sent Events" value="sse" />
-          <el-option label="Standard I/O" value="stdio" />
-          <el-option label="WebSocket" value="websocket" />
         </el-select>
       </el-form-item>
 
