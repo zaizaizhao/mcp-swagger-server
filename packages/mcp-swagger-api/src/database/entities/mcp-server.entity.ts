@@ -98,6 +98,7 @@ export class MCPServerEntity {
     avgResponseTime?: number;
     lastRequestTime?: Date;
     uptime?: number;
+    startedAt?: Date;
   };
 
   @Column({ type: 'boolean', default: true })

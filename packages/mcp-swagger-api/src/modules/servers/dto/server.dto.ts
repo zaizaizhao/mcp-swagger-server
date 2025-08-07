@@ -464,6 +464,22 @@ export class ServerResponseDto {
 
   @ApiProperty({ description: '更新时间' })
   updatedAt: Date;
+
+  @ApiProperty({ description: '服务器指标', required: false })
+  metrics?: {
+    requestCount?: number;
+    errorCount?: number;
+    avgResponseTime?: number;
+    lastRequestTime?: Date;
+    uptime?: number;
+    startedAt?: Date;
+    totalRequests?: number;
+    successfulRequests?: number;
+    failedRequests?: number;
+    averageResponseTime?: number;
+    errorRate?: number;
+    activeConnections?: number;
+  };
 }
 
 /**

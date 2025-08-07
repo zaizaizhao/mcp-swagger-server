@@ -189,7 +189,7 @@
                     {{ getStatusText(server.status) }}
                   </el-tag>
                   <span class="uptime" v-if="server.status === 'running'">
-                    运行时间: {{ formatUptime(server.metrics?.uptime || 0) }}
+                    运行时间: {{ formatUptime(server.metrics?.uptime || 0, server) }}
                   </span>
                 </div>
 
@@ -500,7 +500,18 @@ const getStatusText = (status: ServerStatus) => {
   return textMap[status] || "未知";
 };
 
-const formatUptime = (uptime: number) => {
+const formatUptime = (uptime: number, server?: any) => {
+  // 如果有startedAt字段，基于它实时计算运行时间
+  if (server?.metrics?.startedAt) {
+    const startTime = new Date(server.metrics.startedAt);
+    const now = new Date();
+    const uptimeMs = now.getTime() - startTime.getTime();
+    const hours = Math.floor(uptimeMs / 3600000);
+    const minutes = Math.floor((uptimeMs % 3600000) / 60000);
+    return `${hours}h ${minutes}m`;
+  }
+  
+  // 兼容旧的uptime字段（毫秒）
   const hours = Math.floor(uptime / 3600000);
   const minutes = Math.floor((uptime % 3600000) / 60000);
   return `${hours}h ${minutes}m`;
@@ -606,32 +617,40 @@ const checkServerRunning = async (server: MCPServer): Promise<boolean> => {
     const port = server.config?.port || 3004;
     const baseUrl = `http://localhost:${port}`;
     
-    // 检查health接口
-    const healthResponse = await fetch(`${baseUrl}/health`, {
-      method: 'GET',
-      timeout: 5000
-    });
+    // 创建AbortController用于超时控制
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
     
-    if (!healthResponse.ok) {
-      return false;
+    try {
+      // 检查health接口
+      const healthResponse = await fetch(`${baseUrl}/health`, {
+        method: 'GET',
+        signal: controller.signal
+      });
+      
+      if (!healthResponse.ok) {
+        return false;
+      }
+      
+      const healthData = await healthResponse.text();
+      
+      // 检查ping接口
+      const pingResponse = await fetch(`${baseUrl}/ping`, {
+        method: 'GET',
+        signal: controller.signal
+      });
+      
+      if (!pingResponse.ok) {
+        return false;
+      }
+      
+      const pingData = await pingResponse.text();
+      
+      // 判断服务器是否运行：health返回'ok'且ping返回'pong'
+      return healthData.trim().toLowerCase() === 'ok' && pingData.trim().toLowerCase() === 'pong';
+    } finally {
+      clearTimeout(timeoutId);
     }
-    
-    const healthData = await healthResponse.text();
-    
-    // 检查ping接口
-    const pingResponse = await fetch(`${baseUrl}/ping`, {
-      method: 'GET',
-      timeout: 5000
-    });
-    
-    if (!pingResponse.ok) {
-      return false;
-    }
-    
-    const pingData = await pingResponse.text();
-    
-    // 判断服务器是否运行：health返回'ok'且ping返回'pong'
-    return healthData.trim().toLowerCase() === 'ok' && pingData.trim().toLowerCase() === 'pong';
   } catch (error) {
     console.log('检查服务器状态失败:', error);
     return false;

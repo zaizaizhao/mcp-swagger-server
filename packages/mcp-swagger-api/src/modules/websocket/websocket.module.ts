@@ -5,6 +5,7 @@ import { ConfigModule } from '@nestjs/config';
 import { HttpModule } from '@nestjs/axios';
 
 import { DocumentsModule } from '../documents/documents.module';
+import { ServersModule } from '../servers/servers.module';
 
 import { MonitoringGateway } from './websocket.gateway';
 import { AlertService } from './services/alert.service';
@@ -14,14 +15,6 @@ import { WebSocketMetricsService } from './services/websocket-metrics.service';
 import { MCPServerEntity } from '../../database/entities/mcp-server.entity';
 import { LogEntryEntity } from '../../database/entities/log-entry.entity';
 
-import { ServerMetricsService } from '../servers/services/server-metrics.service';
-import { ServerHealthService } from '../servers/services/server-health.service';
-import { ServerManagerService } from '../servers/services/server-manager.service';
-import { ServerLifecycleService } from '../servers/services/server-lifecycle.service';
-import { ParserService } from '../openapi/services/parser.service';
-import { ValidatorService } from '../openapi/services/validator.service';
-import { AppConfigService } from '../../config/app-config.service';
-
 @Module({
   imports: [
     TypeOrmModule.forFeature([MCPServerEntity, LogEntryEntity]),
@@ -29,19 +22,13 @@ import { AppConfigService } from '../../config/app-config.service';
     ConfigModule,
     HttpModule,
     DocumentsModule,
+    ServersModule,
   ],
   providers: [
     MonitoringGateway,
     AlertService,
     NotificationService,
     WebSocketMetricsService,
-    ServerMetricsService,
-    ServerHealthService,
-    ServerManagerService,
-    ServerLifecycleService,
-    ParserService,
-    ValidatorService,
-    AppConfigService,
   ],
   exports: [
     MonitoringGateway,
