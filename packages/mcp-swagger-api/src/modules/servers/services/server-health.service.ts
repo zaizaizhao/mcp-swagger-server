@@ -141,10 +141,9 @@ export class ServerHealthService {
       if (instance.entity.healthy !== healthy) {
         this.eventEmitter.emit('server.health.changed', {
           serverId,
-          serverName: instance.entity.name,
-          previousHealth: instance.entity.healthy,
-          currentHealth: healthy,
-          responseTime,
+          healthy,
+          error: healthy ? undefined : 'Health check failed',
+          timestamp: new Date(),
         });
       }
 
