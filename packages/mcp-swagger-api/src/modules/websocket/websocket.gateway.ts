@@ -317,11 +317,12 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
    * 监听服务器状态变化事件
    */
   @OnEvent('server.status.changed')
-  handleServerStatusChanged(payload: { serverId: string; status: string; timestamp: Date }) {
+  handleServerStatusChanged(payload: { serverId: string; status: string; timestamp?: Date }) {
+    const timestamp = payload.timestamp || new Date();
     this.server.emit('server-status-changed', {
       serverId: payload.serverId,
       status: payload.status,
-      timestamp: payload.timestamp.toISOString(),
+      timestamp: timestamp.toISOString(),
     });
 
     // 发送到特定服务器的订阅者
@@ -330,7 +331,7 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
       this.server.to(room).emit('server-status-changed', {
         serverId: payload.serverId,
         status: payload.status,
-        timestamp: payload.timestamp.toISOString(),
+        timestamp: timestamp.toISOString(),
       });
     }
   }
@@ -339,12 +340,13 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
    * 监听服务器健康状态变化事件
    */
   @OnEvent('server.health.changed')
-  handleServerHealthChanged(payload: { serverId: string; healthy: boolean; error?: string; timestamp: Date }) {
+  handleServerHealthChanged(payload: { serverId: string; healthy: boolean; error?: string; timestamp?: Date }) {
+    const timestamp = payload.timestamp || new Date();
     this.server.emit('server-health-changed', {
       serverId: payload.serverId,
       healthy: payload.healthy,
       error: payload.error,
-      timestamp: payload.timestamp.toISOString(),
+      timestamp: timestamp.toISOString(),
     });
 
     // 如果健康状态变为不健康，发送告警
@@ -354,7 +356,7 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
         severity: 'warning',
         serverId: payload.serverId,
         message: `Server ${payload.serverId} is unhealthy: ${payload.error || 'Unknown error'}`,
-        timestamp: payload.timestamp,
+        timestamp: timestamp,
       });
     }
   }
@@ -363,7 +365,8 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
    * 监听日志事件
    */
   @OnEvent('server.log')
-  handleServerLog(payload: { serverId: string; level: string; message: string; timestamp: Date; source: string }) {
+  handleServerLog(payload: { serverId: string; level: string; message: string; timestamp?: Date; source: string }) {
+    const timestamp = payload.timestamp || new Date();
     const room = `server-logs-${payload.serverId}`;
     if (this.server && this.server.sockets && this.server.sockets.adapter && this.server.sockets.adapter.rooms && this.server.sockets.adapter.rooms.has(room)) {
       this.server.to(room).emit('server-log', {
@@ -371,7 +374,7 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
         level: payload.level,
         message: payload.message,
         source: payload.source,
-        timestamp: payload.timestamp.toISOString(),
+        timestamp: timestamp.toISOString(),
       });
     }
 
@@ -383,7 +386,7 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
         serverId: payload.serverId,
         message: payload.message,
         source: payload.source,
-        timestamp: payload.timestamp,
+        timestamp: timestamp,
       });
     }
   }

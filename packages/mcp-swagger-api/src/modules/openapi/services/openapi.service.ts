@@ -1,10 +1,13 @@
-import { Injectable, Logger, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { AppConfigService } from '../../../config/app-config.service';
 import { ParserService } from './parser.service';
 import { ValidatorService } from './validator.service';
 import { ConfigureOpenAPIDto } from '../dto/configure-openapi.dto';
 import { OpenAPIResponseDto } from '../dto/openapi-response.dto';
+import { MCPServerEntity } from '../../../database/entities/mcp-server.entity';
 import { UrlParser, FileParser, TextParser } from 'mcp-swagger-parser';
 import { log } from 'util';
 
@@ -17,6 +20,8 @@ export class OpenAPIService {
     private readonly appConfigService: AppConfigService,
     private readonly parserService: ParserService,
     private readonly validatorService: ValidatorService,
+    @InjectRepository(MCPServerEntity)
+    private readonly serverRepository: Repository<MCPServerEntity>,
   ) { }
 
   async parseOpenAPI(configDto: ConfigureOpenAPIDto): Promise<OpenAPIResponseDto> {
@@ -191,6 +196,39 @@ export class OpenAPIService {
     } catch (error) {
       this.logger.error(`Failed to load OpenAPI specification from content: ${error.message}`);
       throw new BadRequestException(`Failed to parse content: ${error.message}`);
+    }
+  }
+
+  async getOpenApiByServerId(serverId: string): Promise<any> {
+    try {
+      this.logger.log(`Retrieving OpenAPI document for server ID: ${serverId}`);
+
+      // 从数据库中查询服务器实体
+      const server = await this.serverRepository.findOne({
+        where: { id: serverId },
+        select: ['id', 'name', 'openApiData']
+      });
+
+      if (!server) {
+        throw new NotFoundException(`Server with ID ${serverId} not found`);
+      }
+
+      if (!server.openApiData) {
+        throw new NotFoundException(`No OpenAPI document found for server ${serverId}`);
+      }
+
+      this.logger.log(`Successfully retrieved OpenAPI document for server: ${server.name}`);
+
+      // 直接返回 openApiData，它已经是 JSON 格式
+      return server.openApiData;
+    } catch (error) {
+      this.logger.error(`Failed to retrieve OpenAPI document for server ID ${serverId}: ${error.message}`, error.stack);
+      
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      
+      throw new InternalServerErrorException(`Failed to retrieve OpenAPI document: ${error.message}`);
     }
   }
 

@@ -1,97 +1,484 @@
-# MCP Server 进程管理和隔离方案
+# MCP Server 进程管理技术架构文档
 
-## 1. 问题分析
-
-### 1.1 当前架构问题
-- **进程耦合**：mcp-swagger-api 直接在内存中创建 mcp server 实例，缺乏进程隔离
-- **停止困难**：无法安全地停止已启动的 mcp server 进程
-- **错误传播**：mcp server 崩溃可能导致整个 mcp-swagger-api 服务崩溃
-- **资源管理**：缺乏对 mcp server 进程的监控和资源限制
-
-### 1.2 目标需求
-- 实现 mcp server 作为独立子进程运行
-- 提供安全的进程启动、停止和重启机制
-- 实现进程监控和健康检查
-- 提供错误隔离和自动恢复功能
-- 支持进程资源限制和管理
-
-## 2. 解决方案设计
-
-### 2.1 架构概览
+## 1. 架构设计
 
 ```mermaid
 graph TD
-    A[mcp-swagger-api] --> B[ProcessManager]
-    B --> C[MCP Server Process 1]
-    B --> D[MCP Server Process 2]
-    B --> E[MCP Server Process N]
+    A[Client Browser] --> B[mcp-swagger-api]
+    B --> C[ProcessManagerService]
+    B --> D[ProcessHealthService]
+    B --> E[ProcessErrorHandlerService]
     
-    B --> F[PID Manager]
-    B --> G[Health Monitor]
-    B --> H[Error Handler]
+    C --> F[MCP Server Process 1]
+    C --> G[MCP Server Process 2]
+    C --> H[MCP Server Process N]
     
-    F --> I[PID Files]
-    G --> J[Health Checks]
-    H --> K[Auto Restart]
+    C --> I[PID Files]
+    D --> J[Health Check Timer]
+    E --> K[Auto Restart Logic]
     
-    subgraph "进程隔离层"
+    F --> L[mcp-swagger-server CLI]
+    G --> M[mcp-swagger-server CLI]
+    H --> N[mcp-swagger-server CLI]
+    
+    subgraph "Frontend Layer"
+        A
+    end
+    
+    subgraph "API Layer"
+        B
+    end
+    
+    subgraph "Process Management Layer"
         C
         D
         E
     end
     
-    subgraph "管理层"
+    subgraph "MCP Server Processes"
         F
         G
         H
     end
+    
+    subgraph "Storage Layer"
+        I
+        O[Supabase Database]
+    end
+    
+    B --> O
 ```
 
-### 2.2 核心组件设计
+## 2. 技术描述
 
-#### 2.2.1 ProcessManager（进程管理器）
-- **职责**：统一管理所有 MCP Server 子进程
-- **功能**：
-  - 进程启动、停止、重启
-  - 进程状态跟踪
-  - 资源监控
-  - 错误处理和恢复
+* Frontend: React\@18 + tailwindcss\@3 + vite
 
-#### 2.2.2 PID Manager（进程ID管理）
-- **职责**：管理进程ID和生命周期
-- **功能**：
-  - PID 文件管理
-  - 进程存活检查
-  - 僵尸进程清理
+* Backend: NestJS\@10 + TypeScript\@5
 
-#### 2.2.3 Health Monitor（健康监控）
-- **职责**：监控 MCP Server 进程健康状态
-- **功能**：
-  - 定期健康检查
-  - 性能指标收集
-  - 异常检测和报警
+* Database: Supabase (PostgreSQL)
 
-#### 2.2.4 Error Handler（错误处理器）
-- **职责**：处理进程错误和异常情况
-- **功能**：
-  - 错误隔离
-  - 自动重启策略
-  - 错误日志记录
+* Process Management: Node.js child\_process + Custom Process Manager
 
-## 3. 实现方案
+* Health Monitoring: Cron Jobs + Event Emitters
 
-### 3.1 进程管理服务重构
+* IPC: Standard I/O + Process Signals
 
-#### 3.1.1 新增 ProcessManagerService
+## 3. 路由定义
+
+| Route                          | Purpose              |
+| ------------------------------ | -------------------- |
+| /v1/servers                    | 服务器管理页面，显示所有MCP服务器状态 |
+| /v1/servers/:id                | 单个服务器详情页面，显示服务器配置和状态 |
+| /v1/processes                  | 进程管理页面，显示所有进程状态和监控信息 |
+| /v1/processes/:serverId        | 单个进程详情页面，显示进程健康状态和日志 |
+| /v1/processes/:serverId/health | 进程健康检查页面，显示历史记录和实时状态 |
+
+## 4. API 定义
+
+### 4.1 进程管理 API
+
+**获取所有进程状态**
+
+```
+GET /api/v1/processes
+```
+
+Response:
+
+| Param Name | Param Type     | Description |
+| ---------- | -------------- | ----------- |
+| processes  | ProcessInfo\[] | 进程信息列表      |
+
+Example:
+
+```json
+{
+  "processes": [
+    {
+      "serverId": "server-1",
+      "pid": 12345,
+      "startTime": "2024-01-15T10:30:00Z",
+      "status": "running",
+      "restartCount": 0,
+      "memoryUsage": {
+        "rss": 52428800,
+        "heapTotal": 29360128,
+        "heapUsed": 20971520
+      }
+    }
+  ]
+}
+```
+
+**启动进程**
+
+```
+POST /api/v1/processes
+```
+
+Request:
+
+| Param Name | Param Type    | isRequired | Description |
+| ---------- | ------------- | ---------- | ----------- |
+| serverId   | string        | true       | 服务器ID       |
+| config     | ProcessConfig | true       | 进程配置        |
+
+Response:
+
+| Param Name  | Param Type  | Description |
+| ----------- | ----------- | ----------- |
+| processInfo | ProcessInfo | 启动的进程信息     |
+
+**停止进程**
+
+```
+DELETE /api/v1/processes/:serverId
+```
+
+Request:
+
+| Param Name | Param Type | isRequired | Description |
+| ---------- | ---------- | ---------- | ----------- |
+| serverId   | string     | true       | 服务器ID       |
+| force      | boolean    | false      | 是否强制停止      |
+
+Response:
+
+| Param Name | Param Type | Description |
+| ---------- | ---------- | ----------- |
+| message    | string     | 操作结果消息      |
+
+**重启进程**
+
+```
+POST /api/v1/processes/:serverId/restart
+```
+
+Request:
+
+| Param Name | Param Type | isRequired | Description |
+| ---------- | ---------- | ---------- | ----------- |
+| serverId   | string     | true       | 服务器ID       |
+
+Response:
+
+| Param Name  | Param Type  | Description |
+| ----------- | ----------- | ----------- |
+| processInfo | ProcessInfo | 重启后的进程信息    |
+
+### 4.2 健康检查 API
+
+**获取健康检查历史**
+
+```
+GET /api/v1/processes/:serverId/health/history
+```
+
+Response:
+
+| Param Name | Param Type           | Description |
+| ---------- | -------------------- | ----------- |
+| history    | HealthCheckResult\[] | 健康检查历史记录    |
+
+Example:
+
+```json
+{
+  "history": [
+    {
+      "serverId": "server-1",
+      "isHealthy": true,
+      "responseTime": 150,
+      "timestamp": "2024-01-15T10:35:00Z",
+      "memoryUsage": {
+        "rss": 52428800,
+        "heapTotal": 29360128,
+        "heapUsed": 20971520
+      }
+    }
+  ]
+}
+```
+
+**手动健康检查**
+
+```
+POST /api/v1/processes/:serverId/health/check
+```
+
+Response:
+
+| Param Name | Param Type        | Description |
+| ---------- | ----------------- | ----------- |
+| result     | HealthCheckResult | 健康检查结果      |
+
+### 4.3 服务器管理 API（更新）
+
+**启动服务器（更新为进程模式）**
+
+```
+POST /api/v1/servers/:id/start
+```
+
+Response:
+
+| Param Name  | Param Type  | Description |
+| ----------- | ----------- | ----------- |
+| endpoint    | string      | 服务器端点URL    |
+| processInfo | ProcessInfo | 进程信息        |
+| status      | string      | 启动状态        |
+
+Example:
+
+```json
+{
+  "endpoint": "http://localhost:3001/mcp",
+  "processInfo": {
+    "pid": 12345,
+    "startTime": "2024-01-15T10:30:00Z",
+    "status": "running"
+  },
+  "status": "started"
+}
+```
+
+## 5. 服务器架构图
+
+```mermaid
+graph TD
+    A[HTTP Request] --> B[Controller Layer]
+    B --> C[Service Layer]
+    C --> D[Process Management Layer]
+    D --> E[Child Process Layer]
+    
+    subgraph "Controller Layer"
+        B1[ServersController]
+        B2[ProcessController]
+    end
+    
+    subgraph "Service Layer"
+        C1[ServerManagerService]
+        C2[ServerLifecycleService]
+        C3[ProcessManagerService]
+        C4[ProcessHealthService]
+        C5[ProcessErrorHandlerService]
+    end
+    
+    subgraph "Process Management Layer"
+        D1[Process Spawning]
+        D2[PID Management]
+        D3[Signal Handling]
+        D4[Resource Monitoring]
+    end
+    
+    subgraph "Child Process Layer"
+        E1[MCP Server Process 1]
+        E2[MCP Server Process 2]
+        E3[MCP Server Process N]
+    end
+    
+    B --> B1
+    B --> B2
+    C --> C1
+    C --> C2
+    C --> C3
+    C --> C4
+    C --> C5
+    D --> D1
+    D --> D2
+    D --> D3
+    D --> D4
+    E --> E1
+    E --> E2
+    E --> E3
+```
+
+## 6. 数据模型
+
+### 6.1 数据模型定义
+
+```mermaid
+erDiagram
+    MCPServerEntity ||--o{ ProcessInfo : manages
+    ProcessInfo ||--o{ HealthCheckResult : monitors
+    ProcessInfo ||--o{ ProcessLog : generates
+    
+    MCPServerEntity {
+        uuid id PK
+        string name
+        string transport
+        int port
+        json openApiData
+        json config
+        string status
+        timestamp createdAt
+        timestamp updatedAt
+    }
+    
+    ProcessInfo {
+        string serverId PK
+        int pid
+        timestamp startTime
+        string status
+        int restartCount
+        string lastError
+        json memoryUsage
+        json cpuUsage
+        timestamp updatedAt
+    }
+    
+    HealthCheckResult {
+        uuid id PK
+        string serverId FK
+        boolean isHealthy
+        int responseTime
+        string error
+        json memoryUsage
+        json cpuUsage
+        timestamp timestamp
+    }
+    
+    ProcessLog {
+        uuid id PK
+        string serverId FK
+        string level
+        string message
+        json metadata
+        timestamp timestamp
+    }
+```
+
+### 6.2 数据定义语言
+
+**进程信息表 (process\_info)**
+
+```sql
+-- 创建进程信息表
+CREATE TABLE process_info (
+    server_id VARCHAR(255) PRIMARY KEY,
+    pid INTEGER NOT NULL,
+    start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    status VARCHAR(20) NOT NULL CHECK (status IN ('starting', 'running', 'stopping', 'stopped', 'error')),
+    restart_count INTEGER DEFAULT 0,
+    last_error TEXT,
+    memory_usage JSONB,
+    cpu_usage JSONB,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 创建索引
+CREATE INDEX idx_process_info_status ON process_info(status);
+CREATE INDEX idx_process_info_updated_at ON process_info(updated_at DESC);
+
+-- 设置权限
+GRANT SELECT ON process_info TO anon;
+GRANT ALL PRIVILEGES ON process_info TO authenticated;
+```
+
+**健康检查结果表 (health\_check\_results)**
+
+```sql
+-- 创建健康检查结果表
+CREATE TABLE health_check_results (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    server_id VARCHAR(255) NOT NULL,
+    is_healthy BOOLEAN NOT NULL,
+    response_time INTEGER NOT NULL,
+    error_message TEXT,
+    memory_usage JSONB,
+    cpu_usage JSONB,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 创建索引
+CREATE INDEX idx_health_check_server_id ON health_check_results(server_id);
+CREATE INDEX idx_health_check_timestamp ON health_check_results(timestamp DESC);
+CREATE INDEX idx_health_check_healthy ON health_check_results(is_healthy);
+
+-- 设置权限
+GRANT SELECT ON health_check_results TO anon;
+GRANT ALL PRIVILEGES ON health_check_results TO authenticated;
+
+-- 自动清理旧记录（保留最近7天）
+CREATE OR REPLACE FUNCTION cleanup_old_health_checks()
+RETURNS void AS $$
+BEGIN
+    DELETE FROM health_check_results 
+    WHERE timestamp < NOW() - INTERVAL '7 days';
+END;
+$$ LANGUAGE plpgsql;
+
+-- 创建定时任务（需要pg_cron扩展）
+-- SELECT cron.schedule('cleanup-health-checks', '0 2 * * *', 'SELECT cleanup_old_health_checks();');
+```
+
+**进程日志表 (process\_logs)**
+
+```sql
+-- 创建进程日志表
+CREATE TABLE process_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    server_id VARCHAR(255) NOT NULL,
+    level VARCHAR(10) NOT NULL CHECK (level IN ('debug', 'info', 'warn', 'error')),
+    message TEXT NOT NULL,
+    metadata JSONB,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 创建索引
+CREATE INDEX idx_process_logs_server_id ON process_logs(server_id);
+CREATE INDEX idx_process_logs_timestamp ON process_logs(timestamp DESC);
+CREATE INDEX idx_process_logs_level ON process_logs(level);
+
+-- 设置权限
+GRANT SELECT ON process_logs TO anon;
+GRANT ALL PRIVILEGES ON process_logs TO authenticated;
+
+-- 自动清理旧日志（保留最近30天）
+CREATE OR REPLACE FUNCTION cleanup_old_process_logs()
+RETURNS void AS $$
+BEGIN
+    DELETE FROM process_logs 
+    WHERE timestamp < NOW() - INTERVAL '30 days';
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**更新现有服务器表**
+
+```sql
+-- 为现有的 mcp_servers 表添加进程相关字段
+ALTER TABLE mcp_servers 
+ADD COLUMN IF NOT EXISTS process_pid INTEGER,
+ADD COLUMN IF NOT EXISTS process_status VARCHAR(20) DEFAULT 'stopped',
+ADD COLUMN IF NOT EXISTS last_restart_time TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS restart_count INTEGER DEFAULT 0;
+
+-- 创建索引
+CREATE INDEX IF NOT EXISTS idx_mcp_servers_process_status ON mcp_servers(process_status);
+CREATE INDEX IF NOT EXISTS idx_mcp_servers_process_pid ON mcp_servers(process_pid);
+```
+
+**初始化数据**
+
+```sql
+-- 插入默认的重启策略配置
+INSERT INTO process_logs (server_id, level, message, metadata)
+VALUES 
+('system', 'info', 'Process management system initialized', 
+ '{"component": "ProcessManager", "version": "1.0.0"}');
+
+-- 清理可能存在的僵尸进程记录
+UPDATE mcp_servers 
+SET process_status = 'stopped', process_pid = NULL 
+WHERE process_status IN ('starting', 'running') 
+AND updated_at < NOW() - INTERVAL '1 hour';
+```
+
+## 7. TypeScript 类型定义
 
 ```typescript
-// src/modules/servers/services/process-manager.service.ts
-import { Injectable, Logger } from '@nestjs/common';
-import { spawn, ChildProcess } from 'child_process';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { writeFileSync, readFileSync, existsSync, unlinkSync } from 'fs';
-import { join } from 'path';
-
+// 进程配置接口
 export interface ProcessConfig {
   serverId: string;
   serverName: string;
@@ -104,274 +491,31 @@ export interface ProcessConfig {
   restartDelay?: number;
 }
 
+// 进程信息接口
 export interface ProcessInfo {
+  serverId: string;
   pid: number;
   startTime: Date;
-  status: 'starting' | 'running' | 'stopping' | 'stopped' | 'error';
+  status: ProcessStatus;
   restartCount: number;
   lastError?: string;
   memoryUsage?: NodeJS.MemoryUsage;
   cpuUsage?: NodeJS.CpuUsage;
+  updatedAt: Date;
 }
 
-@Injectable()
-export class ProcessManagerService {
-  private readonly logger = new Logger(ProcessManagerService.name);
-  private processes = new Map<string, ChildProcess>();
-  private processInfo = new Map<string, ProcessInfo>();
-  private pidDir = join(process.cwd(), 'pids');
-  
-  constructor(private eventEmitter: EventEmitter2) {
-    this.ensurePidDirectory();
-    this.setupExitHandlers();
-  }
-
-  /**
-   * 启动 MCP Server 进程
-   */
-  async startProcess(config: ProcessConfig): Promise<ProcessInfo> {
-    const { serverId, scriptPath, args, env, cwd } = config;
-    
-    // 检查进程是否已存在
-    if (this.processes.has(serverId)) {
-      throw new Error(`Process ${serverId} is already running`);
-    }
-
-    this.logger.log(`Starting MCP Server process: ${serverId}`);
-    
-    try {
-      // 启动子进程
-      const childProcess = spawn('node', [scriptPath, ...args], {
-        stdio: ['pipe', 'pipe', 'pipe'],
-        env: { ...process.env, ...env, MCP_MANAGED: 'true' },
-        cwd: cwd || process.cwd(),
-        detached: false
-      });
-
-      if (!childProcess.pid) {
-        throw new Error('Failed to get process PID');
-      }
-
-      // 保存进程信息
-      const processInfo: ProcessInfo = {
-        pid: childProcess.pid,
-        startTime: new Date(),
-        status: 'starting',
-        restartCount: 0
-      };
-
-      this.processes.set(serverId, childProcess);
-      this.processInfo.set(serverId, processInfo);
-      
-      // 保存 PID 文件
-      this.savePidFile(serverId, childProcess.pid);
-      
-      // 设置进程事件监听
-      this.setupProcessHandlers(serverId, childProcess);
-      
-      // 等待进程启动完成
-      await this.waitForProcessReady(serverId, config.timeout || 30000);
-      
-      processInfo.status = 'running';
-      this.eventEmitter.emit('process.started', { serverId, pid: childProcess.pid });
-      
-      return processInfo;
-      
-    } catch (error) {
-      this.logger.error(`Failed to start process ${serverId}:`, error);
-      this.cleanup(serverId);
-      throw error;
-    }
-  }
-
-  /**
-   * 停止 MCP Server 进程
-   */
-  async stopProcess(serverId: string, force = false): Promise<void> {
-    const childProcess = this.processes.get(serverId);
-    const processInfo = this.processInfo.get(serverId);
-    
-    if (!childProcess || !processInfo) {
-      this.logger.warn(`Process ${serverId} not found`);
-      return;
-    }
-
-    this.logger.log(`Stopping MCP Server process: ${serverId} (PID: ${processInfo.pid})`);
-    processInfo.status = 'stopping';
-
-    return new Promise((resolve) => {
-      const timeout = setTimeout(() => {
-        if (childProcess && !childProcess.killed) {
-          this.logger.warn(`Force killing process ${serverId}`);
-          childProcess.kill('SIGKILL');
-        }
-      }, force ? 1000 : 5000);
-
-      childProcess.once('exit', () => {
-        clearTimeout(timeout);
-        this.cleanup(serverId);
-        this.eventEmitter.emit('process.stopped', { serverId });
-        resolve();
-      });
-
-      // 发送终止信号
-      childProcess.kill('SIGTERM');
-    });
-  }
-
-  /**
-   * 重启 MCP Server 进程
-   */
-  async restartProcess(serverId: string, config: ProcessConfig): Promise<ProcessInfo> {
-    const processInfo = this.processInfo.get(serverId);
-    
-    if (processInfo) {
-      processInfo.restartCount++;
-      await this.stopProcess(serverId);
-      
-      // 等待一段时间后重启
-      await new Promise(resolve => setTimeout(resolve, config.restartDelay || 2000));
-    }
-    
-    return this.startProcess(config);
-  }
-
-  /**
-   * 获取进程信息
-   */
-  getProcessInfo(serverId: string): ProcessInfo | undefined {
-    return this.processInfo.get(serverId);
-  }
-
-  /**
-   * 获取所有进程信息
-   */
-  getAllProcessInfo(): Map<string, ProcessInfo> {
-    return new Map(this.processInfo);
-  }
-
-  /**
-   * 检查进程是否运行
-   */
-  isProcessRunning(serverId: string): boolean {
-    const processInfo = this.processInfo.get(serverId);
-    return processInfo?.status === 'running';
-  }
-
-  // 私有方法实现...
-  private setupProcessHandlers(serverId: string, childProcess: ChildProcess): void {
-    // 进程退出处理
-    childProcess.on('exit', (code, signal) => {
-      this.logger.warn(`Process ${serverId} exited with code ${code}, signal ${signal}`);
-      const processInfo = this.processInfo.get(serverId);
-      if (processInfo) {
-        processInfo.status = 'stopped';
-      }
-      this.eventEmitter.emit('process.exited', { serverId, code, signal });
-    });
-
-    // 错误处理
-    childProcess.on('error', (error) => {
-      this.logger.error(`Process ${serverId} error:`, error);
-      const processInfo = this.processInfo.get(serverId);
-      if (processInfo) {
-        processInfo.status = 'error';
-        processInfo.lastError = error.message;
-      }
-      this.eventEmitter.emit('process.error', { serverId, error });
-    });
-
-    // 输出处理
-    if (childProcess.stdout) {
-      childProcess.stdout.on('data', (data) => {
-        this.logger.debug(`${serverId} STDOUT: ${data.toString().trim()}`);
-      });
-    }
-
-    if (childProcess.stderr) {
-      childProcess.stderr.on('data', (data) => {
-        this.logger.debug(`${serverId} STDERR: ${data.toString().trim()}`);
-      });
-    }
-  }
-
-  private async waitForProcessReady(serverId: string, timeout: number): Promise<void> {
-    // 实现进程就绪检查逻辑
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        reject(new Error(`Process ${serverId} startup timeout`));
-      }, timeout);
-
-      // 这里可以通过健康检查或其他方式确认进程就绪
-      // 简化实现：等待2秒
-      setTimeout(() => {
-        clearTimeout(timer);
-        resolve();
-      }, 2000);
-    });
-  }
-
-  private cleanup(serverId: string): void {
-    this.processes.delete(serverId);
-    const processInfo = this.processInfo.get(serverId);
-    if (processInfo) {
-      processInfo.status = 'stopped';
-    }
-    this.removePidFile(serverId);
-  }
-
-  private savePidFile(serverId: string, pid: number): void {
-    const pidFile = join(this.pidDir, `${serverId}.pid`);
-    try {
-      writeFileSync(pidFile, pid.toString());
-    } catch (error) {
-      this.logger.error(`Failed to save PID file for ${serverId}:`, error);
-    }
-  }
-
-  private removePidFile(serverId: string): void {
-    const pidFile = join(this.pidDir, `${serverId}.pid`);
-    try {
-      if (existsSync(pidFile)) {
-        unlinkSync(pidFile);
-      }
-    } catch (error) {
-      this.logger.error(`Failed to remove PID file for ${serverId}:`, error);
-    }
-  }
-
-  private ensurePidDirectory(): void {
-    if (!existsSync(this.pidDir)) {
-      require('fs').mkdirSync(this.pidDir, { recursive: true });
-    }
-  }
-
-  private setupExitHandlers(): void {
-    process.on('SIGINT', () => this.shutdownAllProcesses());
-    process.on('SIGTERM', () => this.shutdownAllProcesses());
-    process.on('exit', () => this.shutdownAllProcesses());
-  }
-
-  private async shutdownAllProcesses(): Promise<void> {
-    this.logger.log('Shutting down all MCP Server processes...');
-    const promises = Array.from(this.processes.keys()).map(serverId => 
-      this.stopProcess(serverId, true)
-    );
-    await Promise.all(promises);
-  }
+// 进程状态枚举
+export enum ProcessStatus {
+  STARTING = 'starting',
+  RUNNING = 'running',
+  STOPPING = 'stopping',
+  STOPPED = 'stopped',
+  ERROR = 'error'
 }
-```
 
-#### 3.1.2 健康监控服务
-
-```typescript
-// src/modules/servers/services/process-health.service.ts
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ProcessManagerService } from './process-manager.service';
-
+// 健康检查结果接口
 export interface HealthCheckResult {
+  id: string;
   serverId: string;
   isHealthy: boolean;
   responseTime: number;
@@ -381,212 +525,7 @@ export interface HealthCheckResult {
   timestamp: Date;
 }
 
-@Injectable()
-export class ProcessHealthService {
-  private readonly logger = new Logger(ProcessHealthService.name);
-  private healthHistory = new Map<string, HealthCheckResult[]>();
-  
-  constructor(
-    private processManager: ProcessManagerService,
-    private eventEmitter: EventEmitter2
-  ) {}
-
-  /**
-   * 定期健康检查
-   */
-  @Cron(CronExpression.EVERY_30_SECONDS)
-  async performHealthChecks(): Promise<void> {
-    const processInfoMap = this.processManager.getAllProcessInfo();
-    
-    for (const [serverId, processInfo] of processInfoMap) {
-      if (processInfo.status === 'running') {
-        await this.checkProcessHealth(serverId);
-      }
-    }
-  }
-
-  /**
-   * 检查单个进程健康状态
-   */
-  async checkProcessHealth(serverId: string): Promise<HealthCheckResult> {
-    const startTime = Date.now();
-    const processInfo = this.processManager.getProcessInfo(serverId);
-    
-    if (!processInfo) {
-      throw new Error(`Process ${serverId} not found`);
-    }
-
-    try {
-      // 检查进程是否存在
-      process.kill(processInfo.pid, 0);
-      
-      // 获取进程资源使用情况
-      const memoryUsage = process.memoryUsage();
-      const cpuUsage = process.cpuUsage();
-      
-      const result: HealthCheckResult = {
-        serverId,
-        isHealthy: true,
-        responseTime: Date.now() - startTime,
-        memoryUsage,
-        cpuUsage,
-        timestamp: new Date()
-      };
-      
-      this.saveHealthResult(serverId, result);
-      this.eventEmitter.emit('process.health.checked', result);
-      
-      return result;
-      
-    } catch (error) {
-      const result: HealthCheckResult = {
-        serverId,
-        isHealthy: false,
-        responseTime: Date.now() - startTime,
-        error: error.message,
-        timestamp: new Date()
-      };
-      
-      this.saveHealthResult(serverId, result);
-      this.eventEmitter.emit('process.health.failed', result);
-      
-      return result;
-    }
-  }
-
-  /**
-   * 获取健康检查历史
-   */
-  getHealthHistory(serverId: string, limit = 50): HealthCheckResult[] {
-    const history = this.healthHistory.get(serverId) || [];
-    return history.slice(-limit);
-  }
-
-  private saveHealthResult(serverId: string, result: HealthCheckResult): void {
-    let history = this.healthHistory.get(serverId) || [];
-    history.push(result);
-    
-    // 保持最近100条记录
-    if (history.length > 100) {
-      history = history.slice(-100);
-    }
-    
-    this.healthHistory.set(serverId, history);
-  }
-}
-```
-
-#### 3.1.3 修改 ServerLifecycleService
-
-```typescript
-// 修改现有的 server-lifecycle.service.ts
-// 将直接创建 MCP Server 实例改为启动独立进程
-
-@Injectable()
-export class ServerLifecycleService {
-  constructor(
-    private processManager: ProcessManagerService,
-    // ... 其他依赖
-  ) {}
-
-  /**
-   * 启动MCP服务器（修改为进程模式）
-   */
-  async startServer(serverEntity: MCPServerEntity): Promise<ServerStartResult> {
-    this.logger.log(`Starting server '${serverEntity.name}' as separate process`);
-
-    try {
-      // 验证OpenAPI数据
-      await this.validateOpenApiData(serverEntity.openApiData);
-
-      // 准备进程配置
-      const processConfig: ProcessConfig = {
-        serverId: serverEntity.id,
-        serverName: serverEntity.name,
-        scriptPath: this.getServerScriptPath(),
-        args: this.buildServerArgs(serverEntity),
-        env: {
-          MCP_SERVER_ID: serverEntity.id,
-          MCP_SERVER_NAME: serverEntity.name,
-          MCP_SERVER_PORT: serverEntity.port.toString(),
-          MCP_TRANSPORT_TYPE: serverEntity.transport,
-          MCP_OPENAPI_DATA: JSON.stringify(serverEntity.openApiData)
-        },
-        timeout: 30000,
-        maxRetries: 3,
-        restartDelay: 2000
-      };
-
-      // 启动进程
-      const processInfo = await this.processManager.startProcess(processConfig);
-      
-      // 构建端点URL
-      const endpoint = this.buildEndpointUrl(serverEntity);
-      
-      return {
-        mcpServer: null, // 不再返回内存中的实例
-        httpServer: null,
-        endpoint,
-        processInfo // 返回进程信息
-      };
-      
-    } catch (error) {
-      this.logger.error(`Failed to start server '${serverEntity.name}':`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * 停止MCP服务器（修改为进程模式）
-   */
-  async stopServer(instance: ServerInstance): Promise<void> {
-    this.logger.log(`Stopping server '${instance.entity.name}'`);
-
-    try {
-      await this.processManager.stopProcess(instance.id);
-    } catch (error) {
-      this.logger.error(`Failed to stop server '${instance.entity.name}':`, error);
-      throw error;
-    }
-  }
-
-  private getServerScriptPath(): string {
-    // 返回 mcp-swagger-server 的启动脚本路径
-    return require.resolve('mcp-swagger-server/dist/cli.js');
-  }
-
-  private buildServerArgs(serverEntity: MCPServerEntity): string[] {
-    const args = [
-      '--transport', serverEntity.transport,
-      '--port', serverEntity.port.toString(),
-      '--managed' // 标记为受管理模式
-    ];
-
-    if (serverEntity.config?.endpoint) {
-      args.push('--endpoint', serverEntity.config.endpoint);
-    }
-
-    return args;
-  }
-
-  private buildEndpointUrl(serverEntity: MCPServerEntity): string {
-    const protocol = serverEntity.transport === 'websocket' ? 'ws' : 'http';
-    const endpoint = serverEntity.config?.endpoint || '/mcp';
-    return `${protocol}://localhost:${serverEntity.port}${endpoint}`;
-  }
-}
-```
-
-### 3.2 错误处理和自动恢复
-
-#### 3.2.1 进程错误处理器
-
-```typescript
-// src/modules/servers/services/process-error-handler.service.ts
-import { Injectable, Logger } from '@nestjs/common';
-import { OnEvent } from '@nestjs/event-emitter';
-import { ProcessManagerService, ProcessConfig } from './process-manager.service';
-
+// 重启策略接口
 export interface RestartPolicy {
   maxRetries: number;
   retryDelay: number;
@@ -594,325 +533,127 @@ export interface RestartPolicy {
   maxRetryDelay: number;
 }
 
-@Injectable()
-export class ProcessErrorHandlerService {
-  private readonly logger = new Logger(ProcessErrorHandlerService.name);
-  private restartPolicies = new Map<string, RestartPolicy>();
-  private processConfigs = new Map<string, ProcessConfig>();
-  
-  constructor(private processManager: ProcessManagerService) {}
+// 进程日志接口
+export interface ProcessLog {
+  id: string;
+  serverId: string;
+  level: LogLevel;
+  message: string;
+  metadata?: Record<string, any>;
+  timestamp: Date;
+}
 
-  /**
-   * 设置重启策略
-   */
-  setRestartPolicy(serverId: string, policy: RestartPolicy): void {
-    this.restartPolicies.set(serverId, policy);
-  }
+// 日志级别枚举
+export enum LogLevel {
+  DEBUG = 'debug',
+  INFO = 'info',
+  WARN = 'warn',
+  ERROR = 'error'
+}
 
-  /**
-   * 保存进程配置（用于重启）
-   */
-  saveProcessConfig(serverId: string, config: ProcessConfig): void {
-    this.processConfigs.set(serverId, config);
-  }
+// 服务器启动结果接口（更新）
+export interface ServerStartResult {
+  endpoint: string;
+  processInfo: ProcessInfo;
+  status: string;
+}
 
-  /**
-   * 监听进程退出事件
-   */
-  @OnEvent('process.exited')
-  async handleProcessExit(payload: { serverId: string; code: number; signal: string }): Promise<void> {
-    const { serverId, code, signal } = payload;
-    
-    this.logger.warn(`Process ${serverId} exited unexpectedly (code: ${code}, signal: ${signal})`);
-    
-    // 检查是否需要自动重启
-    if (this.shouldRestart(serverId, code)) {
-      await this.attemptRestart(serverId);
-    }
-  }
-
-  /**
-   * 监听进程错误事件
-   */
-  @OnEvent('process.error')
-  async handleProcessError(payload: { serverId: string; error: Error }): Promise<void> {
-    const { serverId, error } = payload;
-    
-    this.logger.error(`Process ${serverId} encountered error:`, error);
-    
-    // 尝试重启进程
-    await this.attemptRestart(serverId);
-  }
-
-  /**
-   * 监听健康检查失败事件
-   */
-  @OnEvent('process.health.failed')
-  async handleHealthCheckFailed(payload: { serverId: string; error: string }): Promise<void> {
-    const { serverId, error } = payload;
-    
-    this.logger.warn(`Health check failed for process ${serverId}: ${error}`);
-    
-    // 连续失败多次后重启
-    if (this.shouldRestartOnHealthFailure(serverId)) {
-      await this.attemptRestart(serverId);
-    }
-  }
-
-  private shouldRestart(serverId: string, exitCode: number): boolean {
-    // 正常退出不重启
-    if (exitCode === 0) {
-      return false;
-    }
-    
-    const processInfo = this.processManager.getProcessInfo(serverId);
-    const policy = this.restartPolicies.get(serverId);
-    
-    if (!processInfo || !policy) {
-      return false;
-    }
-    
-    return processInfo.restartCount < policy.maxRetries;
-  }
-
-  private shouldRestartOnHealthFailure(serverId: string): boolean {
-    // 实现健康检查失败重启逻辑
-    // 例如：连续3次失败后重启
-    return true;
-  }
-
-  private async attemptRestart(serverId: string): Promise<void> {
-    const config = this.processConfigs.get(serverId);
-    const policy = this.restartPolicies.get(serverId);
-    
-    if (!config || !policy) {
-      this.logger.error(`Cannot restart ${serverId}: missing config or policy`);
-      return;
-    }
-
-    try {
-      const processInfo = this.processManager.getProcessInfo(serverId);
-      const retryCount = processInfo?.restartCount || 0;
-      
-      if (retryCount >= policy.maxRetries) {
-        this.logger.error(`Max retries reached for ${serverId}, giving up`);
-        return;
-      }
-
-      // 计算重启延迟
-      const delay = Math.min(
-        policy.retryDelay * Math.pow(policy.backoffMultiplier, retryCount),
-        policy.maxRetryDelay
-      );
-
-      this.logger.log(`Restarting ${serverId} in ${delay}ms (attempt ${retryCount + 1}/${policy.maxRetries})`);
-      
-      setTimeout(async () => {
-        try {
-          await this.processManager.restartProcess(serverId, config);
-          this.logger.log(`Successfully restarted ${serverId}`);
-        } catch (error) {
-          this.logger.error(`Failed to restart ${serverId}:`, error);
-        }
-      }, delay);
-      
-    } catch (error) {
-      this.logger.error(`Error during restart attempt for ${serverId}:`, error);
-    }
-  }
+// 进程事件接口
+export interface ProcessEvent {
+  serverId: string;
+  eventType: 'started' | 'stopped' | 'error' | 'health_check';
+  timestamp: Date;
+  data?: any;
 }
 ```
 
-### 3.3 API 接口更新
-
-#### 3.3.1 新增进程管理接口
+## 8. 配置管理
 
 ```typescript
-// src/modules/servers/controllers/process.controller.ts
-import { Controller, Get, Post, Delete, Param, Body } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
-import { ProcessManagerService } from '../services/process-manager.service';
-import { ProcessHealthService } from '../services/process-health.service';
+// 进程管理配置
+export interface ProcessManagerConfig {
+  // 进程超时设置
+  processTimeout: number; // 默认 30000ms
+  
+  // 重启策略
+  defaultMaxRetries: number; // 默认 3
+  defaultRestartDelay: number; // 默认 2000ms
+  defaultBackoffMultiplier: number; // 默认 1.5
+  defaultMaxRetryDelay: number; // 默认 30000ms
+  
+  // 健康检查设置
+  healthCheckInterval: number; // 默认 30000ms
+  healthCheckTimeout: number; // 默认 5000ms
+  
+  // 资源限制
+  memoryLimitMB: number; // 默认 512MB
+  cpuLimitPercent: number; // 默认 80%
+  
+  // 文件路径
+  pidDirectory: string; // 默认 './pids'
+  logDirectory: string; // 默认 './logs'
+  
+  // 日志设置
+  logLevel: LogLevel; // 默认 'info'
+  logToFile: boolean; // 默认 true
+  logRotation: boolean; // 默认 true
+  maxLogFiles: number; // 默认 10
+  maxLogSize: string; // 默认 '10MB'
+}
 
-@ApiTags('进程管理')
-@Controller('v1/processes')
-export class ProcessController {
-  constructor(
-    private processManager: ProcessManagerService,
-    private processHealth: ProcessHealthService
-  ) {}
+// 默认配置
+export const DEFAULT_PROCESS_CONFIG: ProcessManagerConfig = {
+  processTimeout: 30000,
+  defaultMaxRetries: 3,
+  defaultRestartDelay: 2000,
+  defaultBackoffMultiplier: 1.5,
+  defaultMaxRetryDelay: 30000,
+  healthCheckInterval: 30000,
+  healthCheckTimeout: 5000,
+  memoryLimitMB: 512,
+  cpuLimitPercent: 80,
+  pidDirectory: './pids',
+  logDirectory: './logs',
+  logLevel: LogLevel.INFO,
+  logToFile: true,
+  logRotation: true,
+  maxLogFiles: 10,
+  maxLogSize: '10MB'
+};
+```
 
-  /**
-   * 获取所有进程状态
-   */
-  @Get()
-  @ApiOperation({ summary: '获取所有进程状态' })
-  getAllProcesses() {
-    const processInfoMap = this.processManager.getAllProcessInfo();
-    return Array.from(processInfoMap.entries()).map(([serverId, info]) => ({
-      serverId,
-      ...info
-    }));
-  }
+## 9. 错误处理和监控
 
-  /**
-   * 获取特定进程状态
-   */
-  @Get(':serverId')
-  @ApiOperation({ summary: '获取进程状态' })
-  getProcessStatus(@Param('serverId') serverId: string) {
-    const processInfo = this.processManager.getProcessInfo(serverId);
-    if (!processInfo) {
-      throw new Error(`Process ${serverId} not found`);
-    }
-    return processInfo;
-  }
+```typescript
+// 错误类型定义
+export enum ProcessErrorType {
+  STARTUP_FAILED = 'startup_failed',
+  PROCESS_CRASHED = 'process_crashed',
+  HEALTH_CHECK_FAILED = 'health_check_failed',
+  RESOURCE_LIMIT_EXCEEDED = 'resource_limit_exceeded',
+  COMMUNICATION_ERROR = 'communication_error'
+}
 
-  /**
-   * 强制停止进程
-   */
-  @Delete(':serverId')
-  @ApiOperation({ summary: '强制停止进程' })
-  async forceStopProcess(@Param('serverId') serverId: string) {
-    await this.processManager.stopProcess(serverId, true);
-    return { message: `Process ${serverId} force stopped` };
-  }
+// 错误事件接口
+export interface ProcessErrorEvent {
+  serverId: string;
+  errorType: ProcessErrorType;
+  error: Error;
+  timestamp: Date;
+  context?: Record<string, any>;
+}
 
-  /**
-   * 获取进程健康检查历史
-   */
-  @Get(':serverId/health/history')
-  @ApiOperation({ summary: '获取健康检查历史' })
-  getHealthHistory(@Param('serverId') serverId: string) {
-    return this.processHealth.getHealthHistory(serverId);
-  }
-
-  /**
-   * 手动执行健康检查
-   */
-  @Post(':serverId/health/check')
-  @ApiOperation({ summary: '手动健康检查' })
-  async performHealthCheck(@Param('serverId') serverId: string) {
-    return await this.processHealth.checkProcessHealth(serverId);
-  }
+// 监控指标接口
+export interface ProcessMetrics {
+  serverId: string;
+  uptime: number;
+  memoryUsage: NodeJS.MemoryUsage;
+  cpuUsage: NodeJS.CpuUsage;
+  requestCount: number;
+  errorCount: number;
+  lastHealthCheck: Date;
+  averageResponseTime: number;
 }
 ```
 
-## 4. 部署和配置
-
-### 4.1 环境变量配置
-
-```bash
-# .env
-# 进程管理配置
-MCP_PROCESS_TIMEOUT=30000
-MCP_MAX_RETRIES=3
-MCP_RESTART_DELAY=2000
-MCP_HEALTH_CHECK_INTERVAL=30000
-
-# 资源限制
-MCP_MEMORY_LIMIT=512
-MCP_CPU_LIMIT=80
-
-# 日志配置
-MCP_LOG_LEVEL=info
-MCP_LOG_TO_FILE=true
-MCP_LOG_FILE_PATH=./logs/mcp-processes.log
-```
-
-### 4.2 Docker 配置更新
-
-```dockerfile
-# Dockerfile 更新
-FROM node:18-alpine
-
-# 安装进程管理工具
-RUN apk add --no-cache procps
-
-# 创建必要目录
-RUN mkdir -p /app/pids /app/logs
-
-# 复制应用代码
-COPY . /app
-WORKDIR /app
-
-# 安装依赖
-RUN npm install
-
-# 设置权限
-RUN chmod +x /app/scripts/*.sh
-
-# 暴露端口
-EXPOSE 3000
-
-# 启动命令
-CMD ["npm", "run", "start:prod"]
-```
-
-## 5. 监控和运维
-
-### 5.1 监控指标
-
-- **进程状态**：运行、停止、错误状态统计
-- **资源使用**：CPU、内存使用率监控
-- **健康检查**：成功率、响应时间统计
-- **重启统计**：重启次数、重启原因分析
-- **错误日志**：进程错误、崩溃日志收集
-
-### 5.2 告警规则
-
-- 进程连续重启超过阈值
-- 内存使用率超过限制
-- 健康检查连续失败
-- 进程启动失败
-- 僵尸进程检测
-
-### 5.3 运维工具
-
-```bash
-# 进程管理脚本
-#!/bin/bash
-# scripts/mcp-process-manager.sh
-
-case "$1" in
-  status)
-    curl -s http://localhost:3000/v1/processes | jq .
-    ;;
-  stop)
-    curl -X DELETE http://localhost:3000/v1/processes/$2
-    ;;
-  health)
-    curl -s http://localhost:3000/v1/processes/$2/health/history | jq .
-    ;;
-  *)
-    echo "Usage: $0 {status|stop|health} [server-id]"
-    exit 1
-    ;;
-esac
-```
-
-## 6. 总结
-
-### 6.1 方案优势
-
-1. **进程隔离**：MCP Server 作为独立进程运行，崩溃不影响主服务
-2. **安全管理**：提供完整的进程生命周期管理（启动、停止、重启）
-3. **自动恢复**：智能错误处理和自动重启机制
-4. **资源监控**：实时监控进程资源使用和健康状态
-5. **运维友好**：提供丰富的监控接口和管理工具
-
-### 6.2 实施步骤
-
-1. **第一阶段**：实现 ProcessManagerService 和基础进程管理
-2. **第二阶段**：添加健康监控和错误处理机制
-3. **第三阶段**：完善监控接口和运维工具
-4. **第四阶段**：性能优化和稳定性测试
-
-### 6.3 风险控制
-
-- **向后兼容**：保持现有 API 接口不变，内部实现渐进式迁移
-- **渐进部署**：支持新旧模式并存，逐步切换
-- **回滚机制**：出现问题时可快速回滚到原有实现
-- **充分测试**：完整的单元测试和集成测试覆盖
-
-通过这个方案，可以彻底解决 MCP Server 进程管理和隔离问题，提供稳定可靠的服务架构。
+这个技术架构文档提供了完整的实现细节，包括数据库设计、API接口、类型定义和配置管理，为开发团队提供了清晰的技术实现指南。
