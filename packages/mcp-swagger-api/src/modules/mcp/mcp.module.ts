@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { HttpModule } from '@nestjs/axios';
-import { MCPController } from './mcp.controller';
 import { MCPService } from './services/mcp.service';
 
 @Module({
@@ -12,7 +11,7 @@ import { MCPService } from './services/mcp.service';
       maxRedirects: 5,
     }),
   ],
-  controllers: [MCPController],
+  controllers: [],
   providers: [MCPService],
   exports: [MCPService],
 })

@@ -51,21 +51,26 @@ graph TD
 
 ## 2. 技术描述
 
-- Frontend: React@18 + tailwindcss@3 + vite
-- Backend: NestJS@10 + TypeScript@5
-- Database: Supabase (PostgreSQL)
-- Process Management: Node.js child_process + Custom Process Manager
-- Health Monitoring: Cron Jobs + Event Emitters
-- IPC: Standard I/O + Process Signals
+* Frontend: React\@18 + tailwindcss\@3 + vite
+
+* Backend: NestJS\@10 + TypeScript\@5
+
+* Database: Supabase (PostgreSQL)
+
+* Process Management: Node.js child\_process + Custom Process Manager
+
+* Health Monitoring: Cron Jobs + Event Emitters
+
+* IPC: Standard I/O + Process Signals
 
 ## 3. 路由定义
 
-| Route | Purpose |
-|-------|----------|
-| /v1/servers | 服务器管理页面，显示所有MCP服务器状态 |
-| /v1/servers/:id | 单个服务器详情页面，显示服务器配置和状态 |
-| /v1/processes | 进程管理页面，显示所有进程状态和监控信息 |
-| /v1/processes/:serverId | 单个进程详情页面，显示进程健康状态和日志 |
+| Route                          | Purpose              |
+| ------------------------------ | -------------------- |
+| /v1/servers                    | 服务器管理页面，显示所有MCP服务器状态 |
+| /v1/servers/:id                | 单个服务器详情页面，显示服务器配置和状态 |
+| /v1/processes                  | 进程管理页面，显示所有进程状态和监控信息 |
+| /v1/processes/:serverId        | 单个进程详情页面，显示进程健康状态和日志 |
 | /v1/processes/:serverId/health | 进程健康检查页面，显示历史记录和实时状态 |
 
 ## 4. API 定义
@@ -73,16 +78,19 @@ graph TD
 ### 4.1 进程管理 API
 
 **获取所有进程状态**
+
 ```
 GET /api/v1/processes
 ```
 
 Response:
-| Param Name | Param Type | Description |
-|------------|------------|-------------|
-| processes | ProcessInfo[] | 进程信息列表 |
+
+| Param Name | Param Type     | Description |
+| ---------- | -------------- | ----------- |
+| processes  | ProcessInfo\[] | 进程信息列表      |
 
 Example:
+
 ```json
 {
   "processes": [
@@ -103,65 +111,77 @@ Example:
 ```
 
 **启动进程**
+
 ```
 POST /api/v1/processes
 ```
 
 Request:
-| Param Name | Param Type | isRequired | Description |
-|------------|------------|------------|-------------|
-| serverId | string | true | 服务器ID |
-| config | ProcessConfig | true | 进程配置 |
+
+| Param Name | Param Type    | isRequired | Description |
+| ---------- | ------------- | ---------- | ----------- |
+| serverId   | string        | true       | 服务器ID       |
+| config     | ProcessConfig | true       | 进程配置        |
 
 Response:
-| Param Name | Param Type | Description |
-|------------|------------|-------------|
-| processInfo | ProcessInfo | 启动的进程信息 |
+
+| Param Name  | Param Type  | Description |
+| ----------- | ----------- | ----------- |
+| processInfo | ProcessInfo | 启动的进程信息     |
 
 **停止进程**
+
 ```
 DELETE /api/v1/processes/:serverId
 ```
 
 Request:
+
 | Param Name | Param Type | isRequired | Description |
-|------------|------------|------------|-------------|
-| serverId | string | true | 服务器ID |
-| force | boolean | false | 是否强制停止 |
+| ---------- | ---------- | ---------- | ----------- |
+| serverId   | string     | true       | 服务器ID       |
+| force      | boolean    | false      | 是否强制停止      |
 
 Response:
+
 | Param Name | Param Type | Description |
-|------------|------------|-------------|
-| message | string | 操作结果消息 |
+| ---------- | ---------- | ----------- |
+| message    | string     | 操作结果消息      |
 
 **重启进程**
+
 ```
 POST /api/v1/processes/:serverId/restart
 ```
 
 Request:
+
 | Param Name | Param Type | isRequired | Description |
-|------------|------------|------------|-------------|
-| serverId | string | true | 服务器ID |
+| ---------- | ---------- | ---------- | ----------- |
+| serverId   | string     | true       | 服务器ID       |
 
 Response:
-| Param Name | Param Type | Description |
-|------------|------------|-------------|
-| processInfo | ProcessInfo | 重启后的进程信息 |
+
+| Param Name  | Param Type  | Description |
+| ----------- | ----------- | ----------- |
+| processInfo | ProcessInfo | 重启后的进程信息    |
 
 ### 4.2 健康检查 API
 
 **获取健康检查历史**
+
 ```
 GET /api/v1/processes/:serverId/health/history
 ```
 
 Response:
-| Param Name | Param Type | Description |
-|------------|------------|-------------|
-| history | HealthCheckResult[] | 健康检查历史记录 |
+
+| Param Name | Param Type           | Description |
+| ---------- | -------------------- | ----------- |
+| history    | HealthCheckResult\[] | 健康检查历史记录    |
 
 Example:
+
 ```json
 {
   "history": [
@@ -181,30 +201,35 @@ Example:
 ```
 
 **手动健康检查**
+
 ```
 POST /api/v1/processes/:serverId/health/check
 ```
 
 Response:
-| Param Name | Param Type | Description |
-|------------|------------|-------------|
-| result | HealthCheckResult | 健康检查结果 |
+
+| Param Name | Param Type        | Description |
+| ---------- | ----------------- | ----------- |
+| result     | HealthCheckResult | 健康检查结果      |
 
 ### 4.3 服务器管理 API（更新）
 
 **启动服务器（更新为进程模式）**
+
 ```
 POST /api/v1/servers/:id/start
 ```
 
 Response:
-| Param Name | Param Type | Description |
-|------------|------------|-------------|
-| endpoint | string | 服务器端点URL |
-| processInfo | ProcessInfo | 进程信息 |
-| status | string | 启动状态 |
+
+| Param Name  | Param Type  | Description |
+| ----------- | ----------- | ----------- |
+| endpoint    | string      | 服务器端点URL    |
+| processInfo | ProcessInfo | 进程信息        |
+| status      | string      | 启动状态        |
 
 Example:
+
 ```json
 {
   "endpoint": "http://localhost:3001/mcp",
@@ -325,7 +350,8 @@ erDiagram
 
 ### 6.2 数据定义语言
 
-**进程信息表 (process_info)**
+**进程信息表 (process\_info)**
+
 ```sql
 -- 创建进程信息表
 CREATE TABLE process_info (
@@ -349,7 +375,8 @@ GRANT SELECT ON process_info TO anon;
 GRANT ALL PRIVILEGES ON process_info TO authenticated;
 ```
 
-**健康检查结果表 (health_check_results)**
+**健康检查结果表 (health\_check\_results)**
+
 ```sql
 -- 创建健康检查结果表
 CREATE TABLE health_check_results (
@@ -385,7 +412,8 @@ $$ LANGUAGE plpgsql;
 -- SELECT cron.schedule('cleanup-health-checks', '0 2 * * *', 'SELECT cleanup_old_health_checks();');
 ```
 
-**进程日志表 (process_logs)**
+**进程日志表 (process\_logs)**
+
 ```sql
 -- 创建进程日志表
 CREATE TABLE process_logs (
@@ -417,6 +445,7 @@ $$ LANGUAGE plpgsql;
 ```
 
 **更新现有服务器表**
+
 ```sql
 -- 为现有的 mcp_servers 表添加进程相关字段
 ALTER TABLE mcp_servers 
@@ -431,6 +460,7 @@ CREATE INDEX IF NOT EXISTS idx_mcp_servers_process_pid ON mcp_servers(process_pi
 ```
 
 **初始化数据**
+
 ```sql
 -- 插入默认的重启策略配置
 INSERT INTO process_logs (server_id, level, message, metadata)

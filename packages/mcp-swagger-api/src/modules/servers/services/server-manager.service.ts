@@ -7,9 +7,18 @@ import { v4 as uuidv4 } from 'uuid';
 import { MCPServerEntity, ServerStatus, TransportType } from '../../../database/entities/mcp-server.entity';
 import { LogEntryEntity, LogLevel, LogSource } from '../../../database/entities/log-entry.entity';
 import { ServerLifecycleService } from './server-lifecycle.service';
+import { ProcessManagerService } from './process-manager.service';
+import { ProcessHealthService } from './process-health.service';
+import { ProcessErrorHandlerService } from './process-error-handler.service';
 import { CreateServerDto, UpdateServerDto, ServerQueryDto, ServerResponseDto, PaginatedResponseDto } from '../dto/server.dto';
 import { ServerMapper } from '../utils/server-mapper.util';
 import { DocumentsService } from '../../documents/services/documents.service';
+import {
+  ProcessStatus,
+  ProcessInfo,
+  ProcessEvent,
+  ProcessErrorEvent
+} from '../interfaces/process.interface';
 
 export interface ServerInstance {
   id: string;
@@ -35,9 +44,118 @@ export class ServerManagerService implements OnModuleInit, OnApplicationShutdown
     @InjectRepository(LogEntryEntity)
     private readonly logRepository: Repository<LogEntryEntity>,
     private readonly lifecycleService: ServerLifecycleService,
+    private readonly processManager: ProcessManagerService,
+    private readonly processHealth: ProcessHealthService,
+    private readonly processErrorHandler: ProcessErrorHandlerService,
     private readonly documentsService: DocumentsService,
     private readonly eventEmitter: EventEmitter2,
-  ) {}
+  ) {
+    // 监听进程事件
+    this.setupProcessEventListeners();
+  }
+
+  /**
+   * 设置进程事件监听器
+   */
+  private setupProcessEventListeners(): void {
+    // 监听进程启动事件
+    this.eventEmitter.on('process.started', async (event: ProcessEvent) => {
+      await this.handleProcessStarted(event);
+    });
+
+    // 监听进程停止事件
+    this.eventEmitter.on('process.stopped', async (event: ProcessEvent) => {
+      await this.handleProcessStopped(event);
+    });
+
+    // 监听进程错误事件
+    this.eventEmitter.on('process.error', async (event: ProcessErrorEvent) => {
+      await this.handleProcessError(event);
+    });
+
+    // 监听进程重启事件
+    this.eventEmitter.on('process.restart_success', async (event: ProcessEvent) => {
+      await this.handleProcessRestarted(event);
+    });
+
+    // 监听健康检查失败事件
+    this.eventEmitter.on('process.health_check_failed', async (event: ProcessEvent) => {
+      await this.handleHealthCheckFailed(event);
+    });
+  }
+
+  /**
+   * 处理进程启动事件（CLI spawn模式）
+   */
+  private async handleProcessStarted(event: ProcessEvent): Promise<void> {
+    try {
+      await this.updateServerStatus(event.processId, ServerStatus.RUNNING);
+      await this.logInfo(event.processId, `Process started successfully (PID: ${event.data?.pid})`);
+    } catch (error) {
+      this.logger.error(`Failed to handle process started event for ${event.processId}:`, error);
+    }
+  }
+
+  /**
+   * 处理进程停止事件（CLI spawn模式）
+   */
+  private async handleProcessStopped(event: ProcessEvent): Promise<void> {
+    try {
+      await this.updateServerStatus(event.processId, ServerStatus.STOPPED);
+      await this.logInfo(event.processId, 'Process stopped');
+    } catch (error) {
+      this.logger.error(`Failed to handle process stopped event for ${event.processId}:`, error);
+    }
+  }
+
+  /**
+   * 处理进程错误事件（CLI spawn模式）
+   */
+  private async handleProcessError(event: ProcessErrorEvent): Promise<void> {
+    try {
+      await this.updateServerStatus(event.processId, ServerStatus.ERROR);
+      await this.logError(event.processId, `Process error: ${event.errorType}`, event.error);
+    } catch (error) {
+      this.logger.error(`Failed to handle process error event for ${event.processId}:`, error);
+    }
+  }
+
+  /**
+   * 处理进程重启事件（CLI spawn模式）
+   */
+  private async handleProcessRestarted(event: ProcessEvent): Promise<void> {
+    try {
+      await this.updateServerStatus(event.processId, ServerStatus.RUNNING);
+      await this.logInfo(event.processId, `Process restarted successfully (attempt ${event.data?.attemptNumber})`);
+    } catch (error) {
+      this.logger.error(`Failed to handle process restarted event for ${event.processId}:`, error);
+    }
+  }
+
+  /**
+   * 处理健康检查失败事件（CLI spawn模式）
+   */
+  private async handleHealthCheckFailed(event: ProcessEvent): Promise<void> {
+    try {
+      // 更新服务器健康状态
+      const server = await this.serverRepository.findOne({ where: { id: event.processId } });
+      if (server) {
+        await this.serverRepository.update(event.processId, { healthy: false });
+      }
+      
+      await this.logError(event.processId, 'Health check failed', event.data?.error || 'Unknown health check error');
+      
+      // 发送事件通知
+      this.eventEmitter.emit('server.health.changed', {
+        serverId: event.processId,
+        healthy: false,
+        error: event.data?.error,
+        timestamp: new Date()
+      });
+    } catch (error) {
+      this.logger.error(`Failed to handle health check failed event for ${event.processId}:`, error);
+    }
+  }
 
   /**
    * 模块初始化时调用
@@ -189,7 +307,7 @@ export class ServerManagerService implements OnModuleInit, OnApplicationShutdown
         // 检查端口是否已被占用（数据库层面）
         if (usedPorts.has(server.port)) {
           this.logger.warn(`Skipping server '${server.name}' - port ${server.port} already tracked as used`);
-          await this.logError(server.id, `Auto-start skipped: port ${server.port} already tracked as used`, new Error('Port conflict'));
+          await this.logError(server.id, `Auto-start skipped: port ${server.port} already tracked as used`, 'Port conflict');
           continue;
         }
 
@@ -197,7 +315,7 @@ export class ServerManagerService implements OnModuleInit, OnApplicationShutdown
         const isPortAvailable = await this.lifecycleService.isPortAvailable(server.port);
         if (!isPortAvailable) {
           this.logger.warn(`Skipping server '${server.name}' - port ${server.port} is not available on system`);
-          await this.logError(server.id, `Auto-start skipped: port ${server.port} is not available on system`, new Error('Port not available'));
+          await this.logError(server.id, `Auto-start skipped: port ${server.port} is not available on system`, 'Port not available');
           usedPorts.add(server.port); // 标记为已占用
           continue;
         }
@@ -531,38 +649,60 @@ export class ServerManagerService implements OnModuleInit, OnApplicationShutdown
    * 停止服务器
    */
   async stopServer(id: string): Promise<void> {
+    this.logger.log(`🛑 [DEBUG] stopServer called for ID: ${id}`);
+    
+    // 先调用调试方法查看当前状态
+    await this.debugGetAllServerStates();
+    
     const server = await this.getServerEntityById(id);
+    this.logger.log(`🛑 [DEBUG] Found server in database: ${server.name} - Status: ${server.status}`);
     
     if (server.status === ServerStatus.STOPPED) {
+      this.logger.warn(`🛑 [DEBUG] Server ${server.name} is already stopped`);
       throw new ConflictException('Server is already stopped');
     }
 
     if (server.status === ServerStatus.STOPPING) {
+      this.logger.warn(`🛑 [DEBUG] Server ${server.name} is already stopping`);
       throw new ConflictException('Server is already stopping');
     }
 
+    this.logger.log(`🛑 [DEBUG] Updating server ${server.name} status to STOPPING`);
     await this.updateServerStatus(id, ServerStatus.STOPPING);
     
     try {
       const instance = this.serverInstances.get(id);
+      this.logger.log(`🛑 [DEBUG] Memory instance found: ${!!instance}`);
+      
       if (instance) {
+        this.logger.log(`🛑 [DEBUG] Instance details - hasHttpServer: ${!!instance.httpServer}, hasMcpServer: ${!!instance.mcpServer}`);
+        this.logger.log(`🛑 [DEBUG] Calling lifecycleService.stopServer for ${server.name}`);
+        
         await this.lifecycleService.stopServer(instance);
         
+        this.logger.log(`🛑 [DEBUG] lifecycleService.stopServer completed, cleaning up memory instance`);
         // 清理内存中的实例
         this.serverInstances.set(id, {
           id,
           entity: server,
         });
+      } else {
+        this.logger.warn(`🛑 [DEBUG] No memory instance found for server ${server.name}, but continuing with status update`);
       }
 
+      this.logger.log(`🛑 [DEBUG] Updating server ${server.name} status to STOPPED`);
       await this.updateServerStatus(id, ServerStatus.STOPPED);
       await this.logInfo(id, `Server '${server.name}' stopped successfully`);
       
+      this.logger.log(`🛑 [DEBUG] Emitting server.stopped event for ${server.name}`);
       this.eventEmitter.emit('server.stopped', {
         serverId: id,
         serverName: server.name,
       });
+      
+      this.logger.log(`🛑 [DEBUG] stopServer completed successfully for ${server.name}`);
     } catch (error) {
+      this.logger.error(`🛑 [DEBUG] stopServer failed for ${server.name}:`, error);
       await this.updateServerStatus(id, ServerStatus.ERROR, undefined, error.message);
       await this.logError(id, `Failed to stop server '${server.name}'`, error);
       throw error;
@@ -593,9 +733,53 @@ export class ServerManagerService implements OnModuleInit, OnApplicationShutdown
    * 获取所有运行中的服务器实例
    */
   getRunningInstances(): ServerInstance[] {
-    return Array.from(this.serverInstances.values()).filter(
+    const instances = Array.from(this.serverInstances.values()).filter(
       instance => instance.entity.status === ServerStatus.RUNNING
     );
+    this.logger.log(`🔍 [DEBUG] getRunningInstances found ${instances.length} running servers`);
+    instances.forEach(instance => {
+      this.logger.log(`🔍 [DEBUG] Running server: ${instance.entity.name} (${instance.id}) - Status: ${instance.entity.status}`);
+    });
+    return instances;
+  }
+
+  /**
+   * 调试方法：获取当前所有服务器状态
+   */
+  async debugGetAllServerStates(): Promise<any> {
+    this.logger.log('🔍 [DEBUG] Starting debugGetAllServerStates');
+    
+    // 获取数据库中的所有服务器
+    const dbServers = await this.serverRepository.find();
+    this.logger.log(`🔍 [DEBUG] Database has ${dbServers.length} servers`);
+    
+    // 获取内存中的所有实例
+    const memoryInstances = Array.from(this.serverInstances.entries());
+    this.logger.log(`🔍 [DEBUG] Memory has ${memoryInstances.length} instances`);
+    
+    const debugInfo = {
+      databaseServers: dbServers.map(server => ({
+        id: server.id,
+        name: server.name,
+        status: server.status,
+        healthy: server.healthy,
+        endpoint: server.endpoint,
+        port: server.port
+      })),
+      memoryInstances: memoryInstances.map(([id, instance]) => ({
+        id,
+        name: instance.entity.name,
+        status: instance.entity.status,
+        healthy: instance.entity.healthy,
+        endpoint: instance.entity.endpoint,
+        hasHttpServer: !!instance.httpServer,
+        hasMcpServer: !!instance.mcpServer
+      })),
+      runningCount: this.getRunningInstances().length
+    };
+    
+    this.logger.log('🔍 [DEBUG] Complete debug info:', JSON.stringify(debugInfo, null, 2));
+    return debugInfo;
   }
 
   /**

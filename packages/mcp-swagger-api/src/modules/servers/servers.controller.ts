@@ -25,6 +25,10 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ServerManagerService } from './services/server-manager.service';
 import { ServerHealthService } from './services/server-health.service';
 import { ServerMetricsService } from './services/server-metrics.service';
+import { ProcessManagerService } from './services/process-manager.service';
+import { ProcessHealthService } from './services/process-health.service';
+import { ProcessErrorHandlerService } from './services/process-error-handler.service';
+import { LogLevel } from './interfaces/process.interface';
 import {
   CreateServerDto,
   UpdateServerDto,
@@ -50,6 +54,9 @@ export class ServersController {
     private readonly serverManager: ServerManagerService,
     private readonly serverHealth: ServerHealthService,
     private readonly serverMetrics: ServerMetricsService,
+    private readonly processManager: ProcessManagerService,
+    private readonly processHealth: ProcessHealthService,
+    private readonly processErrorHandler: ProcessErrorHandlerService,
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
@@ -217,28 +224,34 @@ export class ServersController {
     @Body() actionDto: ServerActionDto
   ): Promise<OperationResultDto> {
     try {
-      this.logger.log(`Performing ${actionDto.action} on server ${id}`);
+      this.logger.log(`🛑 [CONTROLLER DEBUG] performServerAction called - ID: ${id}, Action: ${actionDto.action}, Force: ${actionDto.force}`);
+      this.logger.log(`🛑 [CONTROLLER DEBUG] Request body:`, JSON.stringify(actionDto));
       
       switch (actionDto.action) {
         case 'start':
+          this.logger.log(`🛑 [CONTROLLER DEBUG] Calling serverManager.startServer(${id})`);
           await this.serverManager.startServer(id);
           break;
         case 'stop':
+          this.logger.log(`🛑 [CONTROLLER DEBUG] Calling serverManager.stopServer(${id})`);
           await this.serverManager.stopServer(id);
           break;
         case 'restart':
+          this.logger.log(`🛑 [CONTROLLER DEBUG] Calling serverManager.restartServer(${id})`);
           await this.serverManager.restartServer(id);
           break;
         default:
           throw new Error(`Unknown action: ${actionDto.action}`);
       }
       
-      return {
+      const result = {
         success: true,
         message: `Server ${actionDto.action} operation completed successfully`,
       };
+      this.logger.log(`🛑 [CONTROLLER DEBUG] Operation completed successfully:`, result);
+      return result;
     } catch (error) {
-      this.logger.error(`Failed to ${actionDto.action} server ${id}: ${error.message}`, error.stack);
+      this.logger.error(`🛑 [CONTROLLER DEBUG] Failed to ${actionDto.action} server ${id}: ${error.message}`, error.stack);
       
       if (error.message.includes('not found')) {
         throw new HttpException(error.message, HttpStatus.NOT_FOUND);
@@ -397,6 +410,25 @@ export class ServersController {
   }
 
   /**
+   * 调试端点：获取所有服务器状态
+   */
+  @Get('debug/states')
+  @ApiOperation({ summary: '调试：获取所有服务器状态', description: '获取数据库和内存中的所有服务器状态信息' })
+  @ApiResponse({ status: 200, description: '获取成功' })
+  async debugGetAllServerStates() {
+    try {
+      const debugInfo = await this.serverManager.debugGetAllServerStates();
+      return debugInfo;
+    } catch (error) {
+      this.logger.error(`Failed to get debug server states: ${error.message}`, error.stack);
+      throw new HttpException(
+        `Failed to get debug server states: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
    * 获取服务器指标
    */
   @Get(':id/metrics')
@@ -460,6 +492,187 @@ export class ServersController {
       this.logger.error(`Failed to get system metrics: ${error.message}`, error.stack);
       throw new HttpException(
         `Failed to get system metrics: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  // ============================================================================
+  // 进程管理相关API端点
+  // ============================================================================
+
+  /**
+   * 获取服务器进程信息
+   */
+  @Get(':id/process')
+  @ApiOperation({ summary: '获取进程信息', description: '获取指定服务器的进程详细信息' })
+  @ApiParam({ name: 'id', description: '服务器ID' })
+  @ApiResponse({ status: 200, description: '获取成功' })
+  @ApiResponse({ status: 404, description: '服务器不存在' })
+  async getProcessInfo(@Param('id') id: string) {
+    try {
+      const processInfo = await this.processManager.getProcessInfo(id);
+      return processInfo;
+    } catch (error) {
+      this.logger.error(`Failed to get process info ${id}: ${error.message}`, error.stack);
+      
+      if (error.message.includes('not found')) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+      
+      throw new HttpException(
+        `Failed to get process info: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 获取服务器进程日志
+   */
+  @Get(':id/process/logs')
+  @ApiOperation({ summary: '获取进程日志', description: '获取指定服务器的进程日志' })
+  @ApiParam({ name: 'id', description: '服务器ID' })
+  @ApiQuery({ name: 'level', required: false, description: '日志级别过滤', enum: ['error', 'warn', 'info', 'debug'] })
+  @ApiQuery({ name: 'limit', required: false, description: '限制数量', example: 100 })
+  @ApiQuery({ name: 'startTime', required: false, description: '开始时间' })
+  @ApiQuery({ name: 'endTime', required: false, description: '结束时间' })
+  @ApiResponse({ status: 200, description: '获取成功' })
+  async getProcessLogs(
+    @Param('id') id: string,
+    @Query() query: LogQueryDto
+  ) {
+    try {
+      const logs = await this.processErrorHandler.getProcessLogs(
+        id,
+        query.level as LogLevel,
+        query.limit || 100
+      );
+      return logs;
+    } catch (error) {
+      this.logger.error(`Failed to get process logs ${id}: ${error.message}`, error.stack);
+      throw new HttpException(
+        `Failed to get process logs: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 获取进程健康检查历史
+   */
+  @Get(':id/process/health/history')
+  @ApiOperation({ summary: '获取进程健康检查历史', description: '获取指定服务器的进程健康检查历史记录' })
+  @ApiParam({ name: 'id', description: '服务器ID' })
+  @ApiQuery({ name: 'limit', required: false, description: '限制数量', example: 50 })
+  @ApiQuery({ name: 'startTime', required: false, description: '开始时间' })
+  @ApiQuery({ name: 'endTime', required: false, description: '结束时间' })
+  @ApiResponse({ status: 200, description: '获取成功' })
+  async getProcessHealthHistory(
+    @Param('id') id: string,
+    @Query() query: HealthCheckQueryDto
+  ) {
+    try {
+      const history = await this.processHealth.getHealthCheckHistory(id, query.limit);
+      return history;
+    } catch (error) {
+      this.logger.error(`Failed to get process health history ${id}: ${error.message}`, error.stack);
+      throw new HttpException(
+        `Failed to get process health history: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 获取进程健康统计
+   */
+  @Get(':id/process/health/stats')
+  @ApiOperation({ summary: '获取进程健康统计', description: '获取指定服务器的进程健康统计信息' })
+  @ApiParam({ name: 'id', description: '服务器ID' })
+  @ApiQuery({ name: 'period', required: false, description: '统计周期', enum: ['hour', 'day', 'week', 'month'] })
+  @ApiResponse({ status: 200, description: '获取成功' })
+  async getProcessHealthStats(
+    @Param('id') id: string,
+    @Query('period') period?: string
+  ) {
+    try {
+      const stats = await this.processHealth.getHealthStats(id, period ? parseInt(period) : 24);
+      return stats;
+    } catch (error) {
+      this.logger.error(`Failed to get process health stats ${id}: ${error.message}`, error.stack);
+      throw new HttpException(
+        `Failed to get process health stats: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 获取进程错误统计
+   */
+  @Get(':id/process/errors/stats')
+  @ApiOperation({ summary: '获取进程错误统计', description: '获取指定服务器的进程错误统计信息' })
+  @ApiParam({ name: 'id', description: '服务器ID' })
+  @ApiQuery({ name: 'period', required: false, description: '统计周期', enum: ['hour', 'day', 'week', 'month'] })
+  @ApiResponse({ status: 200, description: '获取成功' })
+  async getProcessErrorStats(
+    @Param('id') id: string,
+    @Query('period') period?: string
+  ) {
+    try {
+      const stats = await this.processErrorHandler.getErrorStats(id, period ? parseInt(period) : 24);
+      return stats;
+    } catch (error) {
+      this.logger.error(`Failed to get process error stats ${id}: ${error.message}`, error.stack);
+      throw new HttpException(
+        `Failed to get process error stats: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 重置进程重启计数器
+   */
+  @Post(':id/process/reset-restart-counter')
+  @ApiOperation({ summary: '重置重启计数器', description: '重置指定服务器的进程重启计数器' })
+  @ApiParam({ name: 'id', description: '服务器ID' })
+  @ApiResponse({ status: 200, description: '重置成功', type: OperationResultDto })
+  async resetRestartCounter(@Param('id') id: string): Promise<OperationResultDto> {
+    try {
+      await this.processErrorHandler.resetRestartCounter(id);
+      return {
+        success: true,
+        message: 'Restart counter reset successfully',
+      };
+    } catch (error) {
+      this.logger.error(`Failed to reset restart counter ${id}: ${error.message}`, error.stack);
+      throw new HttpException(
+        `Failed to reset restart counter: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 取消进程重启
+   */
+  @Post(':id/process/cancel-restart')
+  @ApiOperation({ summary: '取消进程重启', description: '取消指定服务器的待重启进程' })
+  @ApiParam({ name: 'id', description: '服务器ID' })
+  @ApiResponse({ status: 200, description: '取消成功', type: OperationResultDto })
+  async cancelRestart(@Param('id') id: string): Promise<OperationResultDto> {
+    try {
+      await this.processErrorHandler.cancelRestart(id);
+      return {
+        success: true,
+        message: 'Process restart cancelled successfully',
+      };
+    } catch (error) {
+      this.logger.error(`Failed to cancel restart ${id}: ${error.message}`, error.stack);
+      throw new HttpException(
+        `Failed to cancel restart: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }

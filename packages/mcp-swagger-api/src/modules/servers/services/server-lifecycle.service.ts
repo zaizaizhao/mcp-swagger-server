@@ -8,6 +8,14 @@ import { firstValueFrom } from 'rxjs';
 
 import { MCPServerEntity, TransportType } from '../../../database/entities/mcp-server.entity';
 import { ServerInstance } from './server-manager.service';
+import { ProcessManagerService } from './process-manager.service';
+import { ProcessHealthService } from './process-health.service';
+import {
+  ProcessConfig,
+  ProcessStatus,
+  RestartPolicy,
+  DEFAULT_PROCESS_CONFIG
+} from '../interfaces/process.interface';
 
 // 导入MCP相关模块
 import { ParserService } from '../../openapi/services/parser.service';
@@ -17,7 +25,6 @@ import { ValidatorService } from '../../openapi/services/validator.service';
 import { createMcpServer } from 'mcp-swagger-server/dist/server.js';
 import { startStreamableMcpServer } from 'mcp-swagger-server/dist/transportUtils/stream.js';
 import { startSseMcpServer } from 'mcp-swagger-server/dist/transportUtils/sse.js';
-import { startStdioMcpServer } from 'mcp-swagger-server/dist/transportUtils/stdio.js';
 
 export interface ServerStartResult {
   mcpServer: any;
@@ -34,6 +41,8 @@ export class ServerLifecycleService {
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly processManager: ProcessManagerService,
+    private readonly processHealth: ProcessHealthService,
     // private readonly mcpService: MCPService, // TODO: 实现 MCP 服务
     private readonly parserService: ParserService,
     private readonly validatorService: ValidatorService,
@@ -60,68 +69,76 @@ export class ServerLifecycleService {
   }
 
   /**
-   * 启动MCP服务器
+   * 启动MCP服务器（使用CLI spawn方式实现进程隔离）
    */
   async startServer(serverEntity: MCPServerEntity): Promise<ServerStartResult> {
-    this.logger.log(`Starting server '${serverEntity.name}' on port ${serverEntity.port}`);
+    this.logger.log(`Starting server '${serverEntity.name}' on port ${serverEntity.port} using CLI spawn`);
 
     try {
       // 验证OpenAPI数据
       await this.validateOpenApiData(serverEntity.openApiData);
 
-      // 解析OpenAPI为MCP工具
-      const tools = await this.parserService.parseSpecification(serverEntity.openApiData);
+      // 构建CLI参数
+      const cliArgs = this.buildCliArgs(serverEntity);
       
-      // 准备MCP服务器配置
-      const mcpConfig = {
+      // 准备进程配置
+      const processConfig: ProcessConfig = {
+        ...DEFAULT_PROCESS_CONFIG,
+        id: serverEntity.id,
         name: serverEntity.name,
-        version: serverEntity.version,
-        description: serverEntity.description,
-        tools,
-        transport: serverEntity.transport,
-        port: serverEntity.port,
-        config: serverEntity.config,
-        authConfig: serverEntity.authConfig,
+        scriptPath: 'mcp-swagger-server', // 使用CLI可执行文件
+        args: cliArgs,
+        env: {
+          ...process.env,
+          NODE_ENV: this.configService.get('NODE_ENV', 'development'),
+        },
+        restartPolicy: serverEntity.config?.restartPolicy || {
+          maxRetries: DEFAULT_PROCESS_CONFIG.defaultMaxRetries,
+          retryDelay: DEFAULT_PROCESS_CONFIG.defaultRestartDelay,
+          backoffMultiplier: DEFAULT_PROCESS_CONFIG.defaultBackoffMultiplier,
+          maxRetryDelay: DEFAULT_PROCESS_CONFIG.defaultMaxRetryDelay
+        },
+        maxRestartAttempts: serverEntity.config?.maxRestartAttempts || DEFAULT_PROCESS_CONFIG.maxRestartAttempts,
+        healthCheck: {
+          enabled: serverEntity.config?.healthCheckEnabled !== false,
+          interval: serverEntity.config?.healthCheckInterval || DEFAULT_PROCESS_CONFIG.healthCheckInterval,
+          timeout: serverEntity.config?.healthCheckTimeout || 5000,
+          retries: 3,
+          endpoint: this.getHealthCheckEndpoint(serverEntity),
+        },
+        processTimeout: serverEntity.config?.processTimeout || DEFAULT_PROCESS_CONFIG.processTimeout,
+        memoryLimit: serverEntity.config?.memoryLimit || DEFAULT_PROCESS_CONFIG.memoryLimit,
+        cpuLimit: serverEntity.config?.cpuLimit || DEFAULT_PROCESS_CONFIG.cpuLimit,
+        // MCP特定配置
+        mcpConfig: {
+          transport: serverEntity.transport.toLowerCase() as 'sse' | 'streamable',
+          port: serverEntity.port,
+          endpoint: serverEntity.config?.endpoint || '/mcp',
+          openApiSource: 'env', // 从环境变量读取
+          authConfig: serverEntity.authConfig ? {
+            type: serverEntity.authConfig.type as 'none' | 'bearer',
+            bearerToken: serverEntity.authConfig.config?.bearerToken,
+            bearerEnv: serverEntity.authConfig.config?.bearerEnv,
+          } : { type: 'none' },
+          customHeaders: serverEntity.config?.customHeaders || {},
+          watch: serverEntity.config?.watch || false,
+          managed: true, // 启用托管模式
+          autoRestart: serverEntity.config?.autoRestart !== false,
+          maxRetries: serverEntity.config?.maxRetries || 3,
+          retryDelay: serverEntity.config?.retryDelay || 1000,
+        },
       };
 
-      // 根据传输类型启动不同的服务器
-      let mcpServer: any;
-      let httpServer: any;
-      let endpoint: string;
+      // 启动进程管理器进程
+      const processInfo = await this.processManager.startProcess(processConfig);
 
-      switch (serverEntity.transport) {
-        case TransportType.STREAMABLE:
-          const streamableResult = await this.startStreamableServer(mcpConfig);
-          mcpServer = streamableResult.mcpServer;
-          httpServer = streamableResult.httpServer;
-          endpoint = `http://localhost:${serverEntity.port}/mcp`;
-          break;
+      // 确定端点URL
+      const endpoint = this.getServerEndpoint(serverEntity);
 
-        case TransportType.SSE:
-          const sseResult = await this.startSSEServer(mcpConfig);
-          mcpServer = sseResult.mcpServer;
-          httpServer = sseResult.httpServer;
-          endpoint = `http://localhost:${serverEntity.port}/mcp`;
-          break;
-
-        case TransportType.STDIO:
-          mcpServer = await this.startStdioServer(mcpConfig);
-          endpoint = `stdio://${serverEntity.name}`;
-          break;
-
-        case TransportType.WEBSOCKET:
-          const wsResult = await this.startWebSocketServer(mcpConfig);
-          mcpServer = wsResult.mcpServer;
-          httpServer = wsResult.httpServer;
-          endpoint = `ws://localhost:${serverEntity.port}`;
-          break;
-
-        default:
-          throw new Error(`Unsupported transport type: ${serverEntity.transport}`);
+      // 启动健康检查
+      if (processConfig.healthCheck?.enabled) {
+        await this.processHealth.startHealthCheck(serverEntity.id);
       }
-
-      // 设置服务器超时监控
-      this.setupServerTimeout(serverEntity.id, mcpServer, httpServer);
 
       // 发送启动事件
       this.eventEmitter.emit('server.lifecycle.started', {
@@ -129,13 +146,14 @@ export class ServerLifecycleService {
         serverName: serverEntity.name,
         transport: serverEntity.transport,
         endpoint,
+        pid: processInfo.pid,
       });
 
-      this.logger.log(`Server '${serverEntity.name}' started successfully at ${endpoint}`);
+      this.logger.log(`Server '${serverEntity.name}' started successfully at ${endpoint} (PID: ${processInfo.pid})`);
 
       return {
-        mcpServer,
-        httpServer,
+        mcpServer: null, // CLI模式下不返回服务器实例
+        httpServer: null,
         endpoint,
       };
     } catch (error) {
@@ -152,27 +170,125 @@ export class ServerLifecycleService {
   }
 
   /**
-   * 停止MCP服务器
+   * 构建CLI参数
+   */
+  private buildCliArgs(serverEntity: MCPServerEntity): string[] {
+    const args: string[] = [];
+
+    // 传输协议
+    args.push('--transport', serverEntity.transport.toLowerCase());
+
+    // 端口
+    args.push('--port', serverEntity.port.toString());
+
+    // 端点路径
+    if (serverEntity.config?.endpoint) {
+      args.push('--endpoint', serverEntity.config.endpoint);
+    }
+
+    // OpenAPI数据源（使用API URL）
+    const apiBaseUrl = this.configService.get('API_BASE_URL', 'http://localhost:3001');
+    const openApiUrl = `${apiBaseUrl}/api/openapi/by-server/${serverEntity.id}`;
+    args.push('--openapi', openApiUrl);
+
+    // 认证配置
+    if (serverEntity.authConfig) {
+      args.push('--auth-type', serverEntity.authConfig.type);
+      if (serverEntity.authConfig.config?.bearerToken) {
+        args.push('--bearer-token', serverEntity.authConfig.config.bearerToken);
+      }
+      if (serverEntity.authConfig.config?.bearerEnv) {
+        args.push('--bearer-env', serverEntity.authConfig.config.bearerEnv);
+      }
+    }
+
+    // 自定义头部
+    if (serverEntity.config?.customHeaders) {
+      for (const [key, value] of Object.entries(serverEntity.config.customHeaders)) {
+        args.push('--header', `${key}:${value}`);
+      }
+    }
+
+    // 托管模式
+    args.push('--managed');
+
+    // 自动重启
+    if (serverEntity.config?.autoRestart !== false) {
+      args.push('--auto-restart');
+    }
+
+    // 监控文件变化
+    if (serverEntity.config?.watch) {
+      args.push('--watch');
+    }
+
+    return args;
+  }
+
+  /**
+   * 获取健康检查端点
+   */
+  private getHealthCheckEndpoint(serverEntity: MCPServerEntity): string | undefined {
+    const endpoint = serverEntity.config?.endpoint || '/mcp';
+    return `http://localhost:${serverEntity.port}${endpoint}/health`;
+  }
+
+  /**
+   * 获取服务器端点URL
+   */
+  private getServerEndpoint(serverEntity: MCPServerEntity): string {
+    switch (serverEntity.transport) {
+      case TransportType.STREAMABLE:
+      case TransportType.SSE:
+        const endpoint = serverEntity.config?.endpoint || '/mcp';
+        return `http://localhost:${serverEntity.port}${endpoint}`;
+      
+      case TransportType.WEBSOCKET:
+        return `ws://localhost:${serverEntity.port}`;
+      
+      default:
+        throw new Error(`Unsupported transport type: ${serverEntity.transport}`);
+    }
+  }
+
+  /**
+   * 停止MCP服务器（支持不同传输类型）
    */
   async stopServer(instance: ServerInstance): Promise<void> {
-    this.logger.log(`Stopping server '${instance.entity.name}'`);
+    const transport = instance.entity.transport;
+    this.logger.log(`Stopping server '${instance.entity.name}' (transport: ${transport})`);
 
     try {
+      // 停止健康检查
+      this.processHealth.stopHealthCheck(instance.id);
+
+      // 根据传输类型采用不同的停止策略
+      if (transport === TransportType.STREAMABLE || transport === TransportType.SSE) {
+        // 对于HTTP传输类型，直接停止HTTP服务器和MCP服务器
+        this.logger.log(`Stopping HTTP-based server '${instance.entity.name}' (${transport} mode)`);
+        
+        // 停止HTTP服务器
+        if (instance.httpServer) {
+          await this.stopHttpServer(instance.httpServer);
+          this.logger.log(`HTTP server stopped for '${instance.entity.name}'`);
+        }
+
+        // 停止MCP服务器
+        if (instance.mcpServer) {
+          await this.stopMCPServer(instance.mcpServer);
+          this.logger.log(`MCP server stopped for '${instance.entity.name}'`);
+        }
+      } else {
+        // 对于CLI spawn模式或其他进程模式，使用进程管理器
+        this.logger.log(`Stopping process-based server '${instance.entity.name}' (CLI spawn mode)`);
+        await this.processManager.stopProcess(instance.id);
+      }
+
       // 清除超时监控
       const timeout = this.serverTimeouts.get(instance.id);
       if (timeout) {
         clearTimeout(timeout);
         this.serverTimeouts.delete(instance.id);
-      }
-
-      // 停止HTTP服务器（如果存在）
-      if (instance.httpServer) {
-        await this.stopHttpServer(instance.httpServer);
-      }
-
-      // 停止MCP服务器
-      if (instance.mcpServer) {
-        await this.stopMCPServer(instance.mcpServer);
       }
 
       // 发送停止事件
@@ -192,6 +308,32 @@ export class ServerLifecycleService {
       });
       
       throw error;
+    }
+  }
+
+  /**
+   * 手动清理资源（当进程管理器失败时的备用方案）
+   */
+  private async manualCleanup(instance: ServerInstance): Promise<void> {
+    try {
+      // 清除超时监控
+      const timeout = this.serverTimeouts.get(instance.id);
+      if (timeout) {
+        clearTimeout(timeout);
+        this.serverTimeouts.delete(instance.id);
+      }
+
+      // 停止HTTP服务器（如果存在）
+      if (instance.httpServer) {
+        await this.stopHttpServer(instance.httpServer);
+      }
+
+      // 停止MCP服务器
+      if (instance.mcpServer) {
+        await this.stopMCPServer(instance.mcpServer);
+      }
+    } catch (error) {
+      this.logger.error(`Manual cleanup failed for server '${instance.entity.name}':`, error);
     }
   }
 
@@ -249,28 +391,7 @@ export class ServerLifecycleService {
     }
   }
 
-  /**
-   * 启动Stdio传输的MCP服务器
-   */
-  private async startStdioServer(config: any): Promise<any> {
-    try {
-      // 创建MCP服务器实例
-      const mcpServer = await createMcpServer({
-        openApiData: config.tools,
-        authConfig: config.authConfig,
-        customHeaders: config.config?.customHeaders || {},
-        debugHeaders: config.config?.debugHeaders || false,
-      });
 
-      // 启动Stdio传输
-      await startStdioMcpServer(mcpServer);
-
-      return mcpServer;
-    } catch (error) {
-      this.logger.error(`Failed to start stdio server: ${error.message}`);
-      throw error;
-    }
-  }
 
   /**
    * 启动WebSocket传输的MCP服务器
@@ -397,33 +518,38 @@ export class ServerLifecycleService {
   }
 
   /**
-   * 健康检查
+   * 健康检查（CLI spawn模式）
    */
   async healthCheck(instance: ServerInstance): Promise<boolean> {
     try {
-      if (!instance.mcpServer || !instance.entity.endpoint) {
-        return false;
-      }
-
-      // 根据传输类型进行不同的健康检查
-      switch (instance.entity.transport) {
-        case TransportType.STREAMABLE:
-        case TransportType.SSE:
-          return await this.httpHealthCheck(instance.entity.endpoint);
-        
-        case TransportType.WEBSOCKET:
-          return await this.websocketHealthCheck(instance.entity.endpoint);
-        
-        case TransportType.STDIO:
-          return await this.stdioHealthCheck(instance.mcpServer);
-        
-        default:
-          return false;
-      }
+      // 使用进程健康检查服务
+      const healthResult = await this.processHealth.performHealthCheck(instance.id);
+      return healthResult.healthy;
     } catch (error) {
       this.logger.error(`Health check failed for server ${instance.entity.name}:`, error);
       return false;
     }
+  }
+
+  /**
+   * 获取健康检查历史
+   */
+  async getHealthCheckHistory(serverId: string, limit = 100) {
+    return this.processHealth.getHealthCheckHistory(serverId, limit);
+  }
+
+  /**
+   * 获取最新健康检查结果
+   */
+  async getLatestHealthCheck(serverId: string) {
+    return this.processHealth.getLatestHealthCheck(serverId);
+  }
+
+  /**
+   * 获取健康统计
+   */
+  async getHealthStats(serverId: string, hours = 24) {
+    return this.processHealth.getHealthStats(serverId, hours);
   }
 
   /**
@@ -448,14 +574,6 @@ export class ServerLifecycleService {
    */
   private async websocketHealthCheck(endpoint: string): Promise<boolean> {
     // TODO: 实现WebSocket健康检查
-    return true;
-  }
-
-  /**
-   * Stdio健康检查
-   */
-  private async stdioHealthCheck(mcpServer: any): Promise<boolean> {
-    // TODO: 实现Stdio健康检查
     return true;
   }
 }

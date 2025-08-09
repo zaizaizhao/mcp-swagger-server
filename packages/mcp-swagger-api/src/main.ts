@@ -126,7 +126,6 @@ async function bootstrap() {
         },
         customSiteTitle: 'MCP Swagger API Documentation',
         customfavIcon: '/favicon.ico',
-        customCssUrl: '/swagger-ui-custom.css',
       });
 
       logger.log(`📚 Swagger documentation available at: http://localhost:${configService.get<number>('PORT', 3001)}/api/docs`);
@@ -136,7 +135,7 @@ async function bootstrap() {
     const port = configService.get<number>('PORT', 3001);
     await app.listen(port, '0.0.0.0');
 
-    logger.log(`🚀 Application is running on: http://localhost:${port}/api-docs`);
+    logger.log(`🚀 Application is running on: http://localhost:${port}/api/docs`);
     logger.log(`🏥 Health check available at: http://localhost:${port}/health`);
     logger.log(`🎛️ MCP Server running on port: ${configService.get<number>('MCP_PORT', 3322)}`);
     

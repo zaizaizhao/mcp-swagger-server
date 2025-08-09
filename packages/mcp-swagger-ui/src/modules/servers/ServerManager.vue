@@ -540,6 +540,9 @@ const handleServerAction = async ({
   action: string;
   server: MCPServer;
 }) => {
+  console.log(action, server);
+
+  
   switch (action) {
     case "start":
       await startServer(server);
@@ -574,17 +577,29 @@ const startServer = async (server: MCPServer) => {
 };
 
 const stopServer = async (server: MCPServer) => {
+  console.log('🛑 [FRONTEND DEBUG] stopServer called with server:', {
+    id: server.id,
+    name: server.name,
+    status: server.status
+  });
+  
   const confirmed = await confirmDangerousAction(
     `确定要停止服务器 "${server.name}" 吗？这将中断所有正在进行的请求。`,
   );
-  if (!confirmed) return;
+  if (!confirmed) {
+    console.log('🛑 [FRONTEND DEBUG] User cancelled stop operation');
+    return;
+  }
 
   try {
+    console.log('🛑 [FRONTEND DEBUG] Calling serverStore.stopServer with ID:', server.id);
     await measureFunction("stopServer", async () => {
       await serverStore.stopServer(server.id);
     });
+    console.log('🛑 [FRONTEND DEBUG] serverStore.stopServer completed successfully');
     ElMessage.success(`服务器 ${server.name} 停止成功`);
   } catch (error) {
+    console.error('🛑 [FRONTEND DEBUG] stopServer failed:', error);
     ElMessage.error(`停止服务器失败: ${error}`);
   }
 };

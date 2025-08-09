@@ -12,6 +12,8 @@ import {
   UploadedFile,
   Query,
   Get,
+  Param,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -22,6 +24,7 @@ import {
   ApiSecurity,
   ApiConsumes,
   ApiQuery,
+  ApiParam,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Express } from 'express';
@@ -467,6 +470,53 @@ export class OpenAPIController {
       }
       
       throw new InternalServerErrorException('Failed to parse OpenAPI from URL');
+    }
+  }
+
+  @Get('by-server/:serverId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get OpenAPI document by server ID',
+    description: 'Retrieve OpenAPI document from database by MCP server ID',
+  })
+  @ApiParam({
+    name: 'serverId',
+    description: 'MCP Server ID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'OpenAPI document retrieved successfully',
+    schema: {
+      type: 'object',
+      description: 'OpenAPI specification document',
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Server not found or no OpenAPI document available',
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description: 'Internal server error',
+  })
+  async getOpenApiByServerId(@Param('serverId') serverId: string) {
+    try {
+      this.logger.log(`Retrieving OpenAPI document for server ID: ${serverId}`);
+
+      const openApiData = await this.openApiService.getOpenApiByServerId(serverId);
+
+      this.logger.log(`Successfully retrieved OpenAPI document for server ID: ${serverId}`);
+
+      return openApiData;
+    } catch (error) {
+      this.logger.error(`Failed to retrieve OpenAPI document for server ID ${serverId}: ${error.message}`, error.stack);
+      
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      
+      throw new InternalServerErrorException('Failed to retrieve OpenAPI document');
     }
   }
 }

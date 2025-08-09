@@ -252,11 +252,20 @@ export const serverAPI = {
     action: "start" | "stop" | "restart",
     force?: boolean,
   ): Promise<{ success: boolean; message: string }> {
-    const response = await api.post(`/v1/servers/${id}/actions`, {
-      action,
-      force,
-    });
-    return response.data;
+    console.log('🛑 [API DEBUG] performServerAction called with:', { id, action, force });
+    console.log('🛑 [API DEBUG] Making POST request to:', `/v1/servers/${id}/actions`);
+    
+    const requestData = { action, force };
+    console.log('🛑 [API DEBUG] Request data:', requestData);
+    
+    try {
+      const response = await api.post(`/v1/servers/${id}/actions`, requestData);
+      console.log('🛑 [API DEBUG] Response received:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('🛑 [API DEBUG] Request failed:', error);
+      throw error;
+    }
   },
 
   // 批量服务器操作

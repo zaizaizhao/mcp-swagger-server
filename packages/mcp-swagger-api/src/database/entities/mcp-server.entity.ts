@@ -18,7 +18,6 @@ export enum ServerStatus {
 export enum TransportType {
   STREAMABLE = 'streamable',
   SSE = 'sse',
-  STDIO = 'stdio',
   WEBSOCKET = 'websocket',
 }
 
