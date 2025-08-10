@@ -3,7 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
-import { spawn, ChildProcess } from 'child_process';
+import { spawn, ChildProcess, exec } from 'child_process';
+import { promisify } from 'util';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { ProcessInfoEntity } from '../entities/process-info.entity';
@@ -17,6 +18,8 @@ import {
   DEFAULT_PROCESS_CONFIG,
   LogLevel
 } from '../interfaces/process.interface';
+import { ProcessResourceMonitorService, ProcessResourceMetrics, SystemResourceInfo } from './process-resource-monitor.service';
+import { ProcessLogMonitorService, ProcessLogEntry } from './process-log-monitor.service';
 
 @Injectable()
 export class ProcessManagerService implements OnModuleDestroy {
@@ -24,6 +27,7 @@ export class ProcessManagerService implements OnModuleDestroy {
   private readonly processes = new Map<string, ChildProcess>();
   private readonly processInfo = new Map<string, ProcessInfo>();
   private readonly config: ProcessManagerConfig;
+  private readonly execAsync = promisify(exec);
 
   constructor(
     @InjectRepository(ProcessInfoEntity)
@@ -32,6 +36,8 @@ export class ProcessManagerService implements OnModuleDestroy {
     private readonly processLogRepository: Repository<ProcessLogEntity>,
     private readonly eventEmitter: EventEmitter2,
     private readonly configService: ConfigService,
+    private readonly resourceMonitor: ProcessResourceMonitorService,
+    private readonly logMonitor: ProcessLogMonitorService,
   ) {
     this.config = {
       ...DEFAULT_PROCESS_CONFIG,
@@ -44,6 +50,7 @@ export class ProcessManagerService implements OnModuleDestroy {
     };
 
     this.ensureDirectories();
+    this.setupEventListeners();
   }
 
   async onModuleDestroy() {
@@ -109,6 +116,23 @@ export class ProcessManagerService implements OnModuleDestroy {
       // 设置进程事件监听
       this.setupProcessListeners(serverId, childProcess, config);
 
+      // 启动资源监控
+      this.resourceMonitor.startMonitoring(
+        serverId, 
+        childProcess.pid, 
+        10000 // 10秒间隔
+      );
+
+      // 启动日志监控
+      this.logMonitor.startLogMonitoring(
+        serverId,
+        childProcess.pid,
+        config.logFilePath
+      );
+
+      // 监控子进程输出
+      this.setupProcessOutputMonitoring(processInfo);
+
       // 保存到数据库
       await this.saveProcessInfo(processInfo);
 
@@ -157,11 +181,99 @@ export class ProcessManagerService implements OnModuleDestroy {
     await this.logProcess(serverId, LogLevel.INFO, `Stopping process (PID: ${processInfo.pid})`);
 
     try {
+      // 停止监控
+      this.resourceMonitor.stopMonitoring(serverId);
+      this.logMonitor.stopLogMonitoring(serverId);
+      
       // 更新状态为停止中
       await this.updateProcessStatus(serverId, ProcessStatus.STOPPING);
+      
+      // 根据平台选择不同的进程终止方式
+      if (process.platform === 'win32') {
+        // Windows平台使用taskkill命令
+        await this.stopProcessOnWindows(serverId, processInfo.pid, force);
+      } else {
+        // Unix/Linux平台使用信号机制
+        await this.stopProcessOnUnix(serverId, childProcess, force);
+      }
 
-      // 尝试优雅关闭
+      // 清理资源
+      await this.cleanupProcess(serverId);
+
+      this.logger.log(`Process stopped successfully for server ${serverId}`);
+      await this.logProcess(serverId, LogLevel.INFO, 'Process stopped successfully');
+    } catch (error) {
+      this.logger.error(`Failed to stop process for server ${serverId}:`, error);
+      await this.logProcess(serverId, LogLevel.ERROR, `Failed to stop process: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Windows平台停止进程
+   */
+  private async stopProcessOnWindows(serverId: string, pid: number, force: boolean): Promise<void> {
+    try {
       if (!force) {
+        // 尝试优雅关闭 - 使用taskkill不带/f参数
+        this.logger.log(`Attempting graceful shutdown for process ${pid} on Windows`);
+        await this.logProcess(serverId, LogLevel.INFO, `Attempting graceful shutdown using taskkill`);
+        
+        try {
+          await this.execAsync(`taskkill /pid ${pid} /t`);
+          
+          // 等待进程关闭，如果超时则强制终止
+          const checkInterval = 500; // 每500ms检查一次
+          const maxWaitTime = this.config.processTimeout;
+          let waitedTime = 0;
+          
+          while (waitedTime < maxWaitTime) {
+            try {
+              // 检查进程是否还存在
+              await this.execAsync(`tasklist /fi "PID eq ${pid}" | findstr ${pid}`);
+              // 如果没有抛出异常，说明进程还存在
+              await new Promise(resolve => setTimeout(resolve, checkInterval));
+              waitedTime += checkInterval;
+            } catch {
+              // 进程已经不存在了
+              this.logger.log(`Process ${pid} terminated gracefully`);
+              await this.logProcess(serverId, LogLevel.INFO, 'Process terminated gracefully');
+              return;
+            }
+          }
+          
+          // 超时，强制终止
+          this.logger.warn(`Process ${pid} did not shut down gracefully, forcing termination`);
+          await this.logProcess(serverId, LogLevel.WARN, 'Graceful shutdown timeout, forcing termination');
+          await this.execAsync(`taskkill /pid ${pid} /t /f`);
+        } catch (error) {
+          this.logger.warn(`Graceful shutdown failed for process ${pid}, forcing termination:`, error);
+          await this.logProcess(serverId, LogLevel.WARN, `Graceful shutdown failed: ${error.message}`);
+          await this.execAsync(`taskkill /pid ${pid} /t /f`);
+        }
+      } else {
+        // 强制终止
+        this.logger.log(`Force terminating process ${pid} on Windows`);
+        await this.logProcess(serverId, LogLevel.INFO, `Force terminating process using taskkill /f`);
+        await this.execAsync(`taskkill /pid ${pid} /t /f`);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to terminate process ${pid} on Windows:`, error);
+      await this.logProcess(serverId, LogLevel.ERROR, `Failed to terminate process: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Unix/Linux平台停止进程
+   */
+  private async stopProcessOnUnix(serverId: string, childProcess: ChildProcess, force: boolean): Promise<void> {
+    try {
+      if (!force) {
+        // 尝试优雅关闭
+        this.logger.log(`Attempting graceful shutdown using SIGTERM`);
+        await this.logProcess(serverId, LogLevel.INFO, `Attempting graceful shutdown using SIGTERM`);
+        
         childProcess.kill('SIGTERM');
         
         // 等待进程优雅关闭
@@ -180,17 +292,14 @@ export class ProcessManagerService implements OnModuleDestroy {
 
         await gracefulShutdown;
       } else {
+        // 强制终止
+        this.logger.log(`Force terminating process using SIGKILL`);
+        await this.logProcess(serverId, LogLevel.INFO, `Force terminating process using SIGKILL`);
         childProcess.kill('SIGKILL');
       }
-
-      // 清理资源
-      await this.cleanupProcess(serverId);
-
-      this.logger.log(`Process stopped successfully for server ${serverId}`);
-      await this.logProcess(serverId, LogLevel.INFO, 'Process stopped successfully');
     } catch (error) {
-      this.logger.error(`Failed to stop process for server ${serverId}:`, error);
-      await this.logProcess(serverId, LogLevel.ERROR, `Failed to stop process: ${error.message}`);
+      this.logger.error(`Failed to terminate process on Unix/Linux:`, error);
+      await this.logProcess(serverId, LogLevel.ERROR, `Failed to terminate process: ${error.message}`);
       throw error;
     }
   }
@@ -262,8 +371,16 @@ export class ProcessManagerService implements OnModuleDestroy {
     }
 
     try {
-      // 对于CLI spawn模式，我们需要通过其他方式获取进程指标
-      // 这里返回基本的内存和CPU使用情况
+      // 使用新的资源监控服务获取真实的进程指标
+      const resourceMetrics = await this.resourceMonitor.getProcessResourceMetrics(processInfo.pid);
+      if (resourceMetrics) {
+        return {
+          memoryUsage: { rss: resourceMetrics.memory },
+          cpuUsage: { user: resourceMetrics.cpu }
+        };
+      }
+      
+      // 回退到原有实现
       const memoryUsage = process.memoryUsage();
       const cpuUsage = process.cpuUsage();
       
@@ -274,6 +391,76 @@ export class ProcessManagerService implements OnModuleDestroy {
     } catch (error) {
       this.logger.error(`Failed to get process metrics for ${serverId}:`, error);
       return null;
+    }
+  }
+
+  /**
+   * 获取进程完整信息（改进版）
+   */
+  async getProcessFullInfo(serverId: string): Promise<{
+    basicInfo: ProcessInfo;
+    resourceMetrics: ProcessResourceMetrics | null;
+    systemInfo: SystemResourceInfo;
+    resourceHistory: ProcessResourceMetrics[];
+    recentLogs: ProcessLogEntry[];
+  } | null> {
+    const basicInfo = this.getProcessInfo(serverId);
+    if (!basicInfo) {
+      return null;
+    }
+    
+    const [resourceMetrics, systemInfo, resourceHistory, recentLogs] = await Promise.all([
+      this.resourceMonitor.getProcessResourceMetrics(basicInfo.pid),
+      Promise.resolve(this.resourceMonitor.getSystemResourceInfo()),
+      Promise.resolve(this.resourceMonitor.getResourceHistory(serverId, 100)),
+      Promise.resolve(this.logMonitor.getLogHistory(serverId, 50))
+    ]);
+    
+    return {
+      basicInfo,
+      resourceMetrics,
+      systemInfo,
+      resourceHistory,
+      recentLogs
+    };
+  }
+
+  /**
+   * 监控进程输出
+   */
+  private setupProcessOutputMonitoring(processInfo: ProcessInfo): void {
+    const { id: serverId, pid, process: childProcess } = processInfo;
+    
+    // 监控标准输出
+    if (childProcess.stdout) {
+      childProcess.stdout.on('data', (data: Buffer) => {
+        const logEntry: ProcessLogEntry = {
+          serverId,
+          pid,
+          timestamp: new Date(),
+          level: 'stdout',
+          source: 'process',
+          message: data.toString().trim()
+        };
+        
+        this.logMonitor.addLogEntry(serverId, logEntry);
+      });
+    }
+    
+    // 监控标准错误
+    if (childProcess.stderr) {
+      childProcess.stderr.on('data', (data: Buffer) => {
+        const logEntry: ProcessLogEntry = {
+          serverId,
+          pid,
+          timestamp: new Date(),
+          level: 'stderr',
+          source: 'process',
+          message: data.toString().trim()
+        };
+        
+        this.logMonitor.addLogEntry(serverId, logEntry);
+      });
     }
   }
 
@@ -387,6 +574,17 @@ export class ProcessManagerService implements OnModuleDestroy {
       });
       
       await this.processInfoRepository.save(entity);
+      
+      // 发射进程信息更新事件 - 使用WebSocket网关期望的数据结构
+      this.eventEmitter.emit('process.info.updated', {
+        serverId: processInfo.id,
+        processInfo: {
+          ...processInfo,
+          // 移除不需要序列化的process对象
+          process: undefined
+        },
+        timestamp: new Date()
+      });
     } catch (error) {
       this.logger.error(`Failed to save process info for ${processInfo.id}:`, error);
     }
@@ -406,6 +604,18 @@ export class ProcessManagerService implements OnModuleDestroy {
       });
       
       await this.processLogRepository.save(logEntity);
+      
+      // 发射进程日志更新事件
+      this.eventEmitter.emit('process.logs.updated', {
+        serverId: serverId,
+        logData: {
+          level,
+          message,
+          metadata,
+          timestamp: logEntity.timestamp
+        },
+        timestamp: new Date()
+      });
     } catch (error) {
       this.logger.error(`Failed to save process log for ${serverId}:`, error);
     }
@@ -449,4 +659,50 @@ export class ProcessManagerService implements OnModuleDestroy {
       this.logger.error('Failed to create directories:', error);
     }
   }
+
+  /**
+    * 设置事件监听器
+    */
+   private setupEventListeners(): void {
+     // 监听资源更新事件并转换为进程信息更新事件
+     this.eventEmitter.on('process.resource_update', async (data: {
+       serverId: string;
+       metrics: ProcessResourceMetrics;
+       timestamp: Date;
+     }) => {
+       const { serverId, metrics } = data;
+       const processInfo = this.processInfo.get(serverId);
+       
+       if (processInfo) {
+          // 更新进程信息中的资源使用情况
+          // 注意：ProcessInfo中的memoryUsage和cpuUsage是NodeJS类型，这里我们将资源指标存储在其他字段中
+          processInfo.updatedAt = new Date();
+          
+          // 如果需要存储简单的数值，可以添加到processInfo的其他字段或metadata中
+          // 这里我们保持原有的NodeJS类型字段不变，资源数据通过事件传递
+         
+         // 获取系统资源信息
+         const systemInfo = this.resourceMonitor.getSystemResourceInfo();
+         
+         // 构建完整的进程信息数据
+         const fullProcessInfo = {
+           ...processInfo,
+           resourceMetrics: metrics,
+           systemInfo,
+           // 移除不需要序列化的process对象
+           process: undefined
+         };
+         
+         // 发射进程信息更新事件
+         this.eventEmitter.emit('process.info.updated', {
+           serverId: serverId,
+           processInfo: fullProcessInfo,
+           timestamp: new Date()
+         });
+         
+         // 同时保存到数据库
+         await this.saveProcessInfo(processInfo);
+       }
+     });
+   }
 }

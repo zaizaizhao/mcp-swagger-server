@@ -19,11 +19,49 @@ export interface WebSocketEvents {
   "server:updated": (server: MCPServer) => void;
   "server:deleted": (serverId: string) => void;
 
+  // 进程信息更新
+  "process:info": (data: {
+    serverId: string;
+    processInfo: {
+      process: {
+        pid: number;
+        name: string;
+        status: string;
+        startTime: Date;
+        uptime: number;
+      };
+      resources: {
+        cpu: number;
+        memory: number;
+        handles?: number;
+        threads?: number;
+      };
+      system: {
+        platform: string;
+        arch: string;
+        nodeVersion: string;
+      };
+      details: any;
+    };
+  }) => void;
+  "process:logs": (data: {
+    serverId: string;
+    logs: Array<{
+      serverId: string;
+      pid: number;
+      timestamp: Date;
+      level: string;
+      source: string;
+      message: string;
+      metadata?: Record<string, any>;
+    }>;
+  }) => void;
+
   // 日志更新
   "logs:new": (entry: LogEntry) => void;
   "logs:batch": (entries: LogEntry[]) => void;
 
-  // 连接状态
+  // 连接状态事件
   connect: () => void;
   disconnect: () => void;
   reconnect: () => void;
@@ -45,12 +83,16 @@ export class WebSocketService {
   // 连接WebSocket
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
+      console.log(`[WebSocketService] Attempting to connect to: ${this.url}`);
+      
       if (this.socket?.connected) {
+        console.log('[WebSocketService] Already connected');
         resolve();
         return;
       }
 
       if (this.isConnecting) {
+        console.log('[WebSocketService] Connection already in progress');
         reject(new Error("Connection already in progress"));
         return;
       }
@@ -58,6 +100,7 @@ export class WebSocketService {
       this.isConnecting = true;
 
       try {
+        console.log('[WebSocketService] Creating socket.io connection...');
         this.socket = io(this.url, {
           transports: ["websocket", "polling"],
           timeout: 10000,
@@ -65,14 +108,17 @@ export class WebSocketService {
           reconnectionAttempts: this.maxReconnectAttempts,
           reconnectionDelay: this.reconnectDelay,
           autoConnect: false,
+          forceNew: true,
         });
 
         this.setupSocketEventHandlers();
 
+        console.log('[WebSocketService] Initiating connection...');
         this.socket.connect();
 
         this.socket.on("connect", () => {
-          console.log("WebSocket connected");
+          console.log("[WebSocketService] WebSocket connected successfully!");
+          console.log("[WebSocketService] Socket ID:", this.socket?.id);
           this.isConnecting = false;
           this.reconnectAttempts = 0;
           this.emitEvent("connect");
@@ -80,12 +126,47 @@ export class WebSocketService {
         });
 
         this.socket.on("connect_error", (error) => {
-          console.error("WebSocket connection error:", error);
+          console.error("[WebSocketService] WebSocket connection error:", error);
+          console.error("[WebSocketService] Error details:", {
+            message: error.message,
+            description: (error as any).description,
+            context: (error as any).context,
+            type: (error as any).type
+          });
           this.isConnecting = false;
           this.emitEvent("connect_error", error);
           reject(error);
         });
+
+        // 添加更多调试事件
+        this.socket.on("disconnect", (reason) => {
+          console.log("[WebSocketService] Disconnected:", reason);
+        });
+
+        this.socket.on("reconnect_attempt", (attemptNumber) => {
+          console.log("[WebSocketService] Reconnect attempt:", attemptNumber);
+        });
+
+        this.socket.on("reconnect_error", (error) => {
+          console.error("[WebSocketService] Reconnect error:", error);
+        });
+
+        this.socket.on("reconnect_failed", () => {
+          console.error("[WebSocketService] Reconnect failed");
+        });
+
+        // 添加连接状态事件监听
+        this.socket.on("connection-stats", (data: {
+          totalClients: number;
+          activeRooms: string[];
+          timestamp: string;
+        }) => {
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`[WebSocketService] Connection stats:`, data);
+          }
+        });
       } catch (error) {
+        console.error('[WebSocketService] Error creating socket:', error);
         this.isConnecting = false;
         reject(error);
       }
@@ -111,9 +192,11 @@ export class WebSocketService {
   private setupSocketEventHandlers(): void {
     if (!this.socket) return;
 
+    console.log('[WebSocketService] Setting up socket event handlers...');
+
     // 连接状态事件
     this.socket.on("disconnect", (reason) => {
-      console.log("WebSocket disconnected:", reason);
+      console.log("[WebSocketService] WebSocket disconnected:", reason);
       this.emitEvent("disconnect");
 
       // 如果是服务器主动断开，尝试重连
@@ -128,30 +211,43 @@ export class WebSocketService {
       this.emitEvent("reconnect");
     });
 
-    // 系统指标事件
-    this.socket.on("metrics:system", (metrics: SystemMetrics) => {
-      this.emitEvent("metrics:system", metrics);
+    // 系统指标事件（修复事件名称不匹配问题）
+    this.socket.on("system-metrics-update", (data: { data: SystemMetrics; timestamp: string }) => {
+      this.emitEvent("metrics:system", data.data);
     });
 
-    this.socket.on(
-      "metrics:server",
-      (data: { serverId: string; metrics: SystemMetrics }) => {
-        this.emitEvent("metrics:server", data);
-      },
-    );
+    this.socket.on("initial-system-metrics", (data: { data: SystemMetrics; timestamp: string }) => {
+      this.emitEvent("metrics:system", data.data);
+    });
 
-    // 服务器状态事件
-    this.socket.on(
-      "server:status",
-      (data: {
-        serverId: string;
-        status: MCPServer["status"];
-        error?: string;
-      }) => {
-        this.emitEvent("server:status", data);
-      },
-    );
+    // 服务器指标事件已在下方处理
 
+    // 服务器状态事件（修复事件名称不匹配问题）
+    this.socket.on("server-status-changed", (data: {
+      serverId: string;
+      status: string;
+      timestamp: string;
+    }) => {
+      this.emitEvent("server:status", {
+        serverId: data.serverId,
+        status: data.status as MCPServer["status"],
+      });
+    });
+
+    this.socket.on("server-health-changed", (data: {
+      serverId: string;
+      healthy: boolean;
+      error?: string;
+      timestamp: string;
+    }) => {
+      this.emitEvent("server:status", {
+        serverId: data.serverId,
+        status: data.healthy ? "running" : "error" as MCPServer["status"],
+        error: data.error,
+      });
+    });
+
+    // 服务器CRUD事件（这些可能需要后端添加支持）
     this.socket.on("server:created", (server: MCPServer) => {
       this.emitEvent("server:created", server);
     });
@@ -164,11 +260,97 @@ export class WebSocketService {
       this.emitEvent("server:deleted", serverId);
     });
 
-    // 日志事件
-    this.socket.on("logs:new", (entry: LogEntry) => {
-      this.emitEvent("logs:new", entry);
+    // 进程信息事件
+    this.socket.on("process:info", (data: {
+      serverId: string;
+      processInfo: any;
+    }) => {
+      this.emitEvent("process:info", data);
     });
 
+    this.socket.on("process:logs", (data: {
+      serverId: string;
+      logs: any[];
+    }) => {
+      this.emitEvent("process:logs", data);
+    });
+
+    // 服务器指标更新事件（后端发送的实际事件名称）
+    this.socket.on("server-metrics-update", (data: {
+      serverId: string;
+      data: any;
+      timestamp: string;
+    }) => {
+      console.log('[WebSocketService] 前端日志:', data);
+      // 转换为前端期望的process:info格式
+      this.emitEvent("process:info", {
+        serverId: data.serverId,
+        processInfo: data.data
+      });
+    });
+
+    // 订阅确认事件（修复事件名称不匹配问题）
+    this.socket.on("subscription-confirmed", (data: {
+      room: string;
+      serverId?: string;
+      interval?: number;
+      timestamp: string;
+    }) => {
+      console.log(`[WebSocketService] ✅ Subscription confirmed:`, data);
+      console.log(`[WebSocketService] Successfully joined room: ${data.room}`);
+    });
+
+    // 取消订阅确认事件
+    this.socket.on("unsubscription-confirmed", (data: {
+      room: string;
+      timestamp: string;
+    }) => {
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[WebSocketService] Unsubscription confirmed:`, data);
+      }
+    });
+
+    // 日志事件（修复事件名称不匹配问题）
+    this.socket.on("server-log", (data: {
+      serverId: string;
+      level: string;
+      message: string;
+      source: string;
+      timestamp: string;
+    }) => {
+      const logEntry: LogEntry = {
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        timestamp: new Date(data.timestamp),
+        level: data.level as LogEntry['level'],
+        message: data.message,
+        source: data.source,
+        serverId: data.serverId,
+      };
+      this.emitEvent("logs:new", logEntry);
+    });
+
+    // 告警事件
+    this.socket.on("alert", (data: {
+      id: string;
+      type: string;
+      severity: string;
+      serverId?: string;
+      message: string;
+      source?: string;
+      timestamp: string;
+    }) => {
+      const logEntry: LogEntry = {
+        id: data.id,
+        timestamp: new Date(data.timestamp),
+        level: data.severity as LogEntry['level'],
+        message: data.message,
+        source: data.source || 'alert',
+        serverId: data.serverId,
+      };
+      this.emitEvent("logs:new", logEntry);
+    });
+
+    // 保留原有的批量日志事件（如果后端有发送）
     this.socket.on("logs:batch", (entries: LogEntry[]) => {
       this.emitEvent("logs:batch", entries);
     });
@@ -207,6 +389,8 @@ export class WebSocketService {
       "server:created",
       "server:updated",
       "server:deleted",
+      "process:info",
+      "process:logs",
       "logs:new",
       "logs:batch",
       "connect",
@@ -266,9 +450,10 @@ export class WebSocketService {
   // 发送消息到服务器
   emit(event: string, data?: any): void {
     if (this.socket?.connected) {
+      console.log(`[WebSocketService] 📤 Emitting event: ${event}`, data);
       this.socket.emit(event, data);
     } else {
-      console.warn("WebSocket not connected, cannot emit event:", event);
+      console.error(`[WebSocketService] ❌ WebSocket not connected, cannot emit event: ${event}`, data);
     }
   }
 
@@ -302,6 +487,44 @@ export class WebSocketService {
     this.emit("unsubscribe:logs");
   }
 
+  // 订阅进程信息更新
+  subscribeToProcessInfo(serverId: string): void {
+    console.log(`[WebSocketService] 🔄 Subscribing to process info for server: ${serverId}`);
+    console.log(`[WebSocketService] Socket connected: ${this.socket?.connected}`);
+    console.log(`[WebSocketService] Socket ID: ${this.socket?.id}`);
+    
+    if (!this.socket?.connected) {
+      console.error('[WebSocketService] ❌ Socket not connected, cannot subscribe to process info');
+      return;
+    }
+    
+    const subscribeData = { serverId, interval: 5000 };
+    console.log(`[WebSocketService] 📤 Emitting subscribe-server-metrics with data:`, subscribeData);
+    console.log(`[WebSocketService] Expected room name: server-metrics-${serverId}`);
+    this.emit("subscribe-server-metrics", subscribeData);
+    
+    // 添加订阅后的状态检查
+    setTimeout(() => {
+      console.log(`[WebSocketService] 🔍 Checking subscription status after 2 seconds...`);
+      console.log(`[WebSocketService] Socket still connected: ${this.socket?.connected}`);
+    }, 2000);
+  }
+
+  // 取消订阅进程信息更新
+  unsubscribeFromProcessInfo(serverId: string): void {
+    this.emit("unsubscribe", { room: `server-metrics-${serverId}` });
+  }
+
+  // 订阅进程日志更新
+  subscribeToProcessLogs(serverId: string, level?: string): void {
+    this.emit("subscribe-server-logs", { serverId, level });
+  }
+
+  // 取消订阅进程日志更新
+  unsubscribeFromProcessLogs(serverId: string): void {
+    this.emit("unsubscribe", { room: `server-logs-${serverId}` });
+  }
+
   // 获取连接状态信息
   getConnectionInfo(): {
     connected: boolean;
@@ -319,6 +542,6 @@ export class WebSocketService {
 }
 
 // 创建全局WebSocket服务实例
-export const websocketService = new WebSocketService();
+export const websocketService = new WebSocketService('http://localhost:3001/monitoring');
 
 // 导出类型已在文件顶部定义

@@ -130,6 +130,7 @@ export class ProcessHealthService implements OnModuleInit, OnModuleDestroy {
 
       // 获取服务器配置
       const server = await this.serverRepository.findOne({ where: { id: serverId } });
+      
       if (!server) {
         throw new Error(`Server configuration not found for ${serverId}`);
       }
@@ -197,17 +198,53 @@ export class ProcessHealthService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * 检查服务器健康状态（CLI spawn模式）
+   * 采用分层健康检查策略：
+   * 1. 第一层：进程存活检查 - 快速验证进程是否存在
+   * 2. 第二层：HTTP/WebSocket功能检查 - 验证服务功能是否正常
    */
   private async checkServerHealth(server: MCPServerEntity, processInfo: ProcessInfo): Promise<HealthCheckResult> {
+    const startTime = Date.now();
+    
     try {
+      // 第一层：进程存活检查
+      // 使用 process.kill(pid, 0) 检查进程是否存活，不会实际发送信号
+      if (processInfo.pid) {
+        try {
+          // process.kill(pid, 0) 是 Node.js 中用于 检查进程是否存活 的方法，并不会真正杀死进程。出错这说明进程不存在或无权限访问
+          process.kill(processInfo.pid, 0);
+          this.logger.debug(`Process ${processInfo.pid} for server ${server.id} is alive`);
+        } catch (error) {
+          // 进程不存在或无权限访问
+          this.logger.warn(`Process ${processInfo.pid} for server ${server.id} is not alive:`, error.message);
+          return {
+            healthy: false,
+            responseTime: Date.now() - startTime,
+            error: `Process not alive: ${error.message}`,
+            lastCheck: new Date()
+          };
+        }
+      } else {
+        this.logger.warn(`No PID found for server ${server.id}`);
+        return {
+          healthy: false,
+          responseTime: Date.now() - startTime,
+          error: 'No PID found for process',
+          lastCheck: new Date()
+        };
+      }
+
+      // 第二层：HTTP/WebSocket功能检查
+      // 只有进程存活时才进行功能性健康检查
       switch (server.transport) {
         case TransportType.STREAMABLE:
         case TransportType.SSE:
           // 使用进程配置中的健康检查端点
           const endpoint = processInfo.config?.healthCheck?.endpoint || `http://localhost:${server.port}/health`;
+          this.logger.debug(`Performing HTTP health check for server ${server.id} at ${endpoint}`);
           return await this.httpHealthCheck(endpoint);
         
         case TransportType.WEBSOCKET:
+          this.logger.debug(`Performing WebSocket health check for server ${server.id}`);
           return await this.websocketHealthCheck(`ws://localhost:${server.port}`);
         
         default:
@@ -217,6 +254,7 @@ export class ProcessHealthService implements OnModuleInit, OnModuleDestroy {
       this.logger.error(`Health check failed for server ${server.id}:`, error);
       return {
         healthy: false,
+        responseTime: Date.now() - startTime,
         error: error.message,
         lastCheck: new Date()
       };

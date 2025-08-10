@@ -229,8 +229,7 @@ export class ServerLifecycleService {
    * 获取健康检查端点
    */
   private getHealthCheckEndpoint(serverEntity: MCPServerEntity): string | undefined {
-    const endpoint = serverEntity.config?.endpoint || '/mcp';
-    return `http://localhost:${serverEntity.port}${endpoint}/health`;
+    return `http://localhost:${serverEntity.port}/health`;
   }
 
   /**
@@ -252,37 +251,19 @@ export class ServerLifecycleService {
   }
 
   /**
-   * 停止MCP服务器（支持不同传输类型）
+   * 停止MCP服务器（统一使用进程管理器）
    */
   async stopServer(instance: ServerInstance): Promise<void> {
     const transport = instance.entity.transport;
-    this.logger.log(`Stopping server '${instance.entity.name}' (transport: ${transport})`);
+    this.logger.log(`Stopping server '${instance.entity.name}' (transport: ${transport}) using process manager`);
 
     try {
       // 停止健康检查
       this.processHealth.stopHealthCheck(instance.id);
 
-      // 根据传输类型采用不同的停止策略
-      if (transport === TransportType.STREAMABLE || transport === TransportType.SSE) {
-        // 对于HTTP传输类型，直接停止HTTP服务器和MCP服务器
-        this.logger.log(`Stopping HTTP-based server '${instance.entity.name}' (${transport} mode)`);
-        
-        // 停止HTTP服务器
-        if (instance.httpServer) {
-          await this.stopHttpServer(instance.httpServer);
-          this.logger.log(`HTTP server stopped for '${instance.entity.name}'`);
-        }
-
-        // 停止MCP服务器
-        if (instance.mcpServer) {
-          await this.stopMCPServer(instance.mcpServer);
-          this.logger.log(`MCP server stopped for '${instance.entity.name}'`);
-        }
-      } else {
-        // 对于CLI spawn模式或其他进程模式，使用进程管理器
-        this.logger.log(`Stopping process-based server '${instance.entity.name}' (CLI spawn mode)`);
-        await this.processManager.stopProcess(instance.id);
-      }
+      // 统一使用进程管理器停止服务器（适用于所有传输类型）
+      this.logger.log(`Stopping process-based server '${instance.entity.name}' via process manager`);
+      await this.processManager.stopProcess(instance.id);
 
       // 清除超时监控
       const timeout = this.serverTimeouts.get(instance.id);
@@ -323,15 +304,10 @@ export class ServerLifecycleService {
         this.serverTimeouts.delete(instance.id);
       }
 
-      // 停止HTTP服务器（如果存在）
-      if (instance.httpServer) {
-        await this.stopHttpServer(instance.httpServer);
-      }
+      // 停止健康检查
+      this.processHealth.stopHealthCheck(instance.id);
 
-      // 停止MCP服务器
-      if (instance.mcpServer) {
-        await this.stopMCPServer(instance.mcpServer);
-      }
+      this.logger.log(`Manual cleanup completed for server '${instance.entity.name}'`);
     } catch (error) {
       this.logger.error(`Manual cleanup failed for server '${instance.entity.name}':`, error);
     }

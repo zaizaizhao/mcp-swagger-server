@@ -28,6 +28,8 @@ import { ServerMetricsService } from './services/server-metrics.service';
 import { ProcessManagerService } from './services/process-manager.service';
 import { ProcessHealthService } from './services/process-health.service';
 import { ProcessErrorHandlerService } from './services/process-error-handler.service';
+import { ProcessResourceMonitorService } from './services/process-resource-monitor.service';
+import { ProcessLogMonitorService } from './services/process-log-monitor.service';
 import { LogLevel } from './interfaces/process.interface';
 import {
   CreateServerDto,
@@ -57,6 +59,8 @@ export class ServersController {
     private readonly processManager: ProcessManagerService,
     private readonly processHealth: ProcessHealthService,
     private readonly processErrorHandler: ProcessErrorHandlerService,
+    private readonly processResourceMonitor: ProcessResourceMonitorService,
+    private readonly processLogMonitor: ProcessLogMonitorService,
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
@@ -673,6 +677,387 @@ export class ServersController {
       this.logger.error(`Failed to cancel restart ${id}: ${error.message}`, error.stack);
       throw new HttpException(
         `Failed to cancel restart: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  // ============================================================================
+  // 进程资源监控相关API端点
+  // ============================================================================
+
+  /**
+   * 获取进程资源使用情况
+   */
+  @Get(':id/process/resources')
+  @ApiOperation({ summary: '获取进程资源使用情况', description: '获取指定服务器进程的CPU、内存等资源使用情况' })
+  @ApiParam({ name: 'id', description: '服务器ID' })
+  @ApiResponse({ status: 200, description: '获取成功' })
+  @ApiResponse({ status: 404, description: '服务器不存在' })
+  async getProcessResources(@Param('id') id: string) {
+    try {
+      const processInfo = await this.processManager.getProcessInfo(id);
+      if (!processInfo || !processInfo.pid) {
+        throw new HttpException('Process not found or not running', HttpStatus.NOT_FOUND);
+      }
+
+      const resources = await this.processResourceMonitor.getProcessResourceMetrics(processInfo.pid);
+      return resources;
+    } catch (error) {
+      this.logger.error(`Failed to get process resources ${id}: ${error.message}`, error.stack);
+      
+      if (error.message.includes('not found') || error.message.includes('not running')) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+      
+      throw new HttpException(
+        `Failed to get process resources: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 获取进程资源历史数据
+   */
+  @Get(':id/process/resources/history')
+  @ApiOperation({ summary: '获取进程资源历史', description: '获取指定服务器进程的资源使用历史数据' })
+  @ApiParam({ name: 'id', description: '服务器ID' })
+  @ApiQuery({ name: 'limit', required: false, description: '限制数量', example: 100 })
+  @ApiQuery({ name: 'startTime', required: false, description: '开始时间' })
+  @ApiQuery({ name: 'endTime', required: false, description: '结束时间' })
+  @ApiResponse({ status: 200, description: '获取成功' })
+  async getProcessResourceHistory(
+    @Param('id') id: string,
+    @Query('limit') limit?: number,
+    @Query('startTime') startTime?: string,
+    @Query('endTime') endTime?: string
+  ) {
+    try {
+      const processInfo = await this.processManager.getProcessInfo(id);
+      if (!processInfo || !processInfo.pid) {
+        throw new HttpException('Process not found or not running', HttpStatus.NOT_FOUND);
+      }
+
+      const history = await this.processResourceMonitor.getResourceHistory(
+         id,
+         limit || 100
+       );
+      return history;
+    } catch (error) {
+      this.logger.error(`Failed to get process resource history ${id}: ${error.message}`, error.stack);
+      
+      if (error.message.includes('not found') || error.message.includes('not running')) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+      
+      throw new HttpException(
+        `Failed to get process resource history: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 获取系统资源使用情况
+   */
+  @Get('system/resources')
+  @ApiOperation({ summary: '获取系统资源使用情况', description: '获取整个系统的CPU、内存等资源使用情况' })
+  @ApiResponse({ status: 200, description: '获取成功' })
+  async getSystemResources() {
+    try {
+      const systemResources = await this.processResourceMonitor.getSystemResourceInfo();
+      return systemResources;
+    } catch (error) {
+      this.logger.error(`Failed to get system resources: ${error.message}`, error.stack);
+      throw new HttpException(
+        `Failed to get system resources: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 启动进程资源监控
+   */
+  @Post(':id/process/resources/monitor/start')
+  @ApiOperation({ summary: '启动进程资源监控', description: '启动指定服务器进程的资源监控' })
+  @ApiParam({ name: 'id', description: '服务器ID' })
+  @ApiQuery({ name: 'interval', required: false, description: '监控间隔（毫秒）', example: 5000 })
+  @ApiResponse({ status: 200, description: '启动成功', type: OperationResultDto })
+  async startResourceMonitoring(
+    @Param('id') id: string,
+    @Query('interval') interval?: number
+  ): Promise<OperationResultDto> {
+    try {
+      const processInfo = await this.processManager.getProcessInfo(id);
+      if (!processInfo || !processInfo.pid) {
+        throw new HttpException('Process not found or not running', HttpStatus.NOT_FOUND);
+      }
+
+      await this.processResourceMonitor.startMonitoring(id, processInfo.pid, interval || 5000);
+      return {
+        success: true,
+        message: 'Resource monitoring started successfully',
+      };
+    } catch (error) {
+      this.logger.error(`Failed to start resource monitoring ${id}: ${error.message}`, error.stack);
+      
+      if (error.message.includes('not found') || error.message.includes('not running')) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+      
+      throw new HttpException(
+        `Failed to start resource monitoring: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 停止进程资源监控
+   */
+  @Post(':id/process/resources/monitor/stop')
+  @ApiOperation({ summary: '停止进程资源监控', description: '停止指定服务器进程的资源监控' })
+  @ApiParam({ name: 'id', description: '服务器ID' })
+  @ApiResponse({ status: 200, description: '停止成功', type: OperationResultDto })
+  async stopResourceMonitoring(@Param('id') id: string): Promise<OperationResultDto> {
+    try {
+      const processInfo = await this.processManager.getProcessInfo(id);
+      if (!processInfo || !processInfo.pid) {
+        throw new HttpException('Process not found or not running', HttpStatus.NOT_FOUND);
+      }
+
+      await this.processResourceMonitor.stopMonitoring(id);
+      return {
+        success: true,
+        message: 'Resource monitoring stopped successfully',
+      };
+    } catch (error) {
+      this.logger.error(`Failed to stop resource monitoring ${id}: ${error.message}`, error.stack);
+      
+      if (error.message.includes('not found') || error.message.includes('not running')) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+      
+      throw new HttpException(
+        `Failed to stop resource monitoring: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  // ============================================================================
+  // 进程日志监控相关API端点
+  // ============================================================================
+
+  /**
+   * 获取进程完整信息（包含资源和日志）
+   */
+  @Get(':id/process/full-info')
+  @ApiOperation({ summary: '获取进程完整信息', description: '获取指定服务器进程的完整信息，包括基本信息、资源使用情况和最近日志' })
+  @ApiParam({ name: 'id', description: '服务器ID' })
+  @ApiResponse({ status: 200, description: '获取成功' })
+  @ApiResponse({ status: 404, description: '服务器不存在' })
+  async getProcessFullInfo(@Param('id') id: string) {
+    try {
+      const fullInfo = await this.processManager.getProcessFullInfo(id);
+      return fullInfo;
+    } catch (error) {
+      this.logger.error(`Failed to get process full info ${id}: ${error.message}`, error.stack);
+      
+      if (error.message.includes('not found')) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+      
+      throw new HttpException(
+        `Failed to get process full info: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 获取进程日志历史
+   */
+  @Get(':id/process/logs/history')
+  @ApiOperation({ summary: '获取进程日志历史', description: '获取指定服务器进程的日志历史记录' })
+  @ApiParam({ name: 'id', description: '服务器ID' })
+  @ApiQuery({ name: 'limit', required: false, description: '限制数量', example: 100 })
+  @ApiQuery({ name: 'startTime', required: false, description: '开始时间' })
+  @ApiQuery({ name: 'endTime', required: false, description: '结束时间' })
+  @ApiResponse({ status: 200, description: '获取成功' })
+  async getProcessLogHistory(
+    @Param('id') id: string,
+    @Query('limit') limit?: number,
+    @Query('startTime') startTime?: string,
+    @Query('endTime') endTime?: string
+  ) {
+    try {
+      const processInfo = await this.processManager.getProcessInfo(id);
+      if (!processInfo || !processInfo.pid) {
+        throw new HttpException('Process not found or not running', HttpStatus.NOT_FOUND);
+      }
+
+      const history = await this.processLogMonitor.getLogHistory(
+         id,
+         limit || 100
+       );
+      return history;
+    } catch (error) {
+      this.logger.error(`Failed to get process log history ${id}: ${error.message}`, error.stack);
+      
+      if (error.message.includes('not found') || error.message.includes('not running')) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+      
+      throw new HttpException(
+        `Failed to get process log history: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 搜索进程日志
+   */
+  @Get(':id/process/logs/search')
+  @ApiOperation({ summary: '搜索进程日志', description: '在指定服务器进程的日志中搜索关键词' })
+  @ApiParam({ name: 'id', description: '服务器ID' })
+  @ApiQuery({ name: 'keyword', required: true, description: '搜索关键词' })
+  @ApiQuery({ name: 'limit', required: false, description: '限制数量', example: 50 })
+  @ApiResponse({ status: 200, description: '搜索成功' })
+  async searchProcessLogs(
+    @Param('id') id: string,
+    @Query('keyword') keyword: string,
+    @Query('limit') limit?: number
+  ) {
+    try {
+      const processInfo = await this.processManager.getProcessInfo(id);
+      if (!processInfo || !processInfo.pid) {
+        throw new HttpException('Process not found or not running', HttpStatus.NOT_FOUND);
+      }
+
+      const results = await this.processLogMonitor.searchLogs(
+         id,
+         {
+           keyword,
+           limit: limit || 50
+         }
+       );
+      return results;
+    } catch (error) {
+      this.logger.error(`Failed to search process logs ${id}: ${error.message}`, error.stack);
+      
+      if (error.message.includes('not found') || error.message.includes('not running')) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+      
+      throw new HttpException(
+        `Failed to search process logs: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 启动进程日志监控
+   */
+  @Post(':id/process/logs/monitor/start')
+  @ApiOperation({ summary: '启动进程日志监控', description: '启动指定服务器进程的日志监控' })
+  @ApiParam({ name: 'id', description: '服务器ID' })
+  @ApiQuery({ name: 'logFile', required: false, description: '日志文件路径' })
+  @ApiResponse({ status: 200, description: '启动成功', type: OperationResultDto })
+  async startLogMonitoring(
+    @Param('id') id: string,
+    @Query('logFile') logFile?: string
+  ): Promise<OperationResultDto> {
+    try {
+      const processInfo = await this.processManager.getProcessInfo(id);
+      if (!processInfo || !processInfo.pid) {
+        throw new HttpException('Process not found or not running', HttpStatus.NOT_FOUND);
+      }
+
+      await this.processLogMonitor.startLogMonitoring(id, processInfo.pid, logFile);
+      return {
+        success: true,
+        message: 'Log monitoring started successfully',
+      };
+    } catch (error) {
+      this.logger.error(`Failed to start log monitoring ${id}: ${error.message}`, error.stack);
+      
+      if (error.message.includes('not found') || error.message.includes('not running')) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+      
+      throw new HttpException(
+        `Failed to start log monitoring: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 停止进程日志监控
+   */
+  @Post(':id/process/logs/monitor/stop')
+  @ApiOperation({ summary: '停止进程日志监控', description: '停止指定服务器进程的日志监控' })
+  @ApiParam({ name: 'id', description: '服务器ID' })
+  @ApiResponse({ status: 200, description: '停止成功', type: OperationResultDto })
+  async stopLogMonitoring(@Param('id') id: string): Promise<OperationResultDto> {
+    try {
+      const processInfo = await this.processManager.getProcessInfo(id);
+      if (!processInfo || !processInfo.pid) {
+        throw new HttpException('Process not found or not running', HttpStatus.NOT_FOUND);
+      }
+
+      await this.processLogMonitor.stopLogMonitoring(id);
+      return {
+        success: true,
+        message: 'Log monitoring stopped successfully',
+      };
+    } catch (error) {
+      this.logger.error(`Failed to stop log monitoring ${id}: ${error.message}`, error.stack);
+      
+      if (error.message.includes('not found') || error.message.includes('not running')) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+      
+      throw new HttpException(
+        `Failed to stop log monitoring: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 清空进程日志缓冲区
+   */
+  @Post(':id/process/logs/clear')
+  @ApiOperation({ summary: '清空进程日志缓冲区', description: '清空指定服务器进程的日志缓冲区' })
+  @ApiParam({ name: 'id', description: '服务器ID' })
+  @ApiResponse({ status: 200, description: '清空成功', type: OperationResultDto })
+  async clearProcessLogBuffer(@Param('id') id: string): Promise<OperationResultDto> {
+    try {
+      const processInfo = await this.processManager.getProcessInfo(id);
+      if (!processInfo || !processInfo.pid) {
+        throw new HttpException('Process not found or not running', HttpStatus.NOT_FOUND);
+      }
+
+      await this.processLogMonitor.clearLogBuffer(id);
+      return {
+        success: true,
+        message: 'Log buffer cleared successfully',
+      };
+    } catch (error) {
+      this.logger.error(`Failed to clear log buffer ${id}: ${error.message}`, error.stack);
+      
+      if (error.message.includes('not found') || error.message.includes('not running')) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+      
+      throw new HttpException(
+        `Failed to clear log buffer: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }

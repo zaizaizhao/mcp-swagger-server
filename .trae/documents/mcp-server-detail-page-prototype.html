@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP服务器详情页面原型图</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: white;
+            padding: 16px 24px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .back-btn {
+            background: #f0f0f0;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        
+        .server-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1890ff;
+        }
+        
+        .status-badge {
+            background: #52c41a;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .action-btn {
+            padding: 8px 16px;
+            border: 1px solid #d9d9d9;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        
+        .action-btn.primary {
+            background: #1890ff;
+            color: white;
+            border-color: #1890ff;
+        }
+        
+        .action-btn.danger {
+            background: #ff4d4f;
+            color: white;
+            border-color: #ff4d4f;
+        }
+        
+        .tabs {
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .tab-nav {
+            display: flex;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .tab-item {
+            padding: 16px 24px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .tab-item.active {
+            color: #1890ff;
+            border-bottom-color: #1890ff;
+        }
+        
+        .tab-content {
+            padding: 24px;
+        }
+        
+        .overview-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .info-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #262626;
+        }
+        
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .info-label {
+            color: #8c8c8c;
+            font-size: 14px;
+        }
+        
+        .info-value {
+            font-weight: 500;
+            color: #262626;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+        
+        .metric-item {
+            text-align: center;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+        
+        .metric-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1890ff;
+            margin-bottom: 4px;
+        }
+        
+        .metric-label {
+            font-size: 12px;
+            color: #8c8c8c;
+        }
+        
+        .tools-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+        
+        .tools-table th,
+        .tools-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .tools-table th {
+            background: #fafafa;
+            font-weight: 600;
+            color: #262626;
+        }
+        
+        .tool-name {
+            color: #1890ff;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        
+        .connections-list {
+            background: white;
+        }
+        
+        .connection-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .connection-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .connection-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #1890ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .connection-details h4 {
+            margin-bottom: 4px;
+            color: #262626;
+        }
+        
+        .connection-details p {
+            font-size: 12px;
+            color: #8c8c8c;
+        }
+        
+        .connection-status {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            background: #52c41a;
+            color: white;
+        }
+        
+        .logs-container {
+            background: #1f1f1f;
+            color: #f0f0f0;
+            padding: 16px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            height: 400px;
+            overflow-y: auto;
+        }
+        
+        .log-controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            align-items: center;
+        }
+        
+        .log-filter {
+            padding: 8px 12px;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            background: white;
+        }
+        
+        .log-line {
+            margin-bottom: 4px;
+            padding: 2px 0;
+        }
+        
+        .log-time {
+            color: #8c8c8c;
+        }
+        
+        .log-level-info {
+            color: #1890ff;
+        }
+        
+        .log-level-error {
+            color: #ff4d4f;
+        }
+        
+        .log-level-warn {
+            color: #faad14;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .overview-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 12px;
+                align-items: flex-start;
+            }
+            
+            .tab-nav {
+                overflow-x: auto;
+            }
+            
+            .tools-table {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 页面头部 -->
+        <div class="header">
+            <div class="header-left">
+                <button class="back-btn">← 返回</button>
+                <h1 class="server-title">Swagger API Server</h1>
+                <span class="status-badge">运行中</span>
+            </div>
+            <div class="header-actions">
+                <button class="action-btn">重启</button>
+                <button class="action-btn">停止</button>
+                <button class="action-btn danger">删除</button>
+            </div>
+        </div>
+        
+        <!-- 标签页导航 -->
+        <div class="tabs">
+            <div class="tab-nav">
+                <div class="tab-item active" onclick="showTab('overview')">服务器概览</div>
+                <div class="tab-item" onclick="showTab('tools')">工具管理</div>
+                <div class="tab-item" onclick="showTab('connections')">连接管理</div>
+                <div class="tab-item" onclick="showTab('logs')">日志监控</div>
+            </div>
+            
+            <!-- 服务器概览标签页 -->
+            <div id="overview" class="tab-content">
+                <div class="overview-grid">
+                    <div class="info-card">
+                        <h3 class="card-title">基本信息</h3>
+                        <div class="info-item">
+                            <span class="info-label">服务器ID</span>
+                            <span class="info-value">server-001</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">端口</span>
+                            <span class="info-value">3000</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">传输类型</span>
+                            <span class="info-value">SSE</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">启动时间</span>
+                            <span class="info-value">2024-01-15 10:30:25</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">运行时长</span>
+                            <span class="info-value">2小时15分钟</span>
+                        </div>
+                    </div>
+                    
+                    <div class="info-card">
+                        <h3 class="card-title">性能监控</h3>
+                        <div class="metrics-grid">
+                            <div class="metric-item">
+                                <div class="metric-value">15%</div>
+                                <div class="metric-label">CPU使用率</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-value">256MB</div>
+                                <div class="metric-label">内存使用</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-value">1,234</div>
+                                <div class="metric-label">总请求数</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-value">45ms</div>
+                                <div class="metric-label">平均响应时间</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 工具管理标签页 -->
+            <div id="tools" class="tab-content hidden">
+                <div class="log-controls">
+                    <input type="text" class="log-filter" placeholder="搜索工具...">
+                    <button class="action-btn">刷新</button>
+                </div>
+                <table class="tools-table">
+                    <thead>
+                        <tr>
+                            <th>工具名称</th>
+                            <th>描述</th>
+                            <th>参数数量</th>
+                            <th>使用次数</th>
+                            <th>最后使用</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="tool-name">get_weather</span></td>
+                            <td>获取指定城市的天气信息</td>
+                            <td>2</td>
+                            <td>156</td>
+                            <td>2分钟前</td>
+                            <td><button class="action-btn">测试</button></td>
+                        </tr>
+                        <tr>
+                            <td><span class="tool-name">search_database</span></td>
+                            <td>在数据库中搜索相关信息</td>
+                            <td>3</td>
+                            <td>89</td>
+                            <td>15分钟前</td>
+                            <td><button class="action-btn">测试</button></td>
+                        </tr>
+                        <tr>
+                            <td><span class="tool-name">send_email</span></td>
+                            <td>发送电子邮件通知</td>
+                            <td>4</td>
+                            <td>23</td>
+                            <td>1小时前</td>
+                            <td><button class="action-btn">测试</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 连接管理标签页 -->
+            <div id="connections" class="tab-content hidden">
+                <div class="log-controls">
+                    <select class="log-filter">
+                        <option>所有状态</option>
+                        <option>已连接</option>
+                        <option>已断开</option>
+                    </select>
+                    <button class="action-btn">刷新</button>
+                </div>
+                <div class="connections-list">
+                    <div class="connection-item">
+                        <div class="connection-info">
+                            <div class="connection-avatar">C1</div>
+                            <div class="connection-details">
+                                <h4>客户端-001</h4>
+                                <p>连接时间: 2024-01-15 10:45:30 | IP: 192.168.1.100</p>
+                            </div>
+                        </div>
+                        <span class="connection-status">已连接</span>
+                    </div>
+                    <div class="connection-item">
+                        <div class="connection-info">
+                            <div class="connection-avatar">C2</div>
+                            <div class="connection-details">
+                                <h4>客户端-002</h4>
+                                <p>连接时间: 2024-01-15 11:20:15 | IP: 192.168.1.101</p>
+                            </div>
+                        </div>
+                        <span class="connection-status">已连接</span>
+                    </div>
+                    <div class="connection-item">
+                        <div class="connection-info">
+                            <div class="connection-avatar">C3</div>
+                            <div class="connection-details">
+                                <h4>客户端-003</h4>
+                                <p>连接时间: 2024-01-15 09:30:45 | IP: 192.168.1.102</p>
+                            </div>
+                        </div>
+                        <span class="connection-status" style="background: #ff4d4f;">已断开</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 日志监控标签页 -->
+            <div id="logs" class="tab-content hidden">
+                <div class="log-controls">
+                    <select class="log-filter">
+                        <option>所有级别</option>
+                        <option>INFO</option>
+                        <option>WARN</option>
+                        <option>ERROR</option>
+                    </select>
+                    <input type="text" class="log-filter" placeholder="搜索关键词...">
+                    <button class="action-btn">清空</button>
+                    <button class="action-btn">下载</button>
+                    <button class="action-btn primary">暂停</button>
+                </div>
+                <div class="logs-container">
+                    <div class="log-line">
+                        <span class="log-time">2024-01-15 12:45:23</span> 
+                        <span class="log-level-info">[INFO]</span> 
+                        Server started successfully on port 3000
+                    </div>
+                    <div class="log-line">
+                        <span class="log-time">2024-01-15 12:45:25</span> 
+                        <span class="log-level-info">[INFO]</span> 
+                        Client connected: 192.168.1.100
+                    </div>
+                    <div class="log-line">
+                        <span class="log-time">2024-01-15 12:45:30</span> 
+                        <span class="log-level-info">[INFO]</span> 
+                        Tool 'get_weather' executed successfully
+                    </div>
+                    <div class="log-line">
+                        <span class="log-time">2024-01-15 12:45:35</span> 
+                        <span class="log-level-warn">[WARN]</span> 
+                        High memory usage detected: 85%
+                    </div>
+                    <div class="log-line">
+                        <span class="log-time">2024-01-15 12:45:40</span> 
+                        <span class="log-level-error">[ERROR]</span> 
+                        Failed to connect to external API: timeout
+                    </div>
+                    <div class="log-line">
+                        <span class="log-time">2024-01-15 12:45:45</span> 
+                        <span class="log-level-info">[INFO]</span> 
+                        Client disconnected: 192.168.1.102
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function showTab(tabName) {
+            // 隐藏所有标签页内容
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => tab.classList.add('hidden'));
+            
+            // 移除所有标签页的active状态
+            const tabItems = document.querySelectorAll('.tab-item');
+            tabItems.forEach(item => item.classList.remove('active'));
+            
+            // 显示选中的标签页
+            document.getElementById(tabName).classList.remove('hidden');
+            
+            // 添加active状态到选中的标签
+            event.target.classList.add('active');
+        }
+        
+        // 模拟实时日志更新
+        function addLogLine() {
+            const logsContainer = document.querySelector('.logs-container');
+            const now = new Date();
+            const timeStr = now.toLocaleString('zh-CN', {hour12: false});
+            const levels = ['INFO', 'WARN', 'ERROR'];
+            const level = levels[Math.floor(Math.random() * levels.length)];
+            const messages = [
+                'Processing request from client',
+                'Database query executed',
+                'Cache updated successfully',
+                'Memory usage: 67%',
+                'New client connection established'
+            ];
+            const message = messages[Math.floor(Math.random() * messages.length)];
+            
+            const logLine = document.createElement('div');
+            logLine.className = 'log-line';
+            logLine.innerHTML = `
+                <span class="log-time">${timeStr}</span> 
+                <span class="log-level-${level.toLowerCase()}">[${level}]</span> 
+                ${message}
+            `;
+            
+            logsContainer.appendChild(logLine);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+            
+            // 限制日志行数
+            const logLines = logsContainer.querySelectorAll('.log-line');
+            if (logLines.length > 100) {
+                logLines[0].remove();
+            }
+        }
+        
+        // 每3秒添加一条新日志
+        setInterval(addLogLine, 3000);
+    </script>
+</body>
+</html>
