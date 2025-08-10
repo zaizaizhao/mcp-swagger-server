@@ -445,6 +445,45 @@ export const useServerStore = defineStore("server", () => {
     }
   };
 
+  // 进程监控相关方法
+  const getProcessResources = async (id: string, limit?: number) => {
+    try {
+      const response = await serverAPI.getProcessResources(id, limit);
+      return response;
+    } catch (err) {
+      console.error('Failed to get process resources:', err);
+      throw err;
+    }
+  };
+
+  const getProcessLogStream = async (
+    id: string,
+    params?: {
+      keyword?: string;
+      level?: string;
+      limit?: number;
+      since?: Date;
+    }
+  ) => {
+    try {
+      const response = await serverAPI.getProcessLogStream(id, params);
+      return response;
+    } catch (err) {
+      console.error('Failed to get process log stream:', err);
+      throw err;
+    }
+  };
+
+  const getProcessFullInfo = async (id: string) => {
+    try {
+      const response = await serverAPI.getProcessFullInfo(id);
+      return response;
+    } catch (err) {
+      console.error('Failed to get process full info:', err);
+      throw err;
+    }
+  };
+
   // 初始化
   const initialize = async () => {
     await fetchServers({});
@@ -487,5 +526,9 @@ export const useServerStore = defineStore("server", () => {
     getAllServersHealth,
     performHealthCheck,
     initialize,
+    // 进程监控方法
+    getProcessResources,
+    getProcessLogStream,
+    getProcessFullInfo,
   };
 });

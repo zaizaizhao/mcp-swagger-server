@@ -29,7 +29,7 @@ interface ClientInfo {
   cors: {
     origin: '*',
     methods: ['GET', 'POST'],
-    credentials: true,
+    // credentials: true,
   },
   namespace: '/monitoring',
 })
@@ -64,7 +64,14 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
     };
 
     this.clients.set(client.id, clientInfo);
-    this.logger.log(`Client connected: ${client.id}`);
+    this.logger.log(`Client connected: ${client.id} from ${client.handshake.address}`);
+    this.logger.log(`Client handshake headers: ${JSON.stringify(client.handshake.headers, null, 2)}`);
+    this.logger.log(`Total connected clients: ${this.clients.size}`);
+
+    // 添加通用消息监听器来调试所有接收到的事件
+    client.onAny((eventName, ...args) => {
+      this.logger.log(`[DEBUG] Received event '${eventName}' from client ${client.id} with args:`, args);
+    });
 
     // 记录WebSocket连接指标
     this.wsMetricsService.recordConnection(client);
@@ -132,7 +139,11 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { serverId: string; interval?: number }
   ) {
+    this.logger.log(`[handleSubscribeServerMetrics] Received subscription request from client ${client.id}`);
+    this.logger.log(`[handleSubscribeServerMetrics] Request data: ${JSON.stringify(data)}`);
+    this.logger.log(`Received subscribe-server-metrics request from client ${client.id} for server ${data.serverId}`);
     const room = `server-metrics-${data.serverId}`;
+    this.logger.log(`[handleSubscribeServerMetrics] Joining client ${client.id} to room: ${room}`);
     client.join(room);
     this.rooms.add(room);
     
@@ -140,14 +151,18 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
     if (clientInfo) {
       clientInfo.subscribedRooms.add(room);
       clientInfo.lastActivity = new Date();
+      this.logger.log(`[handleSubscribeServerMetrics] Updated client info, subscribed rooms: ${Array.from(clientInfo.subscribedRooms)}`);
+    } else {
+      this.logger.warn(`[handleSubscribeServerMetrics] Client info not found for ${client.id}`);
     }
 
-    this.logger.log(`Client ${client.id} subscribed to server ${data.serverId} metrics`);
+    this.logger.log(`Client ${client.id} subscribed to server ${data.serverId} metrics, room: ${room}`);
     
     // 记录订阅指标
     this.wsMetricsService.recordSubscription(client.id, room);
     
     // 立即发送当前服务器指标
+    this.logger.log(`[handleSubscribeServerMetrics] Sending current metrics to client ${client.id}`);
     this.sendServerMetrics(client, data.serverId);
     
     client.emit('subscription-confirmed', {
@@ -156,6 +171,8 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
       interval: data.interval || 5000,
       timestamp: new Date().toISOString(),
     });
+    
+    this.logger.log(`Subscription confirmed for client ${client.id}, room: ${room}`);
   }
 
   /**
@@ -466,6 +483,49 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
       });
     } catch (error) {
       this.logger.error(`Failed to send server metrics for ${serverId}:`, error);
+    }
+  }
+
+  /**
+   * 监听进程信息变化事件
+   */
+  @OnEvent('process.info.updated')
+  handleProcessInfoUpdated(payload: { serverId: string; processInfo: any; timestamp?: Date }) {
+    this.logger.log(`Received process.info.updated event for server ${payload.serverId}`);
+    const timestamp = payload.timestamp || new Date();
+    const room = `server-metrics-${payload.serverId}`;
+    
+    // 检查房间是否存在且有客户端
+    const roomExists = this.server?.sockets?.adapter?.rooms?.has(room);
+    const roomSize = this.server?.sockets?.adapter?.rooms?.get(room)?.size || 0;
+    
+    this.logger.log(`Room ${room} exists: ${roomExists}, size: ${roomSize}`);
+    
+    if (roomExists && roomSize > 0) {
+      this.server.to(room).emit('server-metrics-update', {
+        serverId: payload.serverId,
+        data: payload.processInfo,
+        timestamp: timestamp.toISOString(),
+      });
+      this.logger.log(`Emitted server-metrics-update to room ${room} with ${roomSize} clients`);
+    } else {
+      this.logger.warn(`No clients subscribed to room ${room} (exists: ${roomExists}, size: ${roomSize})`);
+    }
+  }
+
+  /**
+   * 监听进程日志事件
+   */
+  @OnEvent('process.logs.updated')
+  handleProcessLogsUpdated(payload: { serverId: string; logData: any; timestamp?: Date }) {
+    const timestamp = payload.timestamp || new Date();
+    const room = `server-logs-${payload.serverId}`;
+    if (this.server && this.server.sockets && this.server.sockets.adapter && this.server.sockets.adapter.rooms && this.server.sockets.adapter.rooms.has(room)) {
+      this.server.to(room).emit('process:logs', {
+        serverId: payload.serverId,
+        logData: payload.logData,
+        timestamp: timestamp.toISOString(),
+      });
     }
   }
 

@@ -349,6 +349,119 @@ export const serverAPI = {
     const response = await api.get("/v1/servers/metrics/system", { params });
     return response.data;
   },
+
+  // ============================================================================
+  // 进程监控 API
+  // ============================================================================
+
+  // 获取进程资源使用情况
+  async getProcessResources(
+    id: string,
+    limit?: number
+  ): Promise<{
+    current: {
+      pid: number;
+      cpu: number;
+      memory: number;
+      ppid: number;
+      ctime: number;
+      elapsed: number;
+      timestamp: Date;
+    };
+    history: Array<{
+      pid: number;
+      cpu: number;
+      memory: number;
+      ppid: number;
+      ctime: number;
+      elapsed: number;
+      timestamp: Date;
+    }>;
+    system: {
+      totalMemory: number;
+      freeMemory: number;
+      cpuCount: number;
+      loadAverage: number[];
+    };
+  }> {
+    const response = await api.get(`/v1/servers/${id}/process/resources`, {
+      params: { limit }
+    });
+    return response.data;
+  },
+
+  // 获取进程日志流
+  async getProcessLogStream(
+    id: string,
+    params?: {
+      keyword?: string;
+      level?: string;
+      limit?: number;
+      since?: Date;
+    }
+  ): Promise<{
+    logs: Array<{
+      serverId: string;
+      pid: number;
+      timestamp: Date;
+      level: 'stdout' | 'stderr' | 'file';
+      source: string;
+      message: string;
+      metadata?: Record<string, any>;
+    }>;
+    total: number;
+  }> {
+    // 使用现有的进程日志接口
+    const response = await api.get(`/v1/servers/${id}/process/logs`, {
+      params: {
+        level: params?.level,
+        limit: params?.limit || 100,
+        startTime: params?.since?.toISOString(),
+        // 注意：后端接口不支持 keyword 参数，如需搜索功能可使用 /process/logs/search 接口
+      }
+    });
+    
+    // 转换后端返回的数据格式以匹配前端期望的格式
+    const logs = response.data || [];
+    return {
+      logs: logs.map((log: any) => ({
+        serverId: id,
+        pid: log.pid || 0,
+        timestamp: new Date(log.timestamp || Date.now()),
+        level: log.level || 'info',
+        source: log.source || 'process',
+        message: log.message || '',
+        metadata: log.metadata || {}
+      })),
+      total: logs.length
+    };
+  },
+
+  // 获取进程完整信息
+  async getProcessFullInfo(id: string): Promise<{
+    process: {
+      pid: number;
+      name: string;
+      status: string;
+      startTime: Date;
+      uptime: number;
+    };
+    resources: {
+      cpu: number;
+      memory: number;
+      handles?: number;
+      threads?: number;
+    };
+    system: {
+      platform: string;
+      arch: string;
+      nodeVersion: string;
+    };
+    details: any;
+  }> {
+    const response = await api.get(`/v1/servers/${id}/process/full-info`);
+    return response.data;
+  },
 };
 
 // ============================================================================

@@ -13,6 +13,8 @@ import { ServerMetricsService } from './services/server-metrics.service';
 import { ProcessManagerService } from './services/process-manager.service';
 import { ProcessHealthService } from './services/process-health.service';
 import { ProcessErrorHandlerService } from './services/process-error-handler.service';
+import { ProcessResourceMonitorService } from './services/process-resource-monitor.service';
+import { ProcessLogMonitorService } from './services/process-log-monitor.service';
 
 import { MCPServerEntity } from '../../database/entities/mcp-server.entity';
 import { AuthConfigEntity } from '../../database/entities/auth-config.entity';
@@ -56,6 +58,8 @@ import { DocumentsModule } from '../documents/documents.module';
     ProcessManagerService,
     ProcessHealthService,
     ProcessErrorHandlerService,
+    ProcessResourceMonitorService,
+    ProcessLogMonitorService,
   ],
   exports: [
     ServerManagerService,
@@ -65,6 +69,8 @@ import { DocumentsModule } from '../documents/documents.module';
     ProcessManagerService,
     ProcessHealthService,
     ProcessErrorHandlerService,
+    ProcessResourceMonitorService,
+    ProcessLogMonitorService,
   ],
 })
 export class ServersModule {}

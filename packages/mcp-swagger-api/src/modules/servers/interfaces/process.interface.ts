@@ -21,6 +21,7 @@ export interface ProcessConfig {
   };
   memoryLimit?: number;
   cpuLimit?: number;
+  logFilePath?: string; // 日志文件路径
   // 新增：MCP特定配置
   mcpConfig?: {
     transport: 'stdio' | 'sse' | 'streamable';
@@ -130,7 +131,7 @@ export interface ServerStartResult {
 // 进程事件接口
 export interface ProcessEvent {
   processId: string; // 改名为processId
-  eventType: 'started' | 'stopped' | 'error' | 'health_check';
+  eventType: 'started' | 'stopped' | 'error' | 'health_check' | 'info_updated' | 'logs_updated';
   timestamp: Date;
   data?: any;
 }
