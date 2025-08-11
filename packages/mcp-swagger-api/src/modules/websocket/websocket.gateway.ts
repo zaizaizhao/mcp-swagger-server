@@ -27,11 +27,17 @@ interface ClientInfo {
 
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173'],
     methods: ['GET', 'POST'],
-    // credentials: true,
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization'],
   },
   namespace: '/monitoring',
+  // 添加WebSocket特定配置
+  transports: ['websocket', 'polling'],
+  allowEIO3: true,
+  pingTimeout: 60000,
+  pingInterval: 25000,
 })
 export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
@@ -56,21 +62,49 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
   }
 
   handleConnection(client: Socket) {
+    console.log("客户端连接", client);
+    
     const clientInfo: ClientInfo = {
       id: client.id,
       connectedAt: new Date(),
       subscribedRooms: new Set(),
       lastActivity: new Date(),
     };
-
+    console.log("客户端连接", clientInfo);
     this.clients.set(client.id, clientInfo);
     this.logger.log(`Client connected: ${client.id} from ${client.handshake.address}`);
+    this.logger.log(`Client handshake query: ${JSON.stringify(client.handshake.query, null, 2)}`);
     this.logger.log(`Client handshake headers: ${JSON.stringify(client.handshake.headers, null, 2)}`);
     this.logger.log(`Total connected clients: ${this.clients.size}`);
+    this.logger.log(`Client transport: ${client.conn.transport.name}`);
+    this.logger.log(`Client upgraded: ${client.conn.upgraded}`);
 
     // 添加通用消息监听器来调试所有接收到的事件
     client.onAny((eventName, ...args) => {
       this.logger.log(`[DEBUG] Received event '${eventName}' from client ${client.id} with args:`, args);
+    });
+    
+    // 监听客户端断开前的事件
+    client.on('disconnecting', (reason) => {
+      this.logger.log(`🔄 Client ${client.id} is disconnecting with reason: ${reason}`);
+      const rooms = Array.from(client.rooms);
+      this.logger.log(`🔄 Client ${client.id} was in rooms: ${rooms}`);
+      this.logger.log(`🔄 Client transport before disconnect: ${client.conn.transport.name}`);
+      this.logger.log(`🔄 Client connection state: connected=${client.connected}, disconnected=${client.disconnected}`);
+    });
+    
+    // 添加错误事件监听
+    client.on('error', (error) => {
+      this.logger.error(`❌ Client ${client.id} error:`, error);
+    });
+    
+    // 添加ping/pong监听
+    client.on('ping', () => {
+      this.logger.debug(`🏓 Ping received from client ${client.id}`);
+    });
+    
+    client.on('pong', (latency) => {
+      this.logger.debug(`🏓 Pong received from client ${client.id}, latency: ${latency}ms`);
     });
 
     // 记录WebSocket连接指标
@@ -81,6 +115,8 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
       clientId: client.id,
       timestamp: new Date().toISOString(),
       availableRooms: Array.from(this.rooms),
+      transport: client.conn.transport.name,
+      upgraded: client.conn.upgraded,
     });
 
     // 发送当前系统状态
@@ -90,8 +126,17 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
   handleDisconnect(client: Socket) {
     const clientInfo = this.clients.get(client.id);
     if (clientInfo) {
+      this.logger.log(`Client disconnected: ${client.id} from ${client.handshake.address}`);
+      this.logger.log(`Disconnection reason: ${client.disconnected ? 'client initiated' : 'server initiated'}`);
+      this.logger.log(`Subscribed rooms before disconnect: ${Array.from(clientInfo.subscribedRooms)}`);
+      
+      // 清理客户端的所有房间订阅
+      clientInfo.subscribedRooms.forEach(room => {
+        client.leave(room);
+        this.logger.log(`Client ${client.id} left room: ${room}`);
+      });
+      
       this.clients.delete(client.id);
-      this.logger.log(`Client disconnected: ${client.id}`);
     }
 
     // 记录WebSocket断开连接指标
@@ -139,40 +184,97 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { serverId: string; interval?: number }
   ) {
-    this.logger.log(`[handleSubscribeServerMetrics] Received subscription request from client ${client.id}`);
-    this.logger.log(`[handleSubscribeServerMetrics] Request data: ${JSON.stringify(data)}`);
-    this.logger.log(`Received subscribe-server-metrics request from client ${client.id} for server ${data.serverId}`);
     const room = `server-metrics-${data.serverId}`;
-    this.logger.log(`[handleSubscribeServerMetrics] Joining client ${client.id} to room: ${room}`);
-    client.join(room);
-    this.rooms.add(room);
+    this.logger.log(`[handleSubscribeServerMetrics] 📥 Client ${client.id} requesting to join room: ${room}`);
+    this.logger.log(`[handleSubscribeServerMetrics] 📋 Subscription data:`, JSON.stringify(data, null, 2));
+    this.logger.log(`[handleSubscribeServerMetrics] 🔍 Client connection state: connected=${client.connected}, disconnected=${client.disconnected}`);
     
-    const clientInfo = this.clients.get(client.id);
-    if (clientInfo) {
-      clientInfo.subscribedRooms.add(room);
-      clientInfo.lastActivity = new Date();
-      this.logger.log(`[handleSubscribeServerMetrics] Updated client info, subscribed rooms: ${Array.from(clientInfo.subscribedRooms)}`);
-    } else {
-      this.logger.warn(`[handleSubscribeServerMetrics] Client info not found for ${client.id}`);
-    }
+    try {
+      // 验证客户端状态
+      if (!client.connected) {
+        this.logger.error(`[handleSubscribeServerMetrics] ❌ Client ${client.id} is not connected!`);
+        return;
+      }
+      
+      // 加入房间
+      this.logger.log(`[handleSubscribeServerMetrics] 🚪 Adding client ${client.id} to room ${room}`);
+      client.join(room);
+      this.rooms.add(room);
+      
+      // 立即验证房间加入是否成功
+      const roomMap = this.server?.sockets?.adapter?.rooms?.get(room);
+      const roomSize = roomMap ? roomMap.size : 0;
+      this.logger.log(`[handleSubscribeServerMetrics] ✅ Client ${client.id} joined room ${room}, current room size: ${roomSize}`);
+      
+      if (roomSize === 0) {
+        this.logger.error(`[handleSubscribeServerMetrics] 🚨 CRITICAL: Room size is 0 immediately after join!`);
+        this.logger.error(`[handleSubscribeServerMetrics] 🔍 Room map:`, roomMap);
+        this.logger.error(`[handleSubscribeServerMetrics] 🔍 Server adapter:`, !!this.server?.sockets?.adapter);
+      }
+      
+      const clientInfo = this.clients.get(client.id);
+      if (clientInfo) {
+        clientInfo.subscribedRooms.add(room);
+        clientInfo.lastActivity = new Date();
+        this.logger.log(`[handleSubscribeServerMetrics] Updated client info, subscribed rooms: ${Array.from(clientInfo.subscribedRooms)}`);
+      } else {
+        this.logger.warn(`[handleSubscribeServerMetrics] ⚠️ Client info not found for ${client.id}`);
+      }
 
-    this.logger.log(`Client ${client.id} subscribed to server ${data.serverId} metrics, room: ${room}`);
-    
-    // 记录订阅指标
-    this.wsMetricsService.recordSubscription(client.id, room);
-    
-    // 立即发送当前服务器指标
-    this.logger.log(`[handleSubscribeServerMetrics] Sending current metrics to client ${client.id}`);
-    this.sendServerMetrics(client, data.serverId);
-    
-    client.emit('subscription-confirmed', {
-      room,
-      serverId: data.serverId,
-      interval: data.interval || 5000,
-      timestamp: new Date().toISOString(),
-    });
-    
-    this.logger.log(`Subscription confirmed for client ${client.id}, room: ${room}`);
+      this.logger.log(`[handleSubscribeServerMetrics] 🎯 Client ${client.id} subscribed to server ${data.serverId} metrics, room: ${room}`);
+      
+      // 记录订阅指标
+      this.wsMetricsService.recordSubscription(client.id, room);
+      
+      // 立即发送当前服务器指标
+      this.logger.log(`[handleSubscribeServerMetrics] 📤 Sending current metrics to client ${client.id}`);
+      this.sendServerMetrics(client, data.serverId);
+      
+      // 发送订阅确认
+      const confirmationData = {
+        room,
+        serverId: data.serverId,
+        interval: data.interval || 5000,
+        timestamp: new Date().toISOString(),
+      };
+      this.logger.log(`[handleSubscribeServerMetrics] 📨 Sending subscription confirmation:`, confirmationData);
+      client.emit('subscription-confirmed', confirmationData);
+      
+      this.logger.log(`[handleSubscribeServerMetrics] ✅ Subscription confirmed for client ${client.id}, room: ${room}`);
+      
+      // 额外验证：检查房间状态（多次检查）
+      const verificationChecks = [500, 1000, 2000];
+      verificationChecks.forEach((delay, index) => {
+        setTimeout(() => {
+          const verifyRoomMap = this.server?.sockets?.adapter?.rooms?.get(room);
+          const verifyRoomSize = verifyRoomMap ? verifyRoomMap.size : 0;
+          this.logger.log(`[handleSubscribeServerMetrics] 🔍 Room verification ${index + 1} after ${delay}ms - ${room}: size=${verifyRoomSize}`);
+          
+          if (verifyRoomSize === 0) {
+            this.logger.error(`[handleSubscribeServerMetrics] ❌ Client ${client.id} disappeared from room ${room} after ${delay}ms!`);
+            this.logger.error(`[handleSubscribeServerMetrics] Client connection state: connected=${client.connected}, disconnected=${client.disconnected}`);
+            
+            // 尝试重新添加客户端到房间
+            if (client.connected) {
+              this.logger.log(`[handleSubscribeServerMetrics] 🔄 Attempting to re-add client ${client.id} to room ${room}`);
+              client.join(room);
+              
+              // 再次验证
+              setTimeout(() => {
+                const reVerifyRoomMap = this.server?.sockets?.adapter?.rooms?.get(room);
+                const reVerifyRoomSize = reVerifyRoomMap ? reVerifyRoomMap.size : 0;
+                this.logger.log(`[handleSubscribeServerMetrics] 🔍 Re-verification after rejoin - ${room}: size=${reVerifyRoomSize}`);
+              }, 200);
+            }
+          } else {
+            this.logger.log(`[handleSubscribeServerMetrics] ✅ Room ${room} still has ${verifyRoomSize} clients after ${delay}ms`);
+          }
+        }, delay);
+      });
+      
+    } catch (error) {
+      this.logger.error(`[handleSubscribeServerMetrics] ❌ Error during subscription:`, error);
+    }
   }
 
   /**
@@ -281,6 +383,27 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
   }
 
   /**
+   * 处理心跳ping
+   */
+  @SubscribeMessage('ping')
+  handlePing(@ConnectedSocket() client: Socket, @MessageBody() data: { timestamp: number }) {
+    this.logger.debug(`🏓 Received ping from client ${client.id}, timestamp: ${data.timestamp}`);
+    
+    // 更新客户端活动时间
+    const clientInfo = this.clients.get(client.id);
+    if (clientInfo) {
+      clientInfo.lastActivity = new Date();
+    }
+    
+    // 发送pong响应
+    client.emit('pong', {
+      timestamp: data.timestamp,
+      serverTime: Date.now(),
+      latency: Date.now() - data.timestamp
+    });
+  }
+
+  /**
    * 定时推送系统指标
    */
   @Cron(CronExpression.EVERY_5_SECONDS)
@@ -314,8 +437,22 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
     }
 
     for (const room of this.rooms) {
-      if (room.startsWith('server-metrics-') && this.server.sockets.adapter.rooms.has(room)) {
+      if (room.startsWith('server-metrics-')) {
         const serverId = room.replace('server-metrics-', '');
+        
+        // 检查是否有客户端订阅了这个房间
+        const roomSet = this.server?.sockets?.adapter?.rooms?.get(room);
+        const roomSize = roomSet ? roomSet.size : 0;
+        const hasClients = roomSize > 0;
+        
+        this.logger.log(`Room ${room} size: ${roomSize}, has clients: ${hasClients}`);
+        
+        if (!hasClients) {
+          // 不再显示警告，因为这是正常情况（没有客户端订阅时）
+          this.logger.debug(`No clients subscribed to room ${room}`);
+          continue;
+        }
+        
         try {
           const metrics = await this.serverMetrics.collectServerMetrics(serverId);
           this.server.to(room).emit('server-metrics-update', {
@@ -495,21 +632,27 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
     const timestamp = payload.timestamp || new Date();
     const room = `server-metrics-${payload.serverId}`;
     
-    // 检查房间是否存在且有客户端
-    const roomExists = this.server?.sockets?.adapter?.rooms?.has(room);
-    const roomSize = this.server?.sockets?.adapter?.rooms?.get(room)?.size || 0;
+    // 使用更可靠的方法检查房间
+    const roomSet = this.server?.sockets?.adapter?.rooms?.get(room);
+    const roomSize = roomSet ? roomSet.size : 0;
+    const hasClients = roomSize > 0;
     
-    this.logger.log(`Room ${room} exists: ${roomExists}, size: ${roomSize}`);
+    this.logger.log(`Room ${room} size: ${roomSize}, has clients: ${hasClients}`);
     
-    if (roomExists && roomSize > 0) {
-      this.server.to(room).emit('server-metrics-update', {
-        serverId: payload.serverId,
-        data: payload.processInfo,
-        timestamp: timestamp.toISOString(),
-      });
-      this.logger.log(`Emitted server-metrics-update to room ${room} with ${roomSize} clients`);
+    if (hasClients) {
+      try {
+        this.server.to(room).emit('server-metrics-update', {
+          serverId: payload.serverId,
+          data: payload.processInfo,
+          timestamp: timestamp.toISOString(),
+        });
+        this.logger.log(`✅ Emitted server-metrics-update to room ${room} with ${roomSize} clients`);
+      } catch (error) {
+        this.logger.error(`Failed to emit to room ${room}:`, error);
+      }
     } else {
-      this.logger.warn(`No clients subscribed to room ${room} (exists: ${roomExists}, size: ${roomSize})`);
+      // 不再显示警告，因为这是正常情况（没有客户端订阅时）
+      this.logger.debug(`No clients subscribed to room ${room}`);
     }
   }
 

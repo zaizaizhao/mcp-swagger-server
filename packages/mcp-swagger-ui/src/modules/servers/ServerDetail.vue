@@ -1580,13 +1580,23 @@ onMounted(async () => {
 
   // 立即订阅进程信息和日志，不等待切换到进程监控标签页
   console.log(`[ServerDetail] 📡 Subscribing to process info and logs for server: ${serverId.value}`);
+  console.log(`[ServerDetail] 🔍 DEBUG - serverId value:`, serverId.value);
+  console.log(`[ServerDetail] 🔍 DEBUG - serverId type:`, typeof serverId.value);
+  console.log(`[ServerDetail] 🔍 DEBUG - serverId is empty:`, !serverId.value);
   console.log(`[ServerDetail] WebSocket connection status before subscription:`, {
     connected: websocketStore.connected,
-    socketId: websocketStore.websocketService?.socket?.id
+    socketId: websocketStore.websocketService?.socket?.id,
+    socketConnected: websocketStore.websocketService?.socket?.connected
   });
   
-  websocketStore.subscribeToProcessInfo(serverId.value);
-  websocketStore.subscribeToProcessLogs(serverId.value);
+  // 只有在serverId有效时才进行订阅
+  if (serverId.value && websocketStore.connected) {
+    console.log(`[ServerDetail] ✅ Conditions met, proceeding with subscription`);
+    websocketStore.subscribeToProcessInfo(serverId.value);
+    websocketStore.subscribeToProcessLogs(serverId.value);
+  } else {
+    console.error(`[ServerDetail] ❌ Cannot subscribe - serverId: ${serverId.value}, connected: ${websocketStore.connected}`);
+  }
   
   // 添加订阅后的验证
   setTimeout(() => {
