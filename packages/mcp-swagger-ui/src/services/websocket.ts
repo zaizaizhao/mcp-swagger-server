@@ -1,5 +1,8 @@
-import { io, type Socket } from "socket.io-client";
+import { io, Socket } from "socket.io-client";
 import type { SystemMetrics, LogEntry, MCPServer } from "@/types";
+
+// 临时移除调试器导入，避免模块问题
+// import { wsDebugger } from "@/utils/websocket-debug";
 
 export interface WebSocketEvents {
   // 系统指标更新
@@ -75,8 +78,10 @@ export class WebSocketService {
   private reconnectDelay = 1000;
   private isConnecting = false;
   private eventHandlers = new Map<keyof WebSocketEvents, Function[]>();
+  private heartbeatInterval: NodeJS.Timeout | null = null;
+  private connectionCheckInterval: NodeJS.Timeout | null = null;
 
-  constructor(private url: string = "/") {
+  constructor(private url: string = "/monitoring") {
     this.setupEventHandlers();
   }
 
@@ -103,12 +108,20 @@ export class WebSocketService {
         console.log('[WebSocketService] Creating socket.io connection...');
         this.socket = io(this.url, {
           transports: ["websocket", "polling"],
-          timeout: 10000,
+          timeout: 20000,
           reconnection: true,
           reconnectionAttempts: this.maxReconnectAttempts,
           reconnectionDelay: this.reconnectDelay,
           autoConnect: false,
           forceNew: true,
+          // 添加更多配置以提高连接稳定性
+          upgrade: true,
+          rememberUpgrade: true,
+          // 添加详细的连接信息
+          query: {
+            clientType: 'ui',
+            timestamp: Date.now().toString()
+          }
         });
 
         this.setupSocketEventHandlers();
@@ -119,8 +132,17 @@ export class WebSocketService {
         this.socket.on("connect", () => {
           console.log("[WebSocketService] WebSocket connected successfully!");
           console.log("[WebSocketService] Socket ID:", this.socket?.id);
+          console.log("[WebSocketService] Transport:", this.socket?.io?.engine?.transport?.name);
+          console.log("[WebSocketService] Connection details:", {
+            connected: this.socket?.connected,
+            disconnected: this.socket?.disconnected,
+            transport: this.socket?.io?.engine?.transport?.name
+          });
+          
           this.isConnecting = false;
           this.reconnectAttempts = 0;
+          this.startHeartbeat();
+          this.startConnectionCheck();
           this.emitEvent("connect");
           resolve();
         });
@@ -131,7 +153,8 @@ export class WebSocketService {
             message: error.message,
             description: (error as any).description,
             context: (error as any).context,
-            type: (error as any).type
+            type: (error as any).type,
+            data: (error as any).data
           });
           this.isConnecting = false;
           this.emitEvent("connect_error", error);
@@ -175,12 +198,54 @@ export class WebSocketService {
 
   // 断开连接
   disconnect(): void {
+    console.log("[WebSocketService] 🔌 Manually disconnecting WebSocket...");
+    this.stopHeartbeat();
+    this.stopConnectionCheck();
+    
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
     }
     this.isConnecting = false;
     this.reconnectAttempts = 0;
+  }
+
+  // 开始心跳检查
+  private startHeartbeat(): void {
+    this.stopHeartbeat(); // 确保没有重复的心跳
+    this.heartbeatInterval = setInterval(() => {
+      if (this.socket?.connected) {
+        console.log("[WebSocketService] 💓 Sending heartbeat ping");
+        this.socket.emit('ping', { timestamp: Date.now() });
+      }
+    }, 30000); // 每30秒发送一次心跳
+  }
+
+  // 停止心跳检查
+  private stopHeartbeat(): void {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+  }
+
+  // 开始连接状态检查
+  private startConnectionCheck(): void {
+    this.stopConnectionCheck(); // 确保没有重复的检查
+    this.connectionCheckInterval = setInterval(() => {
+      if (!this.socket?.connected && !this.isConnecting) {
+        console.log("[WebSocketService] 🔍 Connection lost detected, attempting reconnect...");
+        this.attemptReconnect();
+      }
+    }, 10000); // 每10秒检查一次连接状态
+  }
+
+  // 停止连接状态检查
+  private stopConnectionCheck(): void {
+    if (this.connectionCheckInterval) {
+      clearInterval(this.connectionCheckInterval);
+      this.connectionCheckInterval = null;
+    }
   }
 
   // 检查连接状态
@@ -197,11 +262,24 @@ export class WebSocketService {
     // 连接状态事件
     this.socket.on("disconnect", (reason) => {
       console.log("[WebSocketService] WebSocket disconnected:", reason);
+      console.log("[WebSocketService] Disconnect details:", {
+        reason,
+        connected: this.socket?.connected,
+        disconnected: this.socket?.disconnected,
+        transport: this.socket?.io?.engine?.transport?.name
+      });
+      
       this.emitEvent("disconnect");
 
-      // 如果是服务器主动断开，尝试重连
+      // 根据断开原因决定是否重连
       if (reason === "io server disconnect") {
+        console.log("[WebSocketService] Server initiated disconnect, attempting reconnect...");
         this.attemptReconnect();
+      } else if (reason === "transport close" || reason === "transport error") {
+        console.log("[WebSocketService] Transport issue, attempting reconnect...");
+        this.attemptReconnect();
+      } else {
+        console.log("[WebSocketService] Client initiated disconnect, no reconnect needed");
       }
     });
 
@@ -447,13 +525,31 @@ export class WebSocketService {
     });
   }
 
-  // 发送消息到服务器
+  // 发送消息到服务器（增强版本）
   emit(event: string, data?: any): void {
     if (this.socket?.connected) {
       console.log(`[WebSocketService] 📤 Emitting event: ${event}`, data);
       this.socket.emit(event, data);
+      
+      // 特殊处理订阅事件，添加额外的确认机制
+      if (event.includes('subscribe')) {
+        console.log(`[WebSocketService] 🔔 Subscription event sent: ${event}`);
+        
+        // 设置订阅超时检查
+        setTimeout(() => {
+          console.log(`[WebSocketService] 🕒 Checking subscription status 3 seconds after ${event}...`);
+          
+          // 请求连接状态
+          this.socket?.emit('get-connection-status');
+        }, 3000);
+      }
     } else {
       console.error(`[WebSocketService] ❌ WebSocket not connected, cannot emit event: ${event}`, data);
+      console.error(`[WebSocketService] 🔍 Current socket state:`, {
+        socket: !!this.socket,
+        connected: this.socket?.connected,
+        disconnected: this.socket?.disconnected
+      });
     }
   }
 
@@ -487,7 +583,7 @@ export class WebSocketService {
     this.emit("unsubscribe:logs");
   }
 
-  // 订阅进程信息更新
+  // 订阅进程信息更新（强化版本）
   subscribeToProcessInfo(serverId: string): void {
     console.log(`[WebSocketService] 🔄 Subscribing to process info for server: ${serverId}`);
     console.log(`[WebSocketService] Socket connected: ${this.socket?.connected}`);
@@ -495,19 +591,75 @@ export class WebSocketService {
     
     if (!this.socket?.connected) {
       console.error('[WebSocketService] ❌ Socket not connected, cannot subscribe to process info');
+      console.error('[WebSocketService] 🔄 Attempting to reconnect and then subscribe...');
+      
+      // 尝试重新连接后再订阅
+      this.connect().then(() => {
+        console.log('[WebSocketService] ✅ Reconnected successfully, retrying subscription...');
+        setTimeout(() => this.subscribeToProcessInfo(serverId), 1000);
+      }).catch(err => {
+        console.error('[WebSocketService] Failed to reconnect for subscription:', err);
+      });
       return;
     }
     
     const subscribeData = { serverId, interval: 5000 };
     console.log(`[WebSocketService] 📤 Emitting subscribe-server-metrics with data:`, subscribeData);
     console.log(`[WebSocketService] Expected room name: server-metrics-${serverId}`);
+    
+    // 记录订阅尝试时间
+    const subscriptionStartTime = Date.now();
+    let subscriptionConfirmed = false;
+    
+    // 强制订阅，立即发送
     this.emit("subscribe-server-metrics", subscribeData);
     
-    // 添加订阅后的状态检查
+    // 订阅确认监听器（一次性）
+    const onSubscriptionConfirmed = (data: any) => {
+      console.log('[WebSocketService] 📨 Received subscription-confirmed event:', data);
+      
+      if (data.room === `server-metrics-${serverId}`) {
+        subscriptionConfirmed = true;
+        const subscriptionTime = Date.now() - subscriptionStartTime;
+        console.log(`[WebSocketService] ✅ Subscription confirmed for server ${serverId} in ${subscriptionTime}ms`);
+        
+        // 移除这个特定的监听器
+        this.socket?.off('subscription-confirmed', onSubscriptionConfirmed);
+      }
+    };
+    
+    // 添加订阅确认监听器
+    this.socket?.on('subscription-confirmed', onSubscriptionConfirmed);
+    
+    // 设置超时检查
+    const confirmationTimeout = setTimeout(() => {
+      if (!subscriptionConfirmed) {
+        console.warn(`[WebSocketService] ⚠️ Subscription confirmation timeout for server ${serverId} after 5 seconds`);
+        console.log(`[WebSocketService] 🔄 Retrying subscription...`);
+        
+        // 移除监听器并重试
+        this.socket?.off('subscription-confirmed', onSubscriptionConfirmed);
+        
+        // 延迟重试
+        setTimeout(() => {
+          console.log(`[WebSocketService] 🔄 Retrying subscription for server ${serverId}`);
+          this.emit("subscribe-server-metrics", subscribeData);
+        }, 1000);
+      }
+    }, 5000);
+    
+    // 添加状态检查
     setTimeout(() => {
-      console.log(`[WebSocketService] 🔍 Checking subscription status after 2 seconds...`);
-      console.log(`[WebSocketService] Socket still connected: ${this.socket?.connected}`);
-    }, 2000);
+      console.log(`[WebSocketService] 🔍 Subscription status check after 3 seconds:`);
+      console.log(`[WebSocketService] - Socket connected: ${this.socket?.connected}`);
+      console.log(`[WebSocketService] - Subscription confirmed: ${subscriptionConfirmed}`);
+      console.log(`[WebSocketService] - Server ID: ${serverId}`);
+      
+      // 请求连接状态
+      if (this.socket?.connected) {
+        this.emit('get-connection-status');
+      }
+    }, 3000);
   }
 
   // 取消订阅进程信息更新
@@ -542,6 +694,6 @@ export class WebSocketService {
 }
 
 // 创建全局WebSocket服务实例
-export const websocketService = new WebSocketService('http://localhost:3001/monitoring');
+export const websocketService = new WebSocketService('/monitoring');
 
 // 导出类型已在文件顶部定义

@@ -3,6 +3,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 import * as cors from 'cors';
 import * as helmet from 'helmet';
 import * as compression from 'compression';
@@ -15,6 +16,9 @@ async function bootstrap() {
     const app = await NestFactory.create(AppModule, {
       logger: ['error', 'warn', 'log', 'debug', 'verbose'],
     });
+
+    // 配置Socket.IO适配器
+    app.useWebSocketAdapter(new IoAdapter(app));
 
     const configService = app.get(ConfigService);
 
@@ -29,13 +33,17 @@ async function bootstrap() {
         directives: {
           defaultSrc: ["'self'"],
           styleSrc: ["'self'", "'unsafe-inline'"],
-          scriptSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
           imgSrc: ["'self'", "data:", "https:"],
+          connectSrc: ["'self'", "ws:", "wss:"],
         },
       },
     }));
     
     app.use(compression());
+
+    // 静态文件服务
+    app.use(express.static('public'));
 
     // CORS配置
     const corsOrigins = configService.get<string>('CORS_ORIGINS', 'http://localhost:5173').split(',');

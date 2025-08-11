@@ -39,6 +39,11 @@ export default defineConfig({
         changeOrigin: true,
         ws: true,
       },
+      "/monitoring": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+        ws: true,
+      },
     },
   },
   build: {
