@@ -90,6 +90,7 @@
         <div class="input-group">
             <label for="urlInput">WebSocket URL:</label>
             <input type="text" id="urlInput" value="http://localhost:3001/monitoring" placeholder="WebSocket URL">
+            <button id="dumpBtn" class="button" disabled>Dump Rooms</button>
         </div>
         
         <h3>连接日志</h3>
@@ -109,6 +110,7 @@
         const disconnectBtn = document.getElementById('disconnectBtn');
         const subscribeBtn = document.getElementById('subscribeBtn');
         const clearLogBtn = document.getElementById('clearLogBtn');
+        const dumpBtn = document.getElementById('dumpBtn');
         const logEl = document.getElementById('log');
         const dataLogEl = document.getElementById('dataLog');
         const serverIdInput = document.getElementById('serverIdInput');
@@ -136,10 +138,10 @@
             connected = isConnected;
             statusEl.textContent = `状态: ${isConnected ? '已连接' : '未连接'}`;
             statusEl.className = `status ${isConnected ? 'connected' : 'disconnected'}`;
-            
             connectBtn.disabled = isConnected;
             disconnectBtn.disabled = !isConnected;
             subscribeBtn.disabled = !isConnected;
+            dumpBtn.disabled = !isConnected;
         }
         
         connectBtn.addEventListener('click', () => {
@@ -201,6 +203,10 @@
                     dataLog(`📨 事件 ${eventName}: ${JSON.stringify(args)}`);
                 }
             });
+            
+            socket.on('rooms-dump', (data) => {
+                dataLog(`🧪 Rooms Dump: ${JSON.stringify(data, null, 2)}`);
+            });
         });
         
         disconnectBtn.addEventListener('click', () => {
@@ -214,22 +220,22 @@
         
         subscribeBtn.addEventListener('click', () => {
             const serverId = serverIdInput.value.trim();
-            if (!serverId) {
-                log('❌ 请输入服务器ID', 'error');
-                return;
-            }
-            
+            if (!serverId) { log('❌ 请输入服务器ID', 'error'); return; }
             if (socket && connected) {
                 const subscribeData = { serverId, interval: 5000 };
                 log(`📥 发送订阅请求: ${JSON.stringify(subscribeData)}`);
+                log(`🔍 Socket状态: connected=${socket.connected}, disconnected=${socket.disconnected}`);
+                log(`🔍 Socket传输方式: ${socket.io.engine.transport.name}`);
                 socket.emit('subscribe-server-metrics', subscribeData);
-                
-                // 请求连接状态
-                setTimeout(() => {
-                    socket.emit('get-connection-status');
-                }, 1000);
-            } else {
-                log('❌ WebSocket未连接', 'error');
+                setTimeout(()=>{ log(`📋 请求连接状态...`); socket.emit('get-connection-status');},1000);
+                setTimeout(()=>{ log(`🏓 发送测试ping...`); socket.emit('ping',{ timestamp: Date.now() });},500);
+            } else { log('❌ WebSocket未连接','error'); }
+        });
+        
+        dumpBtn.addEventListener('click', () => {
+            if (socket && connected) {
+                log('🛠 发送 debug-dump-rooms 请求');
+                socket.emit('debug-dump-rooms');
             }
         });
         

@@ -90,13 +90,13 @@
                         <span class="info-value">{{ serverInfo.id }}</span>
                       </div>
                       <div class="info-item">
-                        <span class="info-label">端口</span>
-                        <span class="info-value">{{ serverInfo.config?.port || 'N/A' }}</span>
-                      </div>
-                      <div class="info-item">
-                        <span class="info-label">传输类型</span>
-                        <span class="info-value">{{ serverInfo.config?.transport || 'SSE' }}</span>
-                      </div>
+                <span class="info-label">端口</span>
+                <span class="info-value">{{ serverInfo.port || 'N/A' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">传输类型</span>
+                <span class="info-value">{{ serverInfo.transport || 'N/A' }}</span>
+              </div>
                       <div class="info-item">
                         <span class="info-label">启动时间</span>
                         <span class="info-value">{{ serverInfo.metrics?.startedAt ? formatDateTime(new Date(serverInfo.metrics.startedAt)) : 'N/A' }}</span>
@@ -118,11 +118,11 @@
                     </template>
                     <div class="metrics-grid">
                       <div class="metric-item">
-                        <div class="metric-value">{{ serverInfo.metrics?.resourceUsage?.cpu ? (serverInfo.metrics.resourceUsage.cpu * 100).toFixed(1) + '%' : 'N/A' }}</div>
+                        <div class="metric-value">{{ getCpuUsage() }}</div>
                         <div class="metric-label">CPU使用率</div>
                       </div>
                       <div class="metric-item">
-                        <div class="metric-value">{{ serverInfo.metrics?.resourceUsage?.memory ? formatBytes(serverInfo.metrics.resourceUsage.memory) : 'N/A' }}</div>
+                        <div class="metric-value">{{ getMemoryUsage() }}</div>
                         <div class="metric-label">内存使用</div>
                       </div>
                       <div class="metric-item">
@@ -411,7 +411,7 @@
               </el-row>
 
               <!-- 进程信息概览 -->
-              <el-card class="process-info-card" style="margin-bottom: 24px">
+              <el-card class="process-info-card">
                 <template #header>
                   <div class="card-header">
                     <el-icon><Monitor /></el-icon>
@@ -430,7 +430,7 @@
                   </el-col>
                   <el-col :span="6">
                     <div class="process-stat">
-                      <div class="stat-value">{{ processInfo.resourceMetrics?.cpu?.toFixed(1) || 'N/A' }}%</div>
+                      <div class="stat-value">{{ getCpuUsage() }}</div>
                       <div class="stat-label">CPU使用率</div>
                     </div>
                   </el-col>
@@ -442,15 +442,19 @@
                   </el-col>
                   <el-col :span="6">
                     <div class="process-stat">
-                      <div class="stat-value">{{ processInfo.process?.uptime ? formatDuration(processInfo.process.uptime) : 'N/A' }}</div>
+                      <div class="stat-value">{{ serverInfo.status === 'running' ? formatUptime(serverInfo.metrics?.uptime || 0) : 'N/A' }}</div>
                       <div class="stat-label">运行时长</div>
                     </div>
                   </el-col>
                 </el-row>
                 <el-empty v-else description="暂无进程信息" :image-size="60" />
               </el-card>
+            </div>
+          </el-tab-pane>
 
-              <!-- 进程日志 -->
+          <!-- 进程日志标签页 -->
+          <el-tab-pane label="进程日志" name="process-logs">
+            <div class="process-logs-content">
               <el-card class="process-logs-card">
                 <template #header>
                   <div class="card-header">
@@ -774,7 +778,11 @@ const logStats = ref({
 
 // 计算属性
 const serverId = computed(() => route.params.id as string);
-const serverInfo = computed(() => serverStore.selectedServer);
+const serverInfo = computed(() => {
+  console.log("这是server info",serverStore.selectedServer);
+  
+  return serverStore.selectedServer;
+});
 
 const customHeadersArray = computed(() => {
   if (!serverInfo.value?.config?.customHeaders) return [];
@@ -888,25 +896,43 @@ const responseTimeChartOption = computed(() => ({
 const fetchServerDetail = async () => {
   loading.value = true;
   try {
-    // 首先选择服务器，检查本地是否已有数据
-    serverStore.selectServer(serverId.value);
+    if (serverStore.servers.length === 0) {
+      console.log('[ServerDetail] Servers array is empty, fetching servers list first...');
+      await serverStore.fetchServers({});
+      console.log('[ServerDetail] After fetchServers, servers array length:', serverStore.servers.length);
+    }
     
-    // 如果本地已有服务器数据，直接使用
-    if (serverInfo.value) {
+    // 选择服务器
+    serverStore.selectServer(serverId.value);
+    console.log('[ServerDetail] After selectServer, selectedServer:', serverStore.selectedServer);
+    
+    // 如果本地已有完整的服务器数据，直接使用
+    if (serverInfo.value && serverInfo.value.id === serverId.value) {
+      console.log('[ServerDetail] Using cached server data');
       return;
     }
     
-    // 如果本地没有数据，尝试从API获取
-    await serverStore.fetchServerDetails(serverId.value);
+    // 如果本地没有数据或数据不完整，尝试从API获取详细信息
+    console.log('[ServerDetail] Fetching server details from API...');
+    const serverDetails = await serverStore.fetchServerDetails(serverId.value);
+    
+    // 如果 fetchServerDetails 返回了数据但 selectedServer 仍为空，
+    // 说明服务器不在 servers 数组中，需要手动添加
+    if (serverDetails && !serverStore.selectedServer) {
+      console.log('[ServerDetail] Server details fetched but not in servers array, adding manually...');
+      serverStore.servers.push(serverDetails);
+    }
     
     // 重新选择服务器以更新selectedServer
     serverStore.selectServer(serverId.value);
+    console.log('[ServerDetail] Final selectedServer:', serverStore.selectedServer);
     
     // 如果仍然没有数据，说明服务器确实不存在
     if (!serverInfo.value) {
-      throw new Error("服务器不存在");
+      throw new Error("服务器不存在或无法访问");
     }
   } catch (error) {
+    console.error('[ServerDetail] fetchServerDetail error:', error);
     ElMessage.error(`获取服务器详情失败: ${error}`);
   } finally {
     loading.value = false;
@@ -1063,9 +1089,9 @@ const exportLogs = () => {
     Object.keys(logData[0]).join(',') + '\n' +
     logData.map(row => Object.values(row).join(',')).join('\n');
   
-  const link = document.createElement('a');
-  link.setAttribute('href', encodeURI(csvContent));
-  link.setAttribute('download', `server-${serverId.value}-logs.csv`);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodeURI(csvContent));
+  link.setAttribute("download", `server-${serverId.value}-logs.csv`);
   link.click();
   
   ElMessage.success('日志已导出');
@@ -1125,7 +1151,26 @@ const formatUptime = (uptime: number) => {
 
 
 
-const formatLogTime = (date: Date) => {
+const formatLogTime = (timestamp: string | number | Date) => {
+  if (!timestamp) return 'N/A';
+  
+  let date: Date;
+  if (timestamp instanceof Date) {
+    date = timestamp;
+  } else if (typeof timestamp === 'string') {
+    date = new Date(timestamp);
+  } else if (typeof timestamp === 'number') {
+    // 如果是数字，判断是秒还是毫秒
+    date = new Date(timestamp > 1000000000000 ? timestamp : timestamp * 1000);
+  } else {
+    return 'N/A';
+  }
+  
+  // 检查日期是否有效
+  if (isNaN(date.getTime())) {
+    return 'N/A';
+  }
+  
   return new Intl.DateTimeFormat("zh-CN", {
     hour: "2-digit",
     minute: "2-digit",
@@ -1153,6 +1198,61 @@ const formatBytes = (bytes: number) => {
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+// 获取传输类型
+const getTransportType = () => {
+  // 优先使用配置中的传输类型
+  if (serverInfo.value?.config?.transport) {
+    return serverInfo.value.config.transport.toUpperCase();
+  }
+  
+  // 根据端点URL判断传输类型
+  if (serverInfo.value?.endpoint) {
+    const endpoint = serverInfo.value.endpoint.toLowerCase();
+    if (endpoint.includes('stdio') || endpoint.includes('process')) {
+      return 'STDIO';
+    }
+    if (endpoint.includes('sse') || endpoint.includes('stream')) {
+      return 'SSE';
+    }
+    if (endpoint.includes('ws') || endpoint.includes('websocket')) {
+      return 'WebSocket';
+    }
+  }
+  
+  // 默认返回STDIO（因为大多数MCP服务器使用STDIO）
+  return 'STDIO';
+};
+
+// 获取CPU使用率
+const getCpuUsage = () => {
+  // 优先使用processInfo中的实时数据
+  if (processInfo.value?.resourceMetrics?.cpu !== undefined) {
+    return (processInfo.value.resourceMetrics.cpu * 100).toFixed(1) + '%';
+  }
+  
+  // 回退到serverInfo中的数据
+  if (serverInfo.value?.metrics?.resourceUsage?.cpu !== undefined) {
+    return (serverInfo.value.metrics.resourceUsage.cpu * 100).toFixed(1) + '%';
+  }
+  
+  return 'N/A';
+};
+
+// 获取内存使用量
+const getMemoryUsage = () => {
+  // 优先使用processInfo中的实时数据
+  if (processInfo.value?.resourceMetrics?.memory !== undefined) {
+    return formatBytes(processInfo.value.resourceMetrics.memory);
+  }
+  
+  // 回退到serverInfo中的数据
+  if (serverInfo.value?.metrics?.resourceUsage?.memory !== undefined) {
+    return formatBytes(serverInfo.value.metrics.resourceUsage.memory);
+  }
+  
+  return 'N/A';
 };
 
 const getStatusType = (status: string) => {
@@ -1230,16 +1330,10 @@ const testTool = (tool: MCPTool) => {
 // 日志相关
 const addLogEntry = (entry: LogEntry) => {
   logs.value.push(entry);
-  // 保持日志数量在合理范围
   if (logs.value.length > 1000) {
-    logs.value = logs.value.slice(-500);
+    logs.value.splice(0, logs.value.length - 800);
   }
-  // 自动滚动到底部
-  nextTick(() => {
-    if (logsContainer.value) {
-      logsContainer.value.scrollTop = logsContainer.value.scrollHeight;
-    }
-  });
+  nextTick(() => { if (logsContainer.value) logsContainer.value.scrollTop = logsContainer.value.scrollHeight; });
 };
 
 const filterLogs = () => {
@@ -1335,9 +1429,19 @@ watch(chartTimeRange, () => {
 
 // 监听进程信息变化，自动更新图表
 watch(processInfo, (newProcessInfo) => {
+  console.log('[ServerDetail] processInfo changed:', newProcessInfo);
+  console.log("newProcessInfo是什么",newProcessInfo);
+  console.log("activeTab.value是什么",activeTab.value);
+  console.log("newProcessInfo.resourceMetrics是什么",newProcessInfo.resourceMetrics);
+  
   if (newProcessInfo && newProcessInfo.resourceMetrics && activeTab.value === 'process') {
     updateResourceCharts();
   }
+}, { deep: true });
+
+// 监听processLogs数据变化
+watch(processLogs, (newValue, oldValue) => {
+  console.log('[ServerDetail] processLogs changed, count:', newValue.length, 'previous count:', oldValue?.length || 0);
 }, { deep: true });
 
 // 进程监控方法
@@ -1386,100 +1490,69 @@ const clearProcessLogs = () => {
   processLogs.value = [];
 };
 
+const processLogsMaxTrim = () => {
+  if (processLogs.value.length > MAX_PROCESS_LOGS) {
+    processLogs.value.splice(0, processLogs.value.length - MAX_PROCESS_LOGS);
+  }
+};
+
 const updateResourceCharts = () => {
-  // 如果有WebSocket推送的进程信息，使用它来更新图表
-  if (processInfo.value && processInfo.value.resourceMetrics) {
-    const currentTime = new Date().toLocaleTimeString('zh-CN', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-    
-    // 更新CPU图表
-    if (cpuChart) {
-      cpuChart.setOption({
-        title: { text: 'CPU使用率 (%)' },
-        tooltip: { trigger: 'axis' },
-        xAxis: { data: [currentTime] },
-        yAxis: { min: 0, max: 100 },
-        series: [{
-          data: [processInfo.value.resourceMetrics.cpu],
-          type: 'line',
-          smooth: true,
-          lineStyle: { color: '#409EFF' },
-          areaStyle: { color: 'rgba(64, 158, 255, 0.1)' }
-        }]
-      });
-    }
-    
-    // 更新内存图表
-    if (memoryChart) {
-      const memoryMB = Math.round(processInfo.value.resourceMetrics.memory / 1024 / 1024);
-      memoryChart.setOption({
-        title: { text: '内存使用 (MB)' },
-        tooltip: { trigger: 'axis' },
-        xAxis: { data: [currentTime] },
-        yAxis: { min: 0 },
-        series: [{
-          data: [memoryMB],
-          type: 'line',
-          smooth: true,
-          lineStyle: { color: '#67C23A' },
-          areaStyle: { color: 'rgba(103, 194, 58, 0.1)' }
-        }]
+  console.log("更新资源占用数据", processInfo.value);
+  
+  // 确保图表已初始化
+  if (!cpuChart || !memoryChart) {
+    console.log('图表未初始化，尝试初始化...');
+    if (activeTab.value === 'process') {
+      initResourceCharts().then(() => {
+        // 初始化完成后再次调用更新
+        updateResourceCharts();
       });
     }
     return;
   }
   
-  // 回退到使用resourceHistory（如果有的话）
-  if (!resourceHistory.value.length) return;
-  
-  const times = resourceHistory.value.map(item => 
-    new Date(item.timestamp).toLocaleTimeString('zh-CN', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    })
-  );
-  const cpuData = resourceHistory.value.map(item => item.cpu);
-  const memoryData = resourceHistory.value.map(item => 
-    Math.round(item.memory / 1024 / 1024) // 转换为MB
-  );
-  
-  // 更新CPU图表
-  if (cpuChart) {
+  // 优先使用实时数据
+  if (processInfo.value?.resourceMetrics) {
+    console.log('使用实时数据更新图表:', processInfo.value.resourceMetrics);
+    const currentTime = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    
+    // 获取当前图表数据
+    const cpuOption = cpuChart.getOption();
+    const memoryOption = memoryChart.getOption();
+    
+    // 更新CPU图表
+    const cpuTimes = [...(cpuOption.xAxis[0].data || []), currentTime].slice(-20); // 保留最近20个数据点
+    const cpuData = [...(cpuOption.series[0].data || []), processInfo.value.resourceMetrics.cpu * 100].slice(-20);
+    
     cpuChart.setOption({
-      title: { text: 'CPU使用率 (%)' },
-      tooltip: { trigger: 'axis' },
-      xAxis: { data: times },
-      yAxis: { min: 0, max: 100 },
-      series: [{
-        data: cpuData,
-        type: 'line',
-        smooth: true,
-        lineStyle: { color: '#409EFF' },
-        areaStyle: { color: 'rgba(64, 158, 255, 0.1)' }
-      }]
+      xAxis: { data: cpuTimes },
+      series: [{ data: cpuData }]
     });
+    
+    // 更新内存图表
+    const memoryMB = Math.round(processInfo.value.resourceMetrics.memory / 1024 / 1024);
+    const memoryTimes = [...(memoryOption.xAxis[0].data || []), currentTime].slice(-20);
+    const memoryData = [...(memoryOption.series[0].data || []), memoryMB].slice(-20);
+    
+    memoryChart.setOption({
+      xAxis: { data: memoryTimes },
+      series: [{ data: memoryData }]
+    });
+    
+    console.log('图表更新完成 - CPU:', processInfo.value.resourceMetrics.cpu, '%, Memory:', memoryMB, 'MB');
+    return;
   }
   
-  // 更新内存图表
-  if (memoryChart) {
-    memoryChart.setOption({
-      title: { text: '内存使用 (MB)' },
-      tooltip: { trigger: 'axis' },
-      xAxis: { data: times },
-      yAxis: { min: 0 },
-      series: [{
-        data: memoryData,
-        type: 'line',
-        smooth: true,
-        lineStyle: { color: '#67C23A' },
-        areaStyle: { color: 'rgba(103, 194, 58, 0.1)' }
-      }]
-    });
+  // 回退使用历史数据
+  if (!resourceHistory.value.length) {
+    console.log('没有可用的资源数据');
+    return;
   }
+  
+  console.log('使用历史数据更新图表');
+  const times = resourceHistory.value.map(r => new Date(r.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+  if (cpuChart) cpuChart.setOption({ xAxis: { data: times }, series: [{ data: resourceHistory.value.map(r => r.cpu * 100) }] });
+  if (memoryChart) memoryChart.setOption({ xAxis: { data: times }, series: [{ data: resourceHistory.value.map(r => Math.round(r.memory / 1024 / 1024)) }] });
 };
 
 const initResourceCharts = async () => {
@@ -1545,156 +1618,130 @@ watch(activeTab, (newTab) => {
   // 注意：现在不需要在标签页切换时订阅/取消订阅，因为在组件挂载时就已经订阅了
 });
 
-// 监听进程信息变化，自动更新图表
-watch(processInfo, (newProcessInfo) => {
-  if (newProcessInfo && newProcessInfo.resourceMetrics && activeTab.value === 'process') {
-    updateResourceCharts();
-  }
-}, { deep: true });
+
 
 // 生命周期
 onMounted(async () => {
   await fetchServerDetail();
-  
-  // 初始化数据
+  await refreshTools();
   await refreshConnections();
   await refreshLogs();
 
-  // 连接WebSocket并订阅事件
-  console.log(`[ServerDetail] 🔌 Connecting to WebSocket for server: ${serverId.value}`);
-  console.log(`[ServerDetail] WebSocket store connected: ${websocketStore.connected}`);
-  
-  // 确保WebSocket连接
-  if (!websocketStore.connected) {
-    console.log(`[ServerDetail] 🔄 WebSocket not connected, attempting to connect...`);
-    try {
-      await websocketStore.connect();
-      console.log(`[ServerDetail] ✅ WebSocket connected successfully`);
-    } catch (error) {
-      console.error(`[ServerDetail] ❌ Failed to connect WebSocket:`, error);
-      return;
-    }
-  } else {
-    console.log(`[ServerDetail] ✅ WebSocket already connected`);
+  // 初始化图表（如果当前在进程监控标签页）
+  if (activeTab.value === 'process') {
+    await nextTick();
+    await initResourceCharts();
   }
 
-  // 立即订阅进程信息和日志，不等待切换到进程监控标签页
-  console.log(`[ServerDetail] 📡 Subscribing to process info and logs for server: ${serverId.value}`);
-  console.log(`[ServerDetail] 🔍 DEBUG - serverId value:`, serverId.value);
-  console.log(`[ServerDetail] 🔍 DEBUG - serverId type:`, typeof serverId.value);
-  console.log(`[ServerDetail] 🔍 DEBUG - serverId is empty:`, !serverId.value);
-  console.log(`[ServerDetail] WebSocket connection status before subscription:`, {
-    connected: websocketStore.connected,
-    socketId: websocketStore.websocketService?.socket?.id,
-    socketConnected: websocketStore.websocketService?.socket?.connected
-  });
-  
-  // 只有在serverId有效时才进行订阅
+  if (!websocketStore.connected) {
+    console.log('[ServerDetail] WebSocket not connected, attempting to connect...');
+    try { await websocketStore.connect(); } catch { console.error('[ServerDetail] Failed to connect WebSocket'); return; }
+  }
   if (serverId.value && websocketStore.connected) {
-    console.log(`[ServerDetail] ✅ Conditions met, proceeding with subscription`);
+    console.log('[ServerDetail] Subscribing to process info and logs for serverId:', serverId.value);
     websocketStore.subscribeToProcessInfo(serverId.value);
     websocketStore.subscribeToProcessLogs(serverId.value);
-  } else {
-    console.error(`[ServerDetail] ❌ Cannot subscribe - serverId: ${serverId.value}, connected: ${websocketStore.connected}`);
   }
-  
-  // 添加订阅后的验证
-  setTimeout(() => {
-    console.log(`[ServerDetail] 🔍 Verifying subscriptions after 3 seconds...`);
-    console.log(`[ServerDetail] WebSocket still connected: ${websocketStore.connected}`);
-  }, 3000);
-
-  // 订阅WebSocket事件
-  subscriptionIds.serverStatus = websocketStore.subscribe("server-status", (data: any) => {
-    if (data.serverId === serverId.value) {
-      serverStore.updateServerStatus(data.serverId, data.status, data.error);
-    }
-  }, `server-status-${serverId.value}`) || '';
-
-  subscriptionIds.serverMetrics = websocketStore.subscribe("server-metrics", (data: any) => {
-    if (data.serverId === serverId.value) {
-      serverStore.updateServerMetrics(data.serverId, data.metrics);
-    }
-  }, `server-metrics-${serverId.value}`) || '';
-
-  subscriptionIds.logs = websocketStore.subscribe("logs", (data: any) => {
-    if (data.serverId === serverId.value) {
-      addLogEntry(data);
-    }
-  }, `logs-${serverId.value}`) || '';
-
-  // 订阅进程信息更新事件（通过WebSocket服务自动处理server-metrics-update转换）
+  // 订阅事件
   subscriptionIds.processInfo = websocketStore.subscribe("process:info", (data: any) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[ServerDetail] Received process:info event for server ${data.serverId}:`, data);
-    }
+    console.log('=== [ServerDetail] process:info 事件详细调试 ===');
+    console.log('[ServerDetail] 完整的data对象:', JSON.stringify(data, null, 2));
+    console.log('[ServerDetail] data对象的所有属性:', Object.keys(data));
+    console.log('[ServerDetail] data.serverId:', data.serverId);
+    console.log('[ServerDetail] 当前serverId:', serverId.value);
+    console.log('[ServerDetail] serverId匹配:', data.serverId === serverId.value);
+    
     if (data.serverId === serverId.value) {
-      processInfo.value = data.processInfo;
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`[ServerDetail] Updated processInfo for server ${serverId.value}:`, processInfo.value);
-      }
-      // 更新资源图表
-      if (activeTab.value === 'process') {
-        updateResourceCharts();
-      }
-    }
-  }, `process-info-${serverId.value}`) || '';
-
-  // 订阅进程日志更新事件
-  subscriptionIds.processLogs = websocketStore.subscribe("process:logs", (data: any) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[ServerDetail] Received process:logs event for server ${data.serverId}:`, data);
-    }
-    if (data.serverId === serverId.value) {
-      // 添加新的日志条目到现有日志列表
-      processLogs.value.push({
-        id: Date.now().toString(),
-        level: data.logData.level,
-        message: data.logData.message,
-        timestamp: data.logData.timestamp,
-        metadata: data.logData.metadata
-      });
+      console.log('[ServerDetail] Processing process:info for serverId:', serverId.value);
       
-      // 保持日志列表在合理大小
-      if (processLogs.value.length > 500) {
-        processLogs.value = processLogs.value.slice(-400);
+      // 详细检查data.processInfo
+      console.log('[ServerDetail] data.processInfo存在:', !!data.processInfo);
+      console.log('[ServerDetail] data.processInfo类型:', typeof data.processInfo);
+      if (data.processInfo) {
+        console.log('[ServerDetail] data.processInfo的所有属性:', Object.keys(data.processInfo));
+        console.log('[ServerDetail] data.processInfo.process存在:', !!data.processInfo.process);
+        console.log('[ServerDetail] data.processInfo.resourceMetrics存在:', !!data.processInfo.resourceMetrics);
+        console.log('[ServerDetail] data.processInfo.resourceMetrics类型:', typeof data.processInfo.resourceMetrics);
+        console.log('[ServerDetail] data.processInfo.resourceMetrics值:', data.processInfo.resourceMetrics);
+        
+        if (data.processInfo.resourceMetrics) {
+          console.log('[ServerDetail] resourceMetrics详细内容:', JSON.stringify(data.processInfo.resourceMetrics, null, 2));
+          console.log('[ServerDetail] resourceMetrics的所有属性:', Object.keys(data.processInfo.resourceMetrics));
+        } else {
+          console.warn('[ServerDetail] resourceMetrics为空或未定义!');
+        }
       }
+      
+      // 确保数据结构正确
+      if (data.processInfo) {
+        processInfo.value = data.processInfo;
+        console.log('[ServerDetail] 更新后的processInfo:', JSON.stringify(processInfo.value, null, 2));
+        
+        // 验证数据结构
+        if (processInfo.value.process) {
+          console.log('[ServerDetail] Process data:', processInfo.value.process);
+        }
+        if (processInfo.value.resourceMetrics) {
+          console.log('[ServerDetail] Resource metrics after update:', JSON.stringify(processInfo.value.resourceMetrics, null, 2));
+        } else {
+          console.warn('[ServerDetail] 更新后resourceMetrics仍为空!');
+        }
+        
+        // updateResourceCharts 将通过 watch 监听器自动调用
+      } else {
+        console.warn('[ServerDetail] Received process:info event but processInfo is null/undefined');
+      }
+    } else {
+      console.log('[ServerDetail] Ignoring process:info for different serverId:', data.serverId, 'current:', serverId.value);
+    }
+    console.log('=== [ServerDetail] process:info 调试结束 ===');
+  }, `process-info-${serverId.value}`) || '';
+  subscriptionIds.processLogs = websocketStore.subscribe("process:logs", (data: any) => {
+    console.log('[ServerDetail] Received process:logs event:', data);
+    if (data.serverId === serverId.value) {
+      console.log('[ServerDetail] Processing process:logs for serverId:', serverId.value);
+      
+      // 确保有日志数据
+      const logData = data.logData || data;
+      if (logData && (logData.message || logData.level)) {
+        const logEntry = { 
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9), 
+          level: logData.level || 'info', 
+          message: logData.message || 'No message', 
+          timestamp: logData.timestamp || new Date().toISOString(), 
+          source: logData.source || 'process',
+          metadata: logData.metadata 
+        };
+        console.log('[ServerDetail] Adding log entry:', logEntry);
+        processLogs.value.push(logEntry);
+        console.log('[ServerDetail] Current processLogs count:', processLogs.value.length);
+        processLogsMaxTrim();
+        
+        // 自动滚动到底部
+        nextTick(() => {
+          const container = document.querySelector('.log-container');
+          if (container) {
+            container.scrollTop = container.scrollHeight;
+          }
+        });
+      } else {
+        console.warn('[ServerDetail] Received process:logs event but no valid log data:', data);
+      }
+    } else {
+      console.log('[ServerDetail] Ignoring process:logs for different serverId:', data.serverId, 'current:', serverId.value);
     }
   }, `process-logs-${serverId.value}`) || '';
 });
 
 onUnmounted(() => {
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[ServerDetail] Component unmounting, cleaning up subscriptions for server: ${serverId.value}`);
-  }
-  
-  // 使用订阅ID精确取消WebSocket订阅
-  if (subscriptionIds.serverStatus) {
-    websocketStore.unsubscribe("server-status", subscriptionIds.serverStatus);
-  }
-  if (subscriptionIds.serverMetrics) {
-    websocketStore.unsubscribe("server-metrics", subscriptionIds.serverMetrics);
-  }
-  if (subscriptionIds.logs) {
-    websocketStore.unsubscribe("logs", subscriptionIds.logs);
-  }
-  if (subscriptionIds.processInfo) {
-    websocketStore.unsubscribe("process:info", subscriptionIds.processInfo);
-  }
-  if (subscriptionIds.processLogs) {
-    websocketStore.unsubscribe("process:logs", subscriptionIds.processLogs);
-  }
-  
-  // 取消进程信息和日志的订阅
+  if (subscriptionIds.processInfo) websocketStore.unsubscribe("process:info", subscriptionIds.processInfo);
+  if (subscriptionIds.processLogs) websocketStore.unsubscribe("process:logs", subscriptionIds.processLogs);
   websocketStore.unsubscribeFromProcessInfo(serverId.value);
   websocketStore.unsubscribeFromProcessLogs(serverId.value);
-  
-  // 清理定时器
-  if (processLogUpdateInterval) {
-    clearInterval(processLogUpdateInterval);
-    processLogUpdateInterval = null;
-  }
 });
+
+// 最大进程日志保留条数
+const MAX_PROCESS_LOGS = 500;
 </script>
 
 <style scoped>
@@ -1754,6 +1801,11 @@ onUnmounted(() => {
   border-radius: 8px;
 }
 
+.info-card,
+.metrics-card {
+  min-height: 120px;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
@@ -1777,7 +1829,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 0;
+  padding: 2px;
   border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
@@ -2048,5 +2100,21 @@ onUnmounted(() => {
 .warning-text {
   color: var(--el-text-color-secondary);
   font-size: 14px;
+}
+
+/* 图表容器样式 */
+.chart-container {
+  width: 100%;
+  height: 300px;
+  min-height: 300px;
+}
+
+.resource-chart-card {
+  height: 400px;
+}
+
+.resource-chart-card .el-card__body {
+  height: calc(100% - 60px);
+  padding: 20px;
 }
 </style>
