@@ -347,7 +347,6 @@ export class WebSocketService {
       serverId: string;
       processInfo: any;
     }) => {
-      console.log('[WebSocketService] 接收到process:info事件:', JSON.stringify(data, null, 2));
       this.emitEvent("process:info", data);
     });
 

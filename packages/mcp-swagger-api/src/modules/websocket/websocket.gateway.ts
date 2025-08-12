@@ -607,12 +607,27 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
   handleProcessLogsUpdated(payload: { serverId: string; logData: any; timestamp?: Date }) {
     const timestamp = payload.timestamp || new Date();
     const room = `server-logs-${payload.serverId}`;
-    if (this.server && this.server.sockets && this.server.sockets.adapter && this.server.sockets.adapter.rooms && this.server.sockets.adapter.rooms.has(room)) {
-      this.server.to(room).emit('process:logs', {
+    const internalSize = this.getRoomInternalSize(room);
+    
+    // 添加调试日志
+    this.logger.debug(`[handleProcessLogsUpdated] Processing log event for server ${payload.serverId}`);
+    this.logger.debug(`[handleProcessLogsUpdated] Room: ${room}, clients: ${internalSize}`);
+    this.logger.debug(`[handleProcessLogsUpdated] LogData:`, {
+      hasLogData: !!payload.logData,
+      logDataKeys: payload.logData ? Object.keys(payload.logData) : [],
+      logDataType: typeof payload.logData
+    });
+    
+    if (internalSize > 0) {
+      this.emitToRoom(room, 'process:logs', {
         serverId: payload.serverId,
         logData: payload.logData,
         timestamp: timestamp.toISOString(),
       });
+      
+      this.logger.debug(`[handleProcessLogsUpdated] Emitted 'process:logs' event to room ${room}`);
+    } else {
+      this.logger.debug(`[handleProcessLogsUpdated] No clients in room ${room}, skipping emit`);
     }
   }
 
