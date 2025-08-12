@@ -133,6 +133,10 @@ export class ProcessManagerService implements OnModuleDestroy {
       // 监控子进程输出
       this.setupProcessOutputMonitoring(processInfo);
 
+      // 手动触发一个测试日志以验证logProcess方法
+      await this.logProcess(serverId, LogLevel.INFO, `Process monitoring started for ${config.name} (PID: ${childProcess.pid})`);
+      this.logger.log(`[TEST] Manual log triggered for server ${serverId}`);
+
       // 保存到数据库
       await this.saveProcessInfo(processInfo);
 
@@ -433,33 +437,45 @@ export class ProcessManagerService implements OnModuleDestroy {
     
     // 监控标准输出
     if (childProcess.stdout) {
-      childProcess.stdout.on('data', (data: Buffer) => {
-        const logEntry: ProcessLogEntry = {
-          serverId,
-          pid,
-          timestamp: new Date(),
-          level: 'stdout',
-          source: 'process',
-          message: data.toString().trim()
-        };
-        
-        this.logMonitor.addLogEntry(serverId, logEntry);
+      childProcess.stdout.on('data', async (data: Buffer) => {
+        const message = data.toString().trim();
+        if (message) {
+          // 添加到日志监控器
+          const logEntry: ProcessLogEntry = {
+            serverId,
+            pid,
+            timestamp: new Date(),
+            level: 'stdout',
+            source: 'process',
+            message
+          };
+          this.logMonitor.addLogEntry(serverId, logEntry);
+          
+          // 同时调用logProcess方法以触发WebSocket事件
+          await this.logProcess(serverId, LogLevel.INFO, `STDOUT: ${message}`);
+        }
       });
     }
     
     // 监控标准错误
     if (childProcess.stderr) {
-      childProcess.stderr.on('data', (data: Buffer) => {
-        const logEntry: ProcessLogEntry = {
-          serverId,
-          pid,
-          timestamp: new Date(),
-          level: 'stderr',
-          source: 'process',
-          message: data.toString().trim()
-        };
-        
-        this.logMonitor.addLogEntry(serverId, logEntry);
+      childProcess.stderr.on('data', async (data: Buffer) => {
+        const message = data.toString().trim();
+        if (message) {
+          // 添加到日志监控器
+          const logEntry: ProcessLogEntry = {
+            serverId,
+            pid,
+            timestamp: new Date(),
+            level: 'stderr',
+            source: 'process',
+            message
+          };
+          this.logMonitor.addLogEntry(serverId, logEntry);
+          
+          // 同时调用logProcess方法以触发WebSocket事件
+          await this.logProcess(serverId, LogLevel.ERROR, `STDERR: ${message}`);
+        }
       });
     }
   }
@@ -596,6 +612,9 @@ export class ProcessManagerService implements OnModuleDestroy {
    * 记录进程日志
    */
   private async logProcess(serverId: string, level: LogLevel, message: string, metadata?: Record<string, any>): Promise<void> {
+    // 添加调试日志：方法开始
+    this.logger.debug(`[logProcess] Starting to log process for serverId: ${serverId}, level: ${level}, message: ${message}`);
+    
     try {
       const logEntity = this.processLogRepository.create({
         serverId: serverId,
@@ -607,8 +626,11 @@ export class ProcessManagerService implements OnModuleDestroy {
       
       await this.processLogRepository.save(logEntity);
       
+      // 添加调试日志：成功保存日志实体
+      this.logger.debug(`[logProcess] Successfully saved log entity for serverId: ${serverId}, logId: ${logEntity.id}`);
+      
       // 发射进程日志更新事件
-      this.eventEmitter.emit('process.logs.updated', {
+      const eventData = {
         serverId: serverId,
         logData: {
           level,
@@ -617,9 +639,23 @@ export class ProcessManagerService implements OnModuleDestroy {
           timestamp: logEntity.timestamp
         },
         timestamp: new Date()
-      });
+      };
+      
+      this.eventEmitter.emit('process.logs.updated', eventData);
+      
+      // 添加调试日志：成功发射事件
+      this.logger.debug(`[logProcess] Successfully emitted process.logs.updated event for serverId: ${serverId}`, eventData);
+      
     } catch (error) {
-      this.logger.error(`Failed to save process log for ${serverId}:`, error);
+      // 添加更详细的错误日志
+      this.logger.error(`[logProcess] Failed to save process log for serverId: ${serverId}, level: ${level}, message: ${message}`, {
+        error: error.message,
+        stack: error.stack,
+        serverId,
+        level,
+        message,
+        metadata
+      });
     }
   }
 

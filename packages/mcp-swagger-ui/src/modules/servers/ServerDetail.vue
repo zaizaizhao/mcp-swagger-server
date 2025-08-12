@@ -486,6 +486,12 @@
                 </template>
                 
                 <div class="log-container" ref="processLogContainer">
+                  <!-- 历史日志加载状态指示器 -->
+                  <div v-if="historyLogsLoading" class="history-loading-indicator">
+                    <el-icon class="is-loading"><Loading /></el-icon>
+                    <span>正在加载历史日志...</span>
+                  </div>
+                  
                   <div 
                     v-for="log in filteredProcessLogs" 
                     :key="log.id || (log.timestamp + log.message)"
@@ -496,7 +502,7 @@
                     <span class="log-source" v-if="log.source">{{ log.source }}</span>
                     <span class="log-message">{{ log.message }}</span>
                   </div>
-                  <el-empty v-if="filteredProcessLogs.length === 0" description="暂无日志" :image-size="60" />
+                  <el-empty v-if="filteredProcessLogs.length === 0 && !historyLogsLoading" description="暂无日志" :image-size="60" />
                 </div>
               </el-card>
             </div>
@@ -704,11 +710,13 @@ import {
   WarningFilled,
   Connection,
   User,
+  Loading,
 } from "@element-plus/icons-vue";
 import VChart from "vue-echarts";
 import type { MCPServer, MCPTool, LogEntry, ServerStatus } from "@/types";
 import { useServerStore } from "@/stores/server";
 import { useWebSocketStore } from "@/stores/websocket";
+import { serverAPI } from "@/services/api";
 import ServerFormDialog from "./components/ServerFormDialog.vue";
 import ToolDetailDialog from "@/modules/testing/components/ToolDetailDialog.vue";
 
@@ -745,6 +753,10 @@ const resourceHistory = ref<any[]>([]);
 const processLogs = ref<any[]>([]);
 const processLogLevel = ref('');
 const processLogKeyword = ref('');
+
+// 历史日志加载状态
+const historyLogsLoading = ref(false);
+const historyLogsLoaded = ref(false);
 const cpuChartRef = ref<HTMLElement>();
 const memoryChartRef = ref<HTMLElement>();
 const processLogContainer = ref<HTMLElement>();
@@ -779,8 +791,6 @@ const logStats = ref({
 // 计算属性
 const serverId = computed(() => route.params.id as string);
 const serverInfo = computed(() => {
-  console.log("这是server info",serverStore.selectedServer);
-  
   return serverStore.selectedServer;
 });
 
@@ -834,23 +844,41 @@ const filteredLogs = computed(() => {
 
 // 进程监控计算属性
 const filteredProcessLogs = computed(() => {
+  console.log('[filteredProcessLogs] 开始过滤，原始日志数量:', processLogs.value.length);
+  console.log('[filteredProcessLogs] 原始日志数据:', processLogs.value);
+  
   let filtered = processLogs.value;
   
   // 按级别过滤
   if (processLogLevel.value) {
+    console.log('[filteredProcessLogs] 按级别过滤:', processLogLevel.value);
     filtered = filtered.filter((log) => log.level === processLogLevel.value);
+    console.log('[filteredProcessLogs] 级别过滤后数量:', filtered.length);
   }
   
   // 按关键词过滤
   if (processLogKeyword.value) {
+    console.log('[filteredProcessLogs] 按关键词过滤:', processLogKeyword.value);
     const query = processLogKeyword.value.toLowerCase();
     filtered = filtered.filter((log) => 
       log.message.toLowerCase().includes(query) ||
       (log.source && log.source.toLowerCase().includes(query))
     );
+    console.log('[filteredProcessLogs] 关键词过滤后数量:', filtered.length);
   }
   
-  return filtered.slice(-200); // 显示最新200条进程日志
+  // 按时间戳降序排序，最新的日志排在前面
+  filtered = filtered.sort((a, b) => {
+    const timeA = new Date(a.timestamp).getTime();
+    const timeB = new Date(b.timestamp).getTime();
+    return timeB - timeA; // 降序排序
+  });
+  
+  const result = filtered.slice(0, 200); // 显示最新200条进程日志
+  console.log('[filteredProcessLogs] 最终返回日志数量:', result.length);
+  console.log('[filteredProcessLogs] 最终返回日志数据:', result);
+  
+  return result;
 });
 
 // 图表选项
@@ -1429,11 +1457,6 @@ watch(chartTimeRange, () => {
 
 // 监听进程信息变化，自动更新图表
 watch(processInfo, (newProcessInfo) => {
-  console.log('[ServerDetail] processInfo changed:', newProcessInfo);
-  console.log("newProcessInfo是什么",newProcessInfo);
-  console.log("activeTab.value是什么",activeTab.value);
-  console.log("newProcessInfo.resourceMetrics是什么",newProcessInfo.resourceMetrics);
-  
   if (newProcessInfo && newProcessInfo.resourceMetrics && activeTab.value === 'process') {
     updateResourceCharts();
   }
@@ -1441,6 +1464,8 @@ watch(processInfo, (newProcessInfo) => {
 
 // 监听processLogs数据变化
 watch(processLogs, (newValue, oldValue) => {
+  console.log("这是日志的监听",newValue);
+  
   console.log('[ServerDetail] processLogs changed, count:', newValue.length, 'previous count:', oldValue?.length || 0);
 }, { deep: true });
 
@@ -1470,6 +1495,49 @@ const refreshProcessInfo = async () => {
   // 如果当前没有进程信息，说明WebSocket还未推送数据，这是正常情况
   if (process.env.NODE_ENV === 'development') {
     console.log('Process info will be updated via WebSocket push');
+  }
+};
+
+// 加载历史日志
+const loadHistoryLogs = async () => {
+  if (!serverInfo.value || serverInfo.value.status !== 'running' || historyLogsLoaded.value) {
+    return;
+  }
+  
+  historyLogsLoading.value = true;
+  try {
+    console.log('[ServerDetail] Loading history logs for serverId:', serverId.value);
+    const historyLogs = await serverAPI.getProcessLogHistory(serverId.value, {
+      limit: 100 // 获取最近100条历史日志
+    });
+    
+    console.log('[ServerDetail] History logs loaded:', historyLogs.length, 'entries');
+    
+    // 将历史日志添加到processLogs数组的开头
+    if (historyLogs.length > 0) {
+      // 转换数据格式以匹配现有的日志格式
+      const formattedLogs = historyLogs.map(log => ({
+        id: log.id,
+        level: log.level,
+        message: log.message,
+        timestamp: log.timestamp.toISOString(),
+        source: log.source,
+        metadata: log.metadata
+      }));
+      
+      // 将历史日志添加到数组中，排序会在 filteredProcessLogs 中处理
+      processLogs.value.push(...formattedLogs);
+      processLogsMaxTrim(); // 确保不超过最大条数
+      
+      console.log('[ServerDetail] History logs added, total logs:', processLogs.value.length);
+    }
+    
+    historyLogsLoaded.value = true;
+  } catch (error) {
+    console.error('[ServerDetail] Failed to load history logs:', error);
+    ElMessage.warning('加载历史日志失败，将仅显示实时日志');
+  } finally {
+    historyLogsLoading.value = false;
   }
 };
 
@@ -1633,6 +1701,9 @@ onMounted(async () => {
     await initResourceCharts();
   }
 
+  // 加载历史日志（在WebSocket订阅之前）
+  await loadHistoryLogs();
+
   if (!websocketStore.connected) {
     console.log('[ServerDetail] WebSocket not connected, attempting to connect...');
     try { await websocketStore.connect(); } catch { console.error('[ServerDetail] Failed to connect WebSocket'); return; }
@@ -1644,39 +1715,10 @@ onMounted(async () => {
   }
   // 订阅事件
   subscriptionIds.processInfo = websocketStore.subscribe("process:info", (data: any) => {
-    console.log('=== [ServerDetail] process:info 事件详细调试 ===');
-    console.log('[ServerDetail] 完整的data对象:', JSON.stringify(data, null, 2));
-    console.log('[ServerDetail] data对象的所有属性:', Object.keys(data));
-    console.log('[ServerDetail] data.serverId:', data.serverId);
-    console.log('[ServerDetail] 当前serverId:', serverId.value);
-    console.log('[ServerDetail] serverId匹配:', data.serverId === serverId.value);
-    
     if (data.serverId === serverId.value) {
-      console.log('[ServerDetail] Processing process:info for serverId:', serverId.value);
-      
-      // 详细检查data.processInfo
-      console.log('[ServerDetail] data.processInfo存在:', !!data.processInfo);
-      console.log('[ServerDetail] data.processInfo类型:', typeof data.processInfo);
-      if (data.processInfo) {
-        console.log('[ServerDetail] data.processInfo的所有属性:', Object.keys(data.processInfo));
-        console.log('[ServerDetail] data.processInfo.process存在:', !!data.processInfo.process);
-        console.log('[ServerDetail] data.processInfo.resourceMetrics存在:', !!data.processInfo.resourceMetrics);
-        console.log('[ServerDetail] data.processInfo.resourceMetrics类型:', typeof data.processInfo.resourceMetrics);
-        console.log('[ServerDetail] data.processInfo.resourceMetrics值:', data.processInfo.resourceMetrics);
-        
-        if (data.processInfo.resourceMetrics) {
-          console.log('[ServerDetail] resourceMetrics详细内容:', JSON.stringify(data.processInfo.resourceMetrics, null, 2));
-          console.log('[ServerDetail] resourceMetrics的所有属性:', Object.keys(data.processInfo.resourceMetrics));
-        } else {
-          console.warn('[ServerDetail] resourceMetrics为空或未定义!');
-        }
-      }
-      
       // 确保数据结构正确
       if (data.processInfo) {
         processInfo.value = data.processInfo;
-        console.log('[ServerDetail] 更新后的processInfo:', JSON.stringify(processInfo.value, null, 2));
-        
         // 验证数据结构
         if (processInfo.value.process) {
           console.log('[ServerDetail] Process data:', processInfo.value.process);
@@ -1697,39 +1739,77 @@ onMounted(async () => {
     console.log('=== [ServerDetail] process:info 调试结束 ===');
   }, `process-info-${serverId.value}`) || '';
   subscriptionIds.processLogs = websocketStore.subscribe("process:logs", (data: any) => {
-    console.log('[ServerDetail] Received process:logs event:', data);
+    console.log('=== [ServerDetail] process:logs 事件调试开始 ===');
+    console.log('[ServerDetail] 接收到的原始数据:', JSON.stringify(data, null, 2));
+    console.log('[ServerDetail] 数据类型:', typeof data);
+    console.log('[ServerDetail] 数据结构检查:');
+    console.log('  - serverId:', data.serverId, '(类型:', typeof data.serverId, ')');
+    console.log('  - logData:', data.logData, '(类型:', typeof data.logData, ')');
+    console.log('  - timestamp:', data.timestamp, '(类型:', typeof data.timestamp, ')');
+    
     if (data.serverId === serverId.value) {
-      console.log('[ServerDetail] Processing process:logs for serverId:', serverId.value);
+      console.log('[ServerDetail] serverId匹配，开始处理日志');
+      console.log('[ServerDetail] 当前serverId:', serverId.value);
       
       // 确保有日志数据
       const logData = data.logData || data;
+      console.log('[ServerDetail] 提取的logData:', JSON.stringify(logData, null, 2));
+      
       if (logData && (logData.message || logData.level)) {
         const logEntry = { 
-          id: Date.now().toString() + Math.random().toString(36).substr(2, 9), 
+          id: logData.id || (Date.now().toString() + Math.random().toString(36).substr(2, 9)), 
           level: logData.level || 'info', 
           message: logData.message || 'No message', 
           timestamp: logData.timestamp || new Date().toISOString(), 
           source: logData.source || 'process',
           metadata: logData.metadata 
         };
-        console.log('[ServerDetail] Adding log entry:', logEntry);
-        processLogs.value.push(logEntry);
-        console.log('[ServerDetail] Current processLogs count:', processLogs.value.length);
-        processLogsMaxTrim();
         
-        // 自动滚动到底部
-        nextTick(() => {
-          const container = document.querySelector('.log-container');
-          if (container) {
-            container.scrollTop = container.scrollHeight;
-          }
-        });
+        // 检查是否已存在相同的日志（避免重复）
+        const isDuplicate = processLogs.value.some(existingLog => 
+          existingLog.id === logEntry.id || 
+          (existingLog.timestamp === logEntry.timestamp && 
+           existingLog.message === logEntry.message && 
+           existingLog.level === logEntry.level)
+        );
+        
+        if (!isDuplicate) {
+          console.log('[ServerDetail] 创建的日志条目:', JSON.stringify(logEntry, null, 2));
+          console.log('[ServerDetail] 添加前processLogs数量:', processLogs.value.length);
+          
+          processLogs.value.push(logEntry);
+          
+          console.log('[ServerDetail] 添加后processLogs数量:', processLogs.value.length);
+          
+          processLogsMaxTrim();
+          console.log('[ServerDetail] trim后processLogs数量:', processLogs.value.length);
+          
+          // 自动滚动到底部
+          nextTick(() => {
+            const container = document.querySelector('.log-container');
+            if (container) {
+              console.log('[ServerDetail] 找到日志容器，执行自动滚动');
+              container.scrollTop = container.scrollHeight;
+            } else {
+              console.warn('[ServerDetail] 未找到日志容器 .log-container');
+            }
+          });
+        } else {
+          console.log('[ServerDetail] 跳过重复日志:', logEntry.message);
+        }
       } else {
-        console.warn('[ServerDetail] Received process:logs event but no valid log data:', data);
+        console.warn('[ServerDetail] 日志数据无效:');
+        console.warn('  - logData:', logData);
+        console.warn('  - logData.message:', logData?.message);
+        console.warn('  - logData.level:', logData?.level);
+        console.warn('[ServerDetail] 完整接收数据:', JSON.stringify(data, null, 2));
       }
     } else {
-      console.log('[ServerDetail] Ignoring process:logs for different serverId:', data.serverId, 'current:', serverId.value);
+      console.log('[ServerDetail] serverId不匹配，忽略此日志');
+      console.log('  - 接收到的serverId:', data.serverId);
+      console.log('  - 当前页面serverId:', serverId.value);
     }
+    console.log('=== [ServerDetail] process:logs 事件调试结束 ===');
   }, `process-logs-${serverId.value}`) || '';
 });
 
@@ -2116,5 +2196,24 @@ const MAX_PROCESS_LOGS = 500;
 .resource-chart-card .el-card__body {
   height: calc(100% - 60px);
   padding: 20px;
+}
+
+/* 历史日志加载指示器样式 */
+.history-loading-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  background: var(--el-color-info-light-9);
+  border: 1px solid var(--el-color-info-light-7);
+  border-radius: 4px;
+  margin-bottom: 12px;
+  color: var(--el-color-info);
+  font-size: 14px;
+}
+
+.history-loading-indicator .el-icon {
+  font-size: 16px;
 }
 </style>

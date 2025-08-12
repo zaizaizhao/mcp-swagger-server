@@ -437,6 +437,42 @@ export const serverAPI = {
     };
   },
 
+  // 获取进程日志历史
+  async getProcessLogHistory(
+    id: string,
+    params?: {
+      limit?: number;
+      startTime?: string;
+      endTime?: string;
+    }
+  ): Promise<Array<{
+    id: string;
+    timestamp: Date;
+    level: 'info' | 'warn' | 'error' | 'debug';
+    source: string;
+    message: string;
+    metadata?: Record<string, any>;
+  }>> {
+    const response = await api.get(`/v1/servers/${id}/process/logs/history`, {
+      params: {
+        limit: params?.limit || 100,
+        startTime: params?.startTime,
+        endTime: params?.endTime,
+      }
+    });
+    
+    // 转换后端返回的数据格式
+    const logs = response.data || [];
+    return logs.map((log: any) => ({
+      id: log.id || `${Date.now()}-${Math.random()}`,
+      timestamp: new Date(log.timestamp || Date.now()),
+      level: log.level || 'info',
+      source: log.source || 'process',
+      message: log.message || '',
+      metadata: log.metadata || {}
+    }));
+  },
+
   // 获取进程完整信息
   async getProcessFullInfo(id: string): Promise<{
     process: {
