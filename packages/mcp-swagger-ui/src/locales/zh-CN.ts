@@ -65,6 +65,7 @@ export default {
   menu: {
     dashboard: "仪表板",
     servers: "服务器管理",
+    "server-detail": "服务器详情",
     openapi: "OpenAPI管理",
     tester: "API测试",
     auth: "认证管理",

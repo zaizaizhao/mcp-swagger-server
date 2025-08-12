@@ -46,6 +46,63 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
   private readonly logger = new Logger(MonitoringGateway.name);
   private readonly clients = new Map<string, ClientInfo>();
   private readonly rooms = new Set<string>();
+  private readonly roomMembers = new Map<string, Set<string>>(); // 内部房间成员跟踪
+  private readonly debugEnabled = process.env.WS_DEBUG === 'true';
+
+  private d(message: string, meta?: any) {
+    if (!this.debugEnabled) return;
+    if (meta !== undefined) {
+      this.logger.log(`[DEBUG] ${message} ${typeof meta === 'string' ? meta : JSON.stringify(meta)}`);
+    } else {
+      this.logger.log(`[DEBUG] ${message}`);
+    }
+  }
+
+  private getNamespace(): any {
+    // 统一获取命名空间实例
+    return (this.server as any)?.of?.('/monitoring') || this.server;
+  }
+
+  private addRoomMember(room: string, clientId: string) {
+    let set = this.roomMembers.get(room);
+    if (!set) {
+      set = new Set<string>();
+      this.roomMembers.set(room, set);
+    }
+    set.add(clientId);
+  }
+
+  private removeRoomMember(room: string, clientId: string) {
+    const set = this.roomMembers.get(room);
+    if (set) {
+      set.delete(clientId);
+      if (set.size === 0) this.roomMembers.delete(room);
+    }
+  }
+
+  private getRoomInternalSize(room: string) {
+    return this.roomMembers.get(room)?.size || 0;
+  }
+
+  private emitToRoom(room: string, event: string, payload: any) {
+    const ns = this.getNamespace();
+    // 如果 adapter 丢失但内部记录存在, 逐个成员直发
+    const internal = this.roomMembers.get(room);
+    if (!internal || internal.size === 0) return;
+    try {
+      if (ns?.to) {
+        ns.to(room).emit(event, payload);
+      } else {
+        // 兜底: 直接对每个 socket 单播
+        internal.forEach(id => {
+          const s = ns.sockets?.get?.(id) || (ns.sockets && (ns.sockets as any)[id]);
+          s?.emit(event, payload);
+        });
+      }
+    } catch (e) {
+      this.logger.error(`[emitToRoom] Failed emit to ${room}:`, e);
+    }
+  }
 
   constructor(
     private readonly eventEmitter: EventEmitter2,
@@ -62,55 +119,34 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
   }
 
   handleConnection(client: Socket) {
-    console.log("客户端连接", client);
-    
+    // 仅关键日志
     const clientInfo: ClientInfo = {
       id: client.id,
       connectedAt: new Date(),
       subscribedRooms: new Set(),
       lastActivity: new Date(),
     };
-    console.log("客户端连接", clientInfo);
     this.clients.set(client.id, clientInfo);
-    this.logger.log(`Client connected: ${client.id} from ${client.handshake.address}`);
-    this.logger.log(`Client handshake query: ${JSON.stringify(client.handshake.query, null, 2)}`);
-    this.logger.log(`Client handshake headers: ${JSON.stringify(client.handshake.headers, null, 2)}`);
-    this.logger.log(`Total connected clients: ${this.clients.size}`);
-    this.logger.log(`Client transport: ${client.conn.transport.name}`);
-    this.logger.log(`Client upgraded: ${client.conn.upgraded}`);
+    this.logger.log(`Client connected: ${client.id}`);
+    this.d(`Handshake query: ${JSON.stringify(client.handshake.query)}`);
 
-    // 添加通用消息监听器来调试所有接收到的事件
-    client.onAny((eventName, ...args) => {
-      this.logger.log(`[DEBUG] Received event '${eventName}' from client ${client.id} with args:`, args);
-    });
-    
-    // 监听客户端断开前的事件
+    if (this.debugEnabled) {
+      // 可选调试事件监听
+      client.onAny((eventName, ...args) => {
+        this.d(`Received event '${eventName}' from ${client.id}`);
+      });
+    }
+
     client.on('disconnecting', (reason) => {
-      this.logger.log(`🔄 Client ${client.id} is disconnecting with reason: ${reason}`);
-      const rooms = Array.from(client.rooms);
-      this.logger.log(`🔄 Client ${client.id} was in rooms: ${rooms}`);
-      this.logger.log(`🔄 Client transport before disconnect: ${client.conn.transport.name}`);
-      this.logger.log(`🔄 Client connection state: connected=${client.connected}, disconnected=${client.disconnected}`);
-    });
-    
-    // 添加错误事件监听
-    client.on('error', (error) => {
-      this.logger.error(`❌ Client ${client.id} error:`, error);
-    });
-    
-    // 添加ping/pong监听
-    client.on('ping', () => {
-      this.logger.debug(`🏓 Ping received from client ${client.id}`);
-    });
-    
-    client.on('pong', (latency) => {
-      this.logger.debug(`🏓 Pong received from client ${client.id}, latency: ${latency}ms`);
+      this.d(`Client ${client.id} disconnecting: ${reason}`);
     });
 
-    // 记录WebSocket连接指标
+    client.on('error', (error) => {
+      this.logger.error(`Client ${client.id} error: ${error}`);
+    });
+
     this.wsMetricsService.recordConnection(client);
 
-    // 发送初始连接确认
     client.emit('connection-established', {
       clientId: client.id,
       timestamp: new Date().toISOString(),
@@ -119,7 +155,6 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
       upgraded: client.conn.upgraded,
     });
 
-    // 发送当前系统状态
     this.sendInitialData(client);
   }
 
@@ -133,6 +168,7 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
       // 清理客户端的所有房间订阅
       clientInfo.subscribedRooms.forEach(room => {
         client.leave(room);
+        this.removeRoomMember(room, client.id);
         this.logger.log(`Client ${client.id} left room: ${room}`);
       });
       
@@ -154,21 +190,15 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
     const room = 'system-metrics';
     client.join(room);
     this.rooms.add(room);
-    
+    this.addRoomMember(room, client.id);
     const clientInfo = this.clients.get(client.id);
     if (clientInfo) {
       clientInfo.subscribedRooms.add(room);
       clientInfo.lastActivity = new Date();
     }
-
-    this.logger.log(`Client ${client.id} subscribed to system metrics`);
-    
-    // 记录订阅指标
+    this.logger.log(`Client ${client.id} subscribed system metrics`);
     this.wsMetricsService.recordSubscription(client.id, room);
-    
-    // 立即发送当前系统指标
     this.sendSystemMetrics(client);
-    
     client.emit('subscription-confirmed', {
       room,
       interval: data.interval || 5000,
@@ -185,95 +215,31 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
     @MessageBody() data: { serverId: string; interval?: number }
   ) {
     const room = `server-metrics-${data.serverId}`;
-    this.logger.log(`[handleSubscribeServerMetrics] 📥 Client ${client.id} requesting to join room: ${room}`);
-    this.logger.log(`[handleSubscribeServerMetrics] 📋 Subscription data:`, JSON.stringify(data, null, 2));
-    this.logger.log(`[handleSubscribeServerMetrics] 🔍 Client connection state: connected=${client.connected}, disconnected=${client.disconnected}`);
-    
     try {
-      // 验证客户端状态
-      if (!client.connected) {
-        this.logger.error(`[handleSubscribeServerMetrics] ❌ Client ${client.id} is not connected!`);
-        return;
-      }
-      
-      // 加入房间
-      this.logger.log(`[handleSubscribeServerMetrics] 🚪 Adding client ${client.id} to room ${room}`);
       client.join(room);
       this.rooms.add(room);
-      
-      // 立即验证房间加入是否成功
-      const roomMap = this.server?.sockets?.adapter?.rooms?.get(room);
-      const roomSize = roomMap ? roomMap.size : 0;
-      this.logger.log(`[handleSubscribeServerMetrics] ✅ Client ${client.id} joined room ${room}, current room size: ${roomSize}`);
-      
-      if (roomSize === 0) {
-        this.logger.error(`[handleSubscribeServerMetrics] 🚨 CRITICAL: Room size is 0 immediately after join!`);
-        this.logger.error(`[handleSubscribeServerMetrics] 🔍 Room map:`, roomMap);
-        this.logger.error(`[handleSubscribeServerMetrics] 🔍 Server adapter:`, !!this.server?.sockets?.adapter);
-      }
-      
+      this.addRoomMember(room, client.id);
+      this.wsMetricsService.recordSubscription(client.id, room);
+
       const clientInfo = this.clients.get(client.id);
       if (clientInfo) {
         clientInfo.subscribedRooms.add(room);
         clientInfo.lastActivity = new Date();
-        this.logger.log(`[handleSubscribeServerMetrics] Updated client info, subscribed rooms: ${Array.from(clientInfo.subscribedRooms)}`);
-      } else {
-        this.logger.warn(`[handleSubscribeServerMetrics] ⚠️ Client info not found for ${client.id}`);
       }
 
-      this.logger.log(`[handleSubscribeServerMetrics] 🎯 Client ${client.id} subscribed to server ${data.serverId} metrics, room: ${room}`);
-      
-      // 记录订阅指标
-      this.wsMetricsService.recordSubscription(client.id, room);
-      
-      // 立即发送当前服务器指标
-      this.logger.log(`[handleSubscribeServerMetrics] 📤 Sending current metrics to client ${client.id}`);
-      this.sendServerMetrics(client, data.serverId);
-      
-      // 发送订阅确认
-      const confirmationData = {
+      // 仅输出一次成功日志
+      this.logger.log(`Client ${client.id} subscribed server metrics ${data.serverId}`);
+
+      client.emit('subscription-confirmed', {
         room,
         serverId: data.serverId,
         interval: data.interval || 5000,
         timestamp: new Date().toISOString(),
-      };
-      this.logger.log(`[handleSubscribeServerMetrics] 📨 Sending subscription confirmation:`, confirmationData);
-      client.emit('subscription-confirmed', confirmationData);
-      
-      this.logger.log(`[handleSubscribeServerMetrics] ✅ Subscription confirmed for client ${client.id}, room: ${room}`);
-      
-      // 额外验证：检查房间状态（多次检查）
-      const verificationChecks = [500, 1000, 2000];
-      verificationChecks.forEach((delay, index) => {
-        setTimeout(() => {
-          const verifyRoomMap = this.server?.sockets?.adapter?.rooms?.get(room);
-          const verifyRoomSize = verifyRoomMap ? verifyRoomMap.size : 0;
-          this.logger.log(`[handleSubscribeServerMetrics] 🔍 Room verification ${index + 1} after ${delay}ms - ${room}: size=${verifyRoomSize}`);
-          
-          if (verifyRoomSize === 0) {
-            this.logger.error(`[handleSubscribeServerMetrics] ❌ Client ${client.id} disappeared from room ${room} after ${delay}ms!`);
-            this.logger.error(`[handleSubscribeServerMetrics] Client connection state: connected=${client.connected}, disconnected=${client.disconnected}`);
-            
-            // 尝试重新添加客户端到房间
-            if (client.connected) {
-              this.logger.log(`[handleSubscribeServerMetrics] 🔄 Attempting to re-add client ${client.id} to room ${room}`);
-              client.join(room);
-              
-              // 再次验证
-              setTimeout(() => {
-                const reVerifyRoomMap = this.server?.sockets?.adapter?.rooms?.get(room);
-                const reVerifyRoomSize = reVerifyRoomMap ? reVerifyRoomMap.size : 0;
-                this.logger.log(`[handleSubscribeServerMetrics] 🔍 Re-verification after rejoin - ${room}: size=${reVerifyRoomSize}`);
-              }, 200);
-            }
-          } else {
-            this.logger.log(`[handleSubscribeServerMetrics] ✅ Room ${room} still has ${verifyRoomSize} clients after ${delay}ms`);
-          }
-        }, delay);
       });
-      
-    } catch (error) {
-      this.logger.error(`[handleSubscribeServerMetrics] ❌ Error during subscription:`, error);
+
+      this.sendServerMetrics(client, data.serverId);
+    } catch (e) {
+      this.logger.error('subscribe-server-metrics error', e);
     }
   }
 
@@ -288,6 +254,7 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
     const room = `server-logs-${data.serverId}`;
     client.join(room);
     this.rooms.add(room);
+    this.addRoomMember(room, client.id);
     
     const clientInfo = this.clients.get(client.id);
     if (clientInfo) {
@@ -319,6 +286,7 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
     const room = 'alerts';
     client.join(room);
     this.rooms.add(room);
+    this.addRoomMember(room, client.id);
     
     const clientInfo = this.clients.get(client.id);
     if (clientInfo) {
@@ -347,6 +315,7 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
     @MessageBody() data: { room: string }
   ) {
     client.leave(data.room);
+    this.removeRoomMember(data.room, client.id);
     
     const clientInfo = this.clients.get(client.id);
     if (clientInfo) {
@@ -387,15 +356,9 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
    */
   @SubscribeMessage('ping')
   handlePing(@ConnectedSocket() client: Socket, @MessageBody() data: { timestamp: number }) {
-    this.logger.debug(`🏓 Received ping from client ${client.id}, timestamp: ${data.timestamp}`);
-    
-    // 更新客户端活动时间
+    // 不再记录详细 ping 日志
     const clientInfo = this.clients.get(client.id);
-    if (clientInfo) {
-      clientInfo.lastActivity = new Date();
-    }
-    
-    // 发送pong响应
+    if (clientInfo) clientInfo.lastActivity = new Date();
     client.emit('pong', {
       timestamp: data.timestamp,
       serverTime: Date.now(),
@@ -431,38 +394,21 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
    */
   @Cron(CronExpression.EVERY_10_SECONDS)
   async pushServerMetrics() {
-    // 检查server和adapter是否可用
-    if (!this.server || !this.server.sockets || !this.server.sockets.adapter || !this.server.sockets.adapter.rooms) {
-      return;
-    }
-
-    for (const room of this.rooms) {
-      if (room.startsWith('server-metrics-')) {
-        const serverId = room.replace('server-metrics-', '');
-        
-        // 检查是否有客户端订阅了这个房间
-        const roomSet = this.server?.sockets?.adapter?.rooms?.get(room);
-        const roomSize = roomSet ? roomSet.size : 0;
-        const hasClients = roomSize > 0;
-        
-        this.logger.log(`Room ${room} size: ${roomSize}, has clients: ${hasClients}`);
-        
-        if (!hasClients) {
-          // 不再显示警告，因为这是正常情况（没有客户端订阅时）
-          this.logger.debug(`No clients subscribed to room ${room}`);
-          continue;
-        }
-        
-        try {
-          const metrics = await this.serverMetrics.collectServerMetrics(serverId);
-          this.server.to(room).emit('server-metrics-update', {
-            serverId,
-            data: metrics,
-            timestamp: new Date().toISOString(),
-          });
-        } catch (error) {
-          this.logger.error(`Failed to push metrics for server ${serverId}:`, error);
-        }
+    const ns = this.getNamespace();
+    for (const [room, members] of this.roomMembers.entries()) {
+      if (!room.startsWith('server-metrics-')) continue;
+      const activeMembers = Array.from(members).filter(id => ns.sockets?.get?.(id));
+      if (activeMembers.length === 0) continue;
+      const serverId = room.replace('server-metrics-', '');
+      try {
+        const metrics = await this.serverMetrics.collectServerMetrics(serverId);
+        this.emitToRoom(room, 'server-metrics-update', {
+          serverId,
+          data: metrics,
+          timestamp: new Date().toISOString(),
+        });
+      } catch (error) {
+        this.logger.error(`pushServerMetrics ${serverId} error`, error);
       }
     }
   }
@@ -628,31 +574,29 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
    */
   @OnEvent('process.info.updated')
   handleProcessInfoUpdated(payload: { serverId: string; processInfo: any; timestamp?: Date }) {
-    this.logger.log(`Received process.info.updated event for server ${payload.serverId}`);
-    const timestamp = payload.timestamp || new Date();
     const room = `server-metrics-${payload.serverId}`;
+    const internalSize = this.getRoomInternalSize(room);
     
-    // 使用更可靠的方法检查房间
-    const roomSet = this.server?.sockets?.adapter?.rooms?.get(room);
-    const roomSize = roomSet ? roomSet.size : 0;
-    const hasClients = roomSize > 0;
+    // 添加调试日志
+    this.logger.debug(`[handleProcessInfoUpdated] Processing event for server ${payload.serverId}`);
+    this.logger.debug(`[handleProcessInfoUpdated] Room: ${room}, clients: ${internalSize}`);
+    this.logger.debug(`[handleProcessInfoUpdated] ProcessInfo data:`, {
+      hasResourceMetrics: !!payload.processInfo?.resourceMetrics,
+      resourceMetrics: payload.processInfo?.resourceMetrics,
+      processInfoKeys: payload.processInfo ? Object.keys(payload.processInfo) : []
+    });
     
-    this.logger.log(`Room ${room} size: ${roomSize}, has clients: ${hasClients}`);
-    
-    if (hasClients) {
-      try {
-        this.server.to(room).emit('server-metrics-update', {
-          serverId: payload.serverId,
-          data: payload.processInfo,
-          timestamp: timestamp.toISOString(),
-        });
-        this.logger.log(`✅ Emitted server-metrics-update to room ${room} with ${roomSize} clients`);
-      } catch (error) {
-        this.logger.error(`Failed to emit to room ${room}:`, error);
-      }
+    if (internalSize > 0) {
+      // 修改事件名称从 'server-metrics-update' 改为 'process:info'
+      this.emitToRoom(room, 'process:info', {
+        serverId: payload.serverId,
+        processInfo: payload.processInfo, // 确保数据结构包含 processInfo 字段
+        timestamp: (payload.timestamp || new Date()).toISOString(),
+      });
+      
+      this.logger.debug(`[handleProcessInfoUpdated] Emitted 'process:info' event to room ${room}`);
     } else {
-      // 不再显示警告，因为这是正常情况（没有客户端订阅时）
-      this.logger.debug(`No clients subscribed to room ${room}`);
+      this.logger.debug(`[handleProcessInfoUpdated] No clients in room ${room}, skipping emit`);
     }
   }
 
@@ -723,5 +667,35 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       timestamp: new Date().toISOString(),
     });
+  }
+
+  /**
+   * 调试：转储房间信息
+   */
+  @SubscribeMessage('debug-dump-rooms')
+  handleDebugDumpRooms(@ConnectedSocket() client: Socket) {
+    try {
+      const nsAdapter: any = (this.server as any)?.of?.('/monitoring')?.adapter || (this.server as any)?.adapter;
+      const adapterRooms: Record<string, any> = {};
+      if (nsAdapter?.rooms) {
+        for (const [name, set] of nsAdapter.rooms) {
+          adapterRooms[name] = Array.from(set);
+        }
+      }
+      const clientInfo = this.clients.get(client.id);
+      const payload = {
+        serverHasAdapter: !!nsAdapter,
+        adapterRoomNames: Object.keys(adapterRooms),
+        adapterRooms,
+        clientId: client.id,
+        clientRooms: Array.from(client.rooms),
+        trackedClientRooms: clientInfo ? Array.from(clientInfo.subscribedRooms) : [],
+        timestamp: new Date().toISOString(),
+      };
+      this.logger.log(`[debug-dump-rooms] Emitting rooms dump to ${client.id}`);
+      client.emit('rooms-dump', payload);
+    } catch (e) {
+      this.logger.error('[debug-dump-rooms] error', e);
+    }
   }
 }

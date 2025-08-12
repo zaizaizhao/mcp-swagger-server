@@ -580,8 +580,10 @@ export class ProcessManagerService implements OnModuleDestroy {
         serverId: processInfo.id,
         processInfo: {
           ...processInfo,
-          // 移除不需要序列化的process对象
-          process: undefined
+          // 构建包含基本信息的process对象
+          process: {
+            pid: processInfo.pid
+          }
         },
         timestamp: new Date()
       });
@@ -689,8 +691,10 @@ export class ProcessManagerService implements OnModuleDestroy {
            ...processInfo,
            resourceMetrics: metrics,
            systemInfo,
-           // 移除不需要序列化的process对象
-           process: undefined
+           // 构建包含基本信息的process对象
+           process: {
+             pid: processInfo.pid
+           }
          };
          
          // 发射进程信息更新事件
@@ -700,8 +704,24 @@ export class ProcessManagerService implements OnModuleDestroy {
            timestamp: new Date()
          });
          
-         // 同时保存到数据库
-         await this.saveProcessInfo(processInfo);
+         // 直接保存到数据库，不发射额外事件
+         try {
+           const entity = this.processInfoRepository.create({
+             serverId: processInfo.id,
+             pid: processInfo.pid,
+             startTime: processInfo.startTime,
+             status: processInfo.status,
+             restartCount: processInfo.restartCount,
+             lastError: processInfo.lastError,
+             memoryUsage: processInfo.memoryUsage,
+             cpuUsage: processInfo.cpuUsage,
+             updatedAt: processInfo.updatedAt,
+           });
+           
+           await this.processInfoRepository.save(entity);
+         } catch (error) {
+           this.logger.error(`Failed to save process info for ${processInfo.id}:`, error);
+         }
        }
      });
    }

@@ -81,6 +81,10 @@ export class WebSocketService {
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private connectionCheckInterval: NodeJS.Timeout | null = null;
 
+  // 调试开关（与后端 WS_DEBUG 对齐）
+  private readonly DEBUG = (import.meta as any).env?.VITE_WS_DEBUG === 'true';
+  private d(...args: any[]) { if (this.DEBUG) console.log('[WebSocketService]', ...args); }
+
   constructor(private url: string = "/monitoring") {
     this.setupEventHandlers();
   }
@@ -88,7 +92,7 @@ export class WebSocketService {
   // 连接WebSocket
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      console.log(`[WebSocketService] Attempting to connect to: ${this.url}`);
+      this.d('Attempting to connect to:', this.url);
       
       if (this.socket?.connected) {
         console.log('[WebSocketService] Already connected');
@@ -257,7 +261,7 @@ export class WebSocketService {
   private setupSocketEventHandlers(): void {
     if (!this.socket) return;
 
-    console.log('[WebSocketService] Setting up socket event handlers...');
+    this.d('Setting up socket event handlers');
 
     // 连接状态事件
     this.socket.on("disconnect", (reason) => {
@@ -343,6 +347,7 @@ export class WebSocketService {
       serverId: string;
       processInfo: any;
     }) => {
+      console.log('[WebSocketService] 接收到process:info事件:', JSON.stringify(data, null, 2));
       this.emitEvent("process:info", data);
     });
 
@@ -353,29 +358,23 @@ export class WebSocketService {
       this.emitEvent("process:logs", data);
     });
 
-    // 服务器指标更新事件（后端发送的实际事件名称）
-    this.socket.on("server-metrics-update", (data: {
-      serverId: string;
-      data: any;
-      timestamp: string;
-    }) => {
-      console.log('[WebSocketService] 前端日志:', data);
-      // 转换为前端期望的process:info格式
-      this.emitEvent("process:info", {
-        serverId: data.serverId,
-        processInfo: data.data
-      });
-    });
+    // 移除server-metrics-update事件监听器，因为后端现在直接发送process:info事件
+    // 保留注释以备将来参考
+    // this.socket.on("server-metrics-update", (data: {
+    //   serverId: string;
+    //   data: any;
+    //   timestamp: string;
+    // }) => {
+    //   this.d('server-metrics-update <-', data.serverId, 'ts', data.timestamp);
+    //   this.emitEvent("process:info", {
+    //     serverId: data.serverId,
+    //     processInfo: data.data
+    //   });
+    // });
 
     // 订阅确认事件（修复事件名称不匹配问题）
-    this.socket.on("subscription-confirmed", (data: {
-      room: string;
-      serverId?: string;
-      interval?: number;
-      timestamp: string;
-    }) => {
-      console.log(`[WebSocketService] ✅ Subscription confirmed:`, data);
-      console.log(`[WebSocketService] Successfully joined room: ${data.room}`);
+    this.socket.on("subscription-confirmed", (data: { room: string; serverId?: string; interval?: number; timestamp: string; }) => {
+      if (this.DEBUG) console.log(`[WebSocketService] Subscription confirmed:`, data);
     });
 
     // 取消订阅确认事件
@@ -528,28 +527,16 @@ export class WebSocketService {
   // 发送消息到服务器（增强版本）
   emit(event: string, data?: any): void {
     if (this.socket?.connected) {
-      console.log(`[WebSocketService] 📤 Emitting event: ${event}`, data);
+      this.d('emit', event, data);
       this.socket.emit(event, data);
-      
-      // 特殊处理订阅事件，添加额外的确认机制
-      if (event.includes('subscribe')) {
-        console.log(`[WebSocketService] 🔔 Subscription event sent: ${event}`);
-        
-        // 设置订阅超时检查
+      if (event.includes('subscribe') && this.DEBUG) {
         setTimeout(() => {
-          console.log(`[WebSocketService] 🕒 Checking subscription status 3 seconds after ${event}...`);
-          
-          // 请求连接状态
+          this.d('post-subscription status check for', event);
           this.socket?.emit('get-connection-status');
         }, 3000);
       }
-    } else {
-      console.error(`[WebSocketService] ❌ WebSocket not connected, cannot emit event: ${event}`, data);
-      console.error(`[WebSocketService] 🔍 Current socket state:`, {
-        socket: !!this.socket,
-        connected: this.socket?.connected,
-        disconnected: this.socket?.disconnected
-      });
+    } else if (this.DEBUG) {
+      console.warn('[WebSocketService] emit while disconnected', event, data);
     }
   }
 
@@ -585,86 +572,19 @@ export class WebSocketService {
 
   // 订阅进程信息更新（强化版本）
   subscribeToProcessInfo(serverId: string): void {
-    console.log(`[WebSocketService] 🔄 Subscribing to process info for server: ${serverId}`);
-    console.log(`[WebSocketService] Socket connected: ${this.socket?.connected}`);
-    console.log(`[WebSocketService] Socket ID: ${this.socket?.id}`);
-    
     if (!this.socket?.connected) {
-      console.error('[WebSocketService] ❌ Socket not connected, cannot subscribe to process info');
-      console.error('[WebSocketService] 🔄 Attempting to reconnect and then subscribe...');
-      
-      // 尝试重新连接后再订阅
-      this.connect().then(() => {
-        console.log('[WebSocketService] ✅ Reconnected successfully, retrying subscription...');
-        setTimeout(() => this.subscribeToProcessInfo(serverId), 1000);
-      }).catch(err => {
-        console.error('[WebSocketService] Failed to reconnect for subscription:', err);
-      });
+      if (this.DEBUG) console.warn('[WebSocketService] Socket not connected, defer subscribeToProcessInfo', serverId);
+      this.connect().then(() => setTimeout(() => this.subscribeToProcessInfo(serverId), 500)).catch(()=>{});
       return;
     }
-    
-    const subscribeData = { serverId, interval: 5000 };
-    console.log(`[WebSocketService] 📤 Emitting subscribe-server-metrics with data:`, subscribeData);
-    console.log(`[WebSocketService] Expected room name: server-metrics-${serverId}`);
-    
-    // 记录订阅尝试时间
-    const subscriptionStartTime = Date.now();
-    let subscriptionConfirmed = false;
-    
-    // 强制订阅，立即发送
-    this.emit("subscribe-server-metrics", subscribeData);
-    
-    // 订阅确认监听器（一次性）
-    const onSubscriptionConfirmed = (data: any) => {
-      console.log('[WebSocketService] 📨 Received subscription-confirmed event:', data);
-      
-      if (data.room === `server-metrics-${serverId}`) {
-        subscriptionConfirmed = true;
-        const subscriptionTime = Date.now() - subscriptionStartTime;
-        console.log(`[WebSocketService] ✅ Subscription confirmed for server ${serverId} in ${subscriptionTime}ms`);
-        
-        // 移除这个特定的监听器
-        this.socket?.off('subscription-confirmed', onSubscriptionConfirmed);
-      }
-    };
-    
-    // 添加订阅确认监听器
-    this.socket?.on('subscription-confirmed', onSubscriptionConfirmed);
-    
-    // 设置超时检查
-    const confirmationTimeout = setTimeout(() => {
-      if (!subscriptionConfirmed) {
-        console.warn(`[WebSocketService] ⚠️ Subscription confirmation timeout for server ${serverId} after 5 seconds`);
-        console.log(`[WebSocketService] 🔄 Retrying subscription...`);
-        
-        // 移除监听器并重试
-        this.socket?.off('subscription-confirmed', onSubscriptionConfirmed);
-        
-        // 延迟重试
-        setTimeout(() => {
-          console.log(`[WebSocketService] 🔄 Retrying subscription for server ${serverId}`);
-          this.emit("subscribe-server-metrics", subscribeData);
-        }, 1000);
-      }
-    }, 5000);
-    
-    // 添加状态检查
-    setTimeout(() => {
-      console.log(`[WebSocketService] 🔍 Subscription status check after 3 seconds:`);
-      console.log(`[WebSocketService] - Socket connected: ${this.socket?.connected}`);
-      console.log(`[WebSocketService] - Subscription confirmed: ${subscriptionConfirmed}`);
-      console.log(`[WebSocketService] - Server ID: ${serverId}`);
-      
-      // 请求连接状态
-      if (this.socket?.connected) {
-        this.emit('get-connection-status');
-      }
-    }, 3000);
+    this.emit("subscribe-server-metrics", { serverId, interval: 5000 });
   }
 
   // 取消订阅进程信息更新
   unsubscribeFromProcessInfo(serverId: string): void {
+    // 兼容旧通用unsubscribe & 新事件
     this.emit("unsubscribe", { room: `server-metrics-${serverId}` });
+    this.emit("unsubscribe-server-metrics", { serverId });
   }
 
   // 订阅进程日志更新
@@ -675,6 +595,7 @@ export class WebSocketService {
   // 取消订阅进程日志更新
   unsubscribeFromProcessLogs(serverId: string): void {
     this.emit("unsubscribe", { room: `server-logs-${serverId}` });
+    this.emit("unsubscribe-server-logs", { serverId });
   }
 
   // 获取连接状态信息

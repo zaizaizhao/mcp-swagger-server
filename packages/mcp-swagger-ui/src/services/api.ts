@@ -738,8 +738,6 @@ export const openApiAPI = {
         content: content,
       },
     });
-    console.log("respomse", response);
-
     return response.data;
   },
 

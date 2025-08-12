@@ -77,6 +77,7 @@ export default {
   menu: {
     dashboard: "Dashboard",
     servers: "Server Management",
+    "server-detail": "Server Details",
     openapi: "OpenAPI Management",
     tester: "API Testing",
     auth: "Authentication",
