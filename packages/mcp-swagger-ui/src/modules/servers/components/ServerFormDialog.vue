@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     v-model="dialogVisible"
-    :title="isEdit ? '编辑服务器' : '创建服务器'"
+    :title="isEdit ? t('servers.editServer') : t('servers.createServer')"
     width="600px"
     :close-on-click-modal="false"
     @close="handleClose"
@@ -13,46 +13,36 @@
       label-width="120px"
       label-position="right"
     >
-      <el-form-item
-        label="服务器名称"
-        prop="name"
-        required
-      >
+      <el-form-item :label="t('servers.serverNameLabel')" prop="name" required>
         <el-input
           v-model="formData.name"
-          placeholder="请输入服务器名称"
+          :placeholder="t('servers.serverNamePlaceholder')"
           clearable
         />
       </el-form-item>
 
-      <el-form-item
-        label="版本"
-        prop="version"
-      >
+      <el-form-item :label="t('servers.versionLabel')" prop="version">
         <el-input
           v-model="formData.version"
-          placeholder="请输入服务器版本（可选）"
+          :placeholder="t('servers.versionPlaceholder')"
           clearable
         />
       </el-form-item>
 
-      <el-form-item label="端口" prop="port">
+      <el-form-item :label="t('servers.portLabel')" prop="port">
         <el-input-number
           v-model="formData.port"
           :min="1"
           :max="65535"
-          placeholder="请输入端口号"
+          :placeholder="t('servers.portPlaceholder')"
           style="width: 100%"
         />
       </el-form-item>
 
-      <el-form-item
-        label="传输类型"
-        prop="transport"
-      >
+      <el-form-item :label="t('servers.transportTypeLabel')" prop="transport">
         <el-select
           v-model="formData.transport"
-          placeholder="请选择传输类型"
+          :placeholder="t('servers.transportTypePlaceholder')"
           style="width: 100%"
         >
           <el-option label="Streamable" value="streamable" />
@@ -61,13 +51,13 @@
       </el-form-item>
 
       <el-form-item
-        label="OpenAPI文档"
+        :label="t('servers.openApiDocLabel')"
         prop="openApiDocumentId"
         required
       >
         <el-select
           v-model="formData.openApiDocumentId"
-          placeholder="请选择要转换的OpenAPI文档"
+          :placeholder="t('servers.openApiDocPlaceholder')"
           style="width: 100%"
           :loading="documentsLoading"
           filterable
@@ -104,7 +94,11 @@
                 color: var(--el-text-color-secondary);
               "
             >
-              {{ documentsLoading ? "加载中..." : "暂无可用的OpenAPI文档" }}
+              {{
+                documentsLoading
+                  ? t("servers.loading")
+                  : t("servers.noAvailableOpenApiDocs")
+              }}
             </div>
           </template>
         </el-select>
@@ -115,31 +109,28 @@
             color: var(--el-text-color-secondary);
           "
         >
-          只显示状态为"有效"的OpenAPI文档
+          {{ t("servers.onlyValidDocsShown") }}
         </div>
       </el-form-item>
 
-      <el-form-item label="自动启动" prop="autoStart">
+      <el-form-item :label="t('servers.autoStartLabel')" prop="autoStart">
         <el-switch
           v-model="formData.autoStart"
-          active-text="是"
-          inactive-text="否"
+          :active-text="t('servers.yes')"
+          :inactive-text="t('servers.no')"
         />
       </el-form-item>
 
-      <el-form-item
-        label="描述"
-        prop="description"
-      >
+      <el-form-item :label="t('servers.descriptionLabel')" prop="description">
         <el-input
           v-model="formData.description"
           type="textarea"
           :rows="3"
-          placeholder="请输入服务器描述（可选）"
+          :placeholder="t('servers.descriptionPlaceholder')"
         />
       </el-form-item>
 
-      <el-form-item label="标签" prop="tags">
+      <el-form-item :label="t('servers.tagsLabel')" prop="tags">
         <el-tag
           v-for="tag in formData.tags"
           :key="tag"
@@ -160,11 +151,14 @@
           @blur="handleInputConfirm"
         />
         <el-button v-else class="tag-button" size="small" @click="showInput">
-          + 添加标签
+          {{ t("servers.addTag") }}
         </el-button>
       </el-form-item>
 
-      <el-form-item label="自定义头部" prop="customHeaders">
+      <el-form-item
+        :label="t('servers.customHeadersLabel')"
+        prop="customHeaders"
+      >
         <div class="headers-section">
           <div
             v-for="(header, index) in customHeadersList"
@@ -173,12 +167,12 @@
           >
             <el-input
               v-model="header.key"
-              placeholder="Header 名称"
+              :placeholder="t('servers.headerNamePlaceholder')"
               class="header-key"
             />
             <el-input
               v-model="header.value"
-              placeholder="Header 值"
+              :placeholder="t('servers.headerValuePlaceholder')"
               class="header-value"
             />
             <el-button
@@ -196,7 +190,7 @@
             size="small"
             plain
           >
-            添加头部
+            {{ t("servers.addHeader") }}
           </el-button>
         </div>
       </el-form-item>
@@ -204,9 +198,9 @@
 
     <template #footer>
       <div class="dialog-footer">
-        <el-button @click="handleClose"> 取消 </el-button>
+        <el-button @click="handleClose"> {{ t("servers.cancel") }} </el-button>
         <el-button type="primary" :loading="loading" @click="handleSubmit">
-          {{ isEdit ? "更新" : "创建" }}
+          {{ isEdit ? t("servers.update") : t("servers.create") }}
         </el-button>
       </div>
     </template>
@@ -223,6 +217,7 @@ import {
   documentsApi,
   type Document as OpenAPIDocument,
 } from "@/api/documents";
+import { useI18n } from "vue-i18n";
 
 // 导入全局功能
 import { usePerformanceMonitor } from "@/composables/usePerformance";
@@ -243,6 +238,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>();
 const serverStore = useServerStore();
+const { t } = useI18n();
 
 // 全局功能
 const { measureFunction } = usePerformanceMonitor();
@@ -274,8 +270,6 @@ const formData = ref<ServerConfig & { openApiDocumentId?: string }>({
   customHeaders: {},
 });
 
-
-
 // 自定义头部列表
 const customHeadersList = ref<Array<{ key: string; value: string }>>([]);
 
@@ -290,25 +284,44 @@ const isEdit = computed(() => !!props.server);
 // 表单验证规则
 const formRules: FormRules = {
   name: [
-    { required: true, message: "请输入服务器名称", trigger: "blur" },
-    { min: 2, max: 50, message: "名称长度在 2 到 50 个字符", trigger: "blur" },
+    {
+      required: true,
+      message: t("servers.serverNameRequired"),
+      trigger: "blur",
+    },
+    {
+      min: 2,
+      max: 50,
+      message: t("servers.serverNameLength"),
+      trigger: "blur",
+    },
   ],
-  version: [{ max: 20, message: "版本号不能超过20个字符", trigger: "blur" }],
+  version: [{ max: 20, message: t("servers.versionLength"), trigger: "blur" }],
   port: [
     {
       type: "number",
       min: 1,
       max: 65535,
-      message: "端口号必须在1-65535之间",
+      message: t("servers.portRange"),
       trigger: "blur",
     },
   ],
-  transport: [{ required: true, message: "请选择传输类型", trigger: "change" }],
+  transport: [
+    {
+      required: true,
+      message: t("servers.transportTypeRequired"),
+      trigger: "change",
+    },
+  ],
   openApiDocumentId: [
-    { required: true, message: "请选择要转换的OpenAPI文档", trigger: "change" },
+    {
+      required: true,
+      message: t("servers.openApiDocRequired"),
+      trigger: "change",
+    },
   ],
   description: [
-    { max: 200, message: "描述不能超过200个字符", trigger: "blur" },
+    { max: 200, message: t("servers.descriptionLength"), trigger: "blur" },
   ],
 };
 
@@ -388,7 +401,7 @@ const loadAvailableDocuments = async () => {
     );
   } catch (error) {
     console.error("Failed to load OpenAPI documents:", error);
-    ElMessage.error("加载OpenAPI文档失败");
+    ElMessage.error(t("servers.loadOpenApiDocFailed"));
     availableDocuments.value = [];
   } finally {
     documentsLoading.value = false;
@@ -403,13 +416,13 @@ const handleSubmit = async () => {
   try {
     // 使用Element Plus表单验证
     if (!formRef.value) {
-      ElMessage.error("表单引用未找到");
+      ElMessage.error(t("servers.formRefNotFound"));
       return;
     }
-    
+
     const isValid = await formRef.value.validate().catch(() => false);
     if (!isValid) {
-      ElMessage.error("请检查表单输入");
+      ElMessage.error(t("servers.checkFormInput"));
       return;
     }
 
@@ -440,7 +453,7 @@ const handleSubmit = async () => {
       // 兼容旧字段
       endpoint: formData.value.endpoint,
     };
-    console.log(serverConfig)
+    console.log(serverConfig);
     let success = false;
 
     if (isEdit.value && props.server) {
@@ -454,11 +467,17 @@ const handleSubmit = async () => {
     }
 
     if (success) {
-      ElMessage.success(isEdit.value ? "服务器更新成功" : "服务器创建成功");
+      ElMessage.success(
+        isEdit.value
+          ? t("servers.serverUpdateSuccess")
+          : t("servers.serverCreateSuccess"),
+      );
       emit("success");
     }
   } catch (error) {
-    ElMessage.error(`${isEdit.value ? "更新" : "创建"}服务器失败: ${error}`);
+    ElMessage.error(
+      `${isEdit.value ? t("servers.updateServerFailed") : t("servers.createServerFailed")}: ${error}`,
+    );
   } finally {
     loading.value = false;
   }

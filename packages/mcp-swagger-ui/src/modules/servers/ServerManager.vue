@@ -5,7 +5,7 @@
       <div class="title-bar">
         <h1>
           <el-icon><Monitor /></el-icon>
-          MCP 服务器管理
+          {{ t("servers.title") }}
         </h1>
         <div class="header-actions">
           <el-button
@@ -13,10 +13,10 @@
             @click="showCreateDialog = true"
             :icon="Plus"
           >
-            创建服务器
+            {{ t("servers.createServer") }}
           </el-button>
           <el-button @click="refreshServers" :loading="loading" :icon="Refresh">
-            刷新
+            {{ t("common.refresh") }}
           </el-button>
         </div>
       </div>
@@ -25,22 +25,22 @@
       <div class="filter-bar">
         <el-input
           v-model="searchQuery"
-          placeholder="搜索服务器名称、端点..."
+          :placeholder="t('servers.searchPlaceholder')"
           :prefix-icon="Search"
           clearable
           class="search-input"
         />
         <el-select
           v-model="statusFilter"
-          placeholder="状态筛选"
+          :placeholder="t('servers.statusFilter')"
           clearable
           class="status-filter"
         >
-          <el-option label="运行中" value="running" />
-          <el-option label="已停止" value="stopped" />
-          <el-option label="错误" value="error" />
-          <el-option label="启动中" value="starting" />
-          <el-option label="停止中" value="stopping" />
+          <el-option :label="t('servers.status.running')" value="running" />
+          <el-option :label="t('servers.status.stopped')" value="stopped" />
+          <el-option :label="t('servers.status.error')" value="error" />
+          <el-option :label="t('servers.status.starting')" value="starting" />
+          <el-option :label="t('servers.status.stopping')" value="stopping" />
         </el-select>
         <el-button-group class="view-toggle">
           <el-button
@@ -68,7 +68,7 @@
               </div>
               <div class="stat-text">
                 <div class="stat-number">{{ runningServers }}</div>
-                <div class="stat-label">运行中</div>
+                <div class="stat-label">{{ t("servers.status.running") }}</div>
               </div>
             </div>
           </el-card>
@@ -81,7 +81,7 @@
               </div>
               <div class="stat-text">
                 <div class="stat-number">{{ stoppedServers }}</div>
-                <div class="stat-label">已停止</div>
+                <div class="stat-label">{{ t("servers.status.stopped") }}</div>
               </div>
             </div>
           </el-card>
@@ -94,7 +94,7 @@
               </div>
               <div class="stat-text">
                 <div class="stat-number">{{ errorServers }}</div>
-                <div class="stat-label">错误</div>
+                <div class="stat-label">{{ t("servers.status.error") }}</div>
               </div>
             </div>
           </el-card>
@@ -107,7 +107,7 @@
               </div>
               <div class="stat-text">
                 <div class="stat-number">{{ totalServers }}</div>
-                <div class="stat-label">总计</div>
+                <div class="stat-label">{{ t("common.total") }}</div>
               </div>
             </div>
           </el-card>
@@ -146,32 +146,32 @@
                             :command="{ action: 'start', server }"
                             :disabled="server.status === 'running'"
                           >
-                            启动服务器
+                            {{ t("servers.startServer") }}
                           </el-dropdown-item>
                           <el-dropdown-item
                             :command="{ action: 'stop', server }"
                             :disabled="server.status === 'stopped'"
                           >
-                            停止服务器
+                            {{ t("servers.stopServer") }}
                           </el-dropdown-item>
                           <el-dropdown-item
                             :command="{ action: 'restart', server }"
                             :disabled="server.status !== 'running'"
                           >
-                            重启服务器
+                            {{ t("servers.restartServer") }}
                           </el-dropdown-item>
                           <el-dropdown-item divided>
                             <el-dropdown-item
                               :command="{ action: 'edit', server }"
                             >
-                              编辑配置
+                              {{ t("servers.editServer") }}
                             </el-dropdown-item>
                           </el-dropdown-item>
                           <el-dropdown-item
                             :command="{ action: 'delete', server }"
                             class="danger-action"
                           >
-                            删除服务器
+                            {{ t("servers.deleteServer") }}
                           </el-dropdown-item>
                         </el-dropdown-menu>
                       </template>
@@ -189,31 +189,32 @@
                     {{ getStatusText(server.status) }}
                   </el-tag>
                   <span class="uptime" v-if="server.status === 'running'">
-                    运行时间: {{ formatUptime(server.metrics?.uptime || 0, server) }}
+                    {{ t("servers.runningTime") }}:
+                    {{ formatUptime(server.metrics?.uptime || 0, server) }}
                   </span>
                 </div>
 
                 <div class="server-info">
                   <div class="info-item" v-if="server.endpoint">
-                    <span class="label">端点:</span>
+                    <span class="label">{{ t("servers.serverUrl") }}:</span>
                     <span class="value">{{ server.endpoint || "N/A" }}</span>
                   </div>
                   <div class="info-item">
-                    <span class="label">端口:</span>
+                    <span class="label">{{ t('servers.port') }}:</span>
                     <span class="value">{{ server.port }}</span>
                   </div>
                   <div class="info-item">
-                    <span class="label">传输:</span>
+                    <span class="label">{{ t('servers.transportType') }}:</span>
                     <span class="value">{{ server.transport }}</span>
                   </div>
                   <div class="info-item">
-                    <span class="label">工具数量:</span>
+                    <span class="label">{{ t('servers.toolCount') }}:</span>
                     <span class="value">{{ server.toolCount || 0 }}</span>
                   </div>
                   <div class="info-item" v-if="server.autoStart !== undefined">
-                    <span class="label">自动启动:</span>
+                    <span class="label">{{ t('servers.autoStart') }}:</span>
                     <span class="value">{{
-                      server.autoStart ? "是" : "否"
+                      server.autoStart ? t("common.yes") : t("common.no")
                     }}</span>
                   </div>
                 </div>
@@ -228,7 +229,7 @@
                     :stroke-width="4"
                   />
                   <span class="metrics-text">
-                    错误率:
+                    {{ t('servers.errorRate') }}:
                     {{ ((server.metrics?.errorRate || 0) * 100).toFixed(1) }}%
                   </span>
                 </div>
@@ -246,7 +247,11 @@
           @row-click="goToServerDetail"
           row-class-name="server-row"
         >
-          <el-table-column prop="name" label="服务器名称" min-width="150">
+          <el-table-column
+            prop="name"
+            :label="t('servers.serverName')"
+            min-width="150"
+          >
             <template #default="{ row }">
               <div class="server-name-cell">
                 <el-icon><Monitor /></el-icon>
@@ -255,7 +260,11 @@
             </template>
           </el-table-column>
 
-          <el-table-column prop="status" label="状态" width="120">
+          <el-table-column
+            prop="status"
+            :label="t('servers.serverStatus')"
+            width="120"
+          >
             <template #default="{ row }">
               <el-tag
                 :type="getStatusType(row.status)"
@@ -267,7 +276,11 @@
             </template>
           </el-table-column>
 
-          <el-table-column prop="endpoint" label="端点" min-width="200">
+          <el-table-column
+            prop="endpoint"
+            :label="t('servers.serverUrl')"
+            min-width="200"
+          >
             <template #default="{ row }">
               {{
                 row.endpoint ||
@@ -276,31 +289,55 @@
             </template>
           </el-table-column>
 
-          <el-table-column prop="transport" label="传输" width="100" />
+          <el-table-column
+            prop="transport"
+            :label="t('servers.transportType')"
+            width="100"
+          />
 
-          <el-table-column prop="port" label="端口" width="80" />
+          <el-table-column
+            prop="port"
+            :label="t('servers.serverPort')"
+            width="80"
+          />
 
-          <el-table-column prop="toolCount" label="工具数量" width="100">
+          <el-table-column
+            prop="toolCount"
+            :label="t('servers.toolCount')"
+            width="100"
+          >
             <template #default="{ row }">
               {{ row.toolCount || 0 }}
             </template>
           </el-table-column>
 
-          <el-table-column prop="autoStart" label="自动启动" width="100">
+          <el-table-column
+            prop="autoStart"
+            :label="t('servers.autoStart')"
+            width="100"
+          >
             <template #default="{ row }">
               <el-tag :type="row.autoStart ? 'success' : 'info'" size="small">
-                {{ row.autoStart ? "是" : "否" }}
+                {{ row.autoStart ? t("common.yes") : t("common.no") }}
               </el-tag>
             </template>
           </el-table-column>
 
-          <el-table-column prop="updatedAt" label="最后更新" width="160">
+          <el-table-column
+            prop="updatedAt"
+            :label="t('servers.lastUpdated')"
+            width="160"
+          >
             <template #default="{ row }">
               {{ formatDateTime(row.updatedAt) }}
             </template>
           </el-table-column>
 
-          <el-table-column fixed="right" label="操作" width="120">
+          <el-table-column
+            fixed="right"
+            :label="t('common.actions')"
+            width="120"
+          >
             <template #default="{ row }">
               <el-button-group>
                 <el-button
@@ -337,11 +374,11 @@
       <!-- 空状态 -->
       <el-empty
         v-if="filteredServers.length === 0 && !loading"
-        description="暂无服务器"
+        :description="t('servers.noServers')"
         :image-size="200"
       >
         <el-button type="primary" @click="showCreateDialog = true" :icon="Plus">
-          创建第一个服务器
+          {{ t("servers.createFirstServer") }}
         </el-button>
       </el-empty>
     </div>
@@ -359,6 +396,7 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
+import { useI18n } from "vue-i18n";
 import {
   Monitor,
   Plus,
@@ -392,6 +430,7 @@ import LoadingOverlay from "@/shared/components/ui/LoadingOverlay.vue";
 const router = useRouter();
 const serverStore = useServerStore();
 const websocketStore = useWebSocketStore();
+const { t } = useI18n();
 
 // 全局功能
 const {
@@ -491,13 +530,13 @@ const getStatusIcon = (status: ServerStatus) => {
 
 const getStatusText = (status: ServerStatus) => {
   const textMap = {
-    running: "运行中",
-    stopped: "已停止",
-    error: "错误",
-    starting: "启动中",
-    stopping: "停止中",
+    running: t("servers.status.running"),
+    stopped: t("servers.status.stopped"),
+    error: t("servers.status.error"),
+    starting: t("servers.status.starting"),
+    stopping: t("servers.status.stopping"),
   };
-  return textMap[status] || "未知";
+  return textMap[status] || t("servers.status.unknown");
 };
 
 const formatUptime = (uptime: number, server?: any) => {
@@ -510,7 +549,7 @@ const formatUptime = (uptime: number, server?: any) => {
     const minutes = Math.floor((uptimeMs % 3600000) / 60000);
     return `${hours}h ${minutes}m`;
   }
-  
+
   // 兼容旧的uptime字段（毫秒）
   const hours = Math.floor(uptime / 3600000);
   const minutes = Math.floor((uptime % 3600000) / 60000);
@@ -542,7 +581,6 @@ const handleServerAction = async ({
 }) => {
   console.log(action, server);
 
-  
   switch (action) {
     case "start":
       await startServer(server);
@@ -570,43 +608,50 @@ const startServer = async (server: MCPServer) => {
     await measureFunction("startServer", async () => {
       await serverStore.startServer(server.id);
     });
-    ElMessage.success(`服务器 ${server.name} 启动成功`);
+    ElMessage.success(
+      t("servers.messages.startSuccess", { name: server.name }),
+    );
   } catch (error) {
-    ElMessage.error(`启动服务器失败: ${error}`);
+    ElMessage.error(t("servers.messages.startError", { error }));
   }
 };
 
 const stopServer = async (server: MCPServer) => {
-  console.log('🛑 [FRONTEND DEBUG] stopServer called with server:', {
+  console.log("🛑 [FRONTEND DEBUG] stopServer called with server:", {
     id: server.id,
     name: server.name,
-    status: server.status
+    status: server.status,
   });
-  
+
   const confirmed = await confirmDangerousAction(
-    `确定要停止服务器 "${server.name}" 吗？这将中断所有正在进行的请求。`,
+    t("servers.messages.confirmStop", { name: server.name }),
   );
   if (!confirmed) {
-    console.log('🛑 [FRONTEND DEBUG] User cancelled stop operation');
+    console.log("🛑 [FRONTEND DEBUG] User cancelled stop operation");
     return;
   }
 
   try {
-    console.log('🛑 [FRONTEND DEBUG] Calling serverStore.stopServer with ID:', server.id);
+    console.log(
+      "🛑 [FRONTEND DEBUG] Calling serverStore.stopServer with ID:",
+      server.id,
+    );
     await measureFunction("stopServer", async () => {
       await serverStore.stopServer(server.id);
     });
-    console.log('🛑 [FRONTEND DEBUG] serverStore.stopServer completed successfully');
-    ElMessage.success(`服务器 ${server.name} 停止成功`);
+    console.log(
+      "🛑 [FRONTEND DEBUG] serverStore.stopServer completed successfully",
+    );
+    ElMessage.success(t("servers.messages.stopSuccess", { name: server.name }));
   } catch (error) {
-    console.error('🛑 [FRONTEND DEBUG] stopServer failed:', error);
-    ElMessage.error(`停止服务器失败: ${error}`);
+    console.error("🛑 [FRONTEND DEBUG] stopServer failed:", error);
+    ElMessage.error(t("servers.messages.stopError", { error }));
   }
 };
 
 const restartServer = async (server: MCPServer) => {
   const confirmed = await confirmDangerousAction(
-    `确定要重启服务器 "${server.name}" 吗？这将临时中断服务。`,
+    t("servers.messages.confirmRestart", { name: server.name }),
   );
   if (!confirmed) return;
 
@@ -614,9 +659,11 @@ const restartServer = async (server: MCPServer) => {
     await measureFunction("restartServer", async () => {
       await serverStore.restartServer(server.id);
     });
-    ElMessage.success(`服务器 ${server.name} 重启成功`);
+    ElMessage.success(
+      t("servers.messages.restartSuccess", { name: server.name }),
+    );
   } catch (error) {
-    ElMessage.error(`重启服务器失败: ${error}`);
+    ElMessage.error(t("servers.messages.restartError", { error }));
   }
 };
 
@@ -631,43 +678,46 @@ const checkServerRunning = async (server: MCPServer): Promise<boolean> => {
     // 从服务器配置中获取端口，默认使用3004
     const port = server.config?.port || 3004;
     const baseUrl = `http://localhost:${port}`;
-    
+
     // 创建AbortController用于超时控制
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
+
     try {
       // 检查health接口
       const healthResponse = await fetch(`${baseUrl}/health`, {
-        method: 'GET',
-        signal: controller.signal
+        method: "GET",
+        signal: controller.signal,
       });
-      
+
       if (!healthResponse.ok) {
         return false;
       }
-      
+
       const healthData = await healthResponse.text();
-      
+
       // 检查ping接口
       const pingResponse = await fetch(`${baseUrl}/ping`, {
-        method: 'GET',
-        signal: controller.signal
+        method: "GET",
+        signal: controller.signal,
       });
-      
+
       if (!pingResponse.ok) {
         return false;
       }
-      
+
       const pingData = await pingResponse.text();
-      
+
       // 判断服务器是否运行：health返回'ok'且ping返回'pong'
-      return healthData.trim().toLowerCase() === 'ok' && pingData.trim().toLowerCase() === 'pong';
+      return (
+        healthData.trim().toLowerCase() === "ok" &&
+        pingData.trim().toLowerCase() === "pong"
+      );
     } finally {
       clearTimeout(timeoutId);
     }
   } catch (error) {
-    console.log('检查服务器状态失败:', error);
+    console.log("Check server status failed:", error);
     return false;
   }
 };
@@ -676,35 +726,37 @@ const deleteServer = async (server: MCPServer) => {
   try {
     // 检查服务器是否正在运行
     const isRunning = await checkServerRunning(server);
-    
+
     if (isRunning) {
       // 服务器正在运行，提示用户需要先停止服务器
       const stopConfirmed = await ElMessageBox.confirm(
-        `服务器 "${server.name}" 正在运行中，删除前需要先停止服务器。是否继续？`,
-        '服务器正在运行',
+        t("servers.messages.confirmStopAndDelete", { name: server.name }),
+        t("servers.messages.serverRunning"),
         {
-          confirmButtonText: '停止并删除',
-          cancelButtonText: '取消',
-          type: 'warning',
-          dangerouslyUseHTMLString: true
-        }
+          confirmButtonText: t("servers.messages.stopAndDelete"),
+          cancelButtonText: t("common.cancel"),
+          type: "warning",
+          dangerouslyUseHTMLString: true,
+        },
       ).catch(() => false);
-      
+
       if (!stopConfirmed) return;
-      
+
       // 先停止服务器
       try {
         await serverStore.stopServer(server.id);
-        ElMessage.success(`服务器 ${server.name} 已停止`);
-        
+        ElMessage.success(
+          t("servers.messages.stopSuccess", { name: server.name }),
+        );
+
         // 等待一段时间确保服务器完全停止
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       } catch (error) {
-        ElMessage.error(`停止服务器失败: ${error}`);
+        ElMessage.error(t("servers.messages.stopError", { error }));
         return;
       }
     }
-    
+
     // 显示删除确认对话框
     const confirmed = await globalConfirmDelete(server.name);
     if (!confirmed) return;
@@ -713,9 +765,11 @@ const deleteServer = async (server: MCPServer) => {
     await measureFunction("deleteServer", async () => {
       await serverStore.deleteServer(server.id);
     });
-    ElMessage.success(`服务器 ${server.name} 删除成功`);
+    ElMessage.success(
+      t("servers.messages.deleteSuccess", { name: server.name }),
+    );
   } catch (error) {
-    ElMessage.error(`删除服务器失败: ${error}`);
+    ElMessage.error(t("servers.messages.deleteError", { error }));
   }
 };
 

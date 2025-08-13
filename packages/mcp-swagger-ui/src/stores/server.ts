@@ -180,17 +180,24 @@ export const useServerStore = defineStore("server", () => {
     action: "start" | "stop" | "restart",
     force?: boolean,
   ): Promise<boolean> => {
-    console.log('🛑 [STORE DEBUG] performServerAction called with:', { id, action, force });
+    console.log("🛑 [STORE DEBUG] performServerAction called with:", {
+      id,
+      action,
+      force,
+    });
     setLoading(true);
     try {
-      console.log('🛑 [STORE DEBUG] Calling serverAPI.performServerAction...');
+      console.log("🛑 [STORE DEBUG] Calling serverAPI.performServerAction...");
       const response = await serverAPI.performServerAction(id, action, force);
-      console.log('🛑 [STORE DEBUG] serverAPI.performServerAction response:', response);
+      console.log(
+        "🛑 [STORE DEBUG] serverAPI.performServerAction response:",
+        response,
+      );
 
       // 刷新服务器列表以获取最新状态
-      console.log('🛑 [STORE DEBUG] Refreshing server list...');
+      console.log("🛑 [STORE DEBUG] Refreshing server list...");
       await fetchServers({});
-      console.log('🛑 [STORE DEBUG] Server list refreshed');
+      console.log("🛑 [STORE DEBUG] Server list refreshed");
 
       const actionText = {
         start: "启动",
@@ -209,7 +216,7 @@ export const useServerStore = defineStore("server", () => {
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : `服务器操作失败`;
-      console.error('🛑 [STORE DEBUG] performServerAction failed:', err);
+      console.error("🛑 [STORE DEBUG] performServerAction failed:", err);
       setError(errorMessage);
       console.error("Failed to perform server action:", err);
       return false;
@@ -244,9 +251,9 @@ export const useServerStore = defineStore("server", () => {
 
   // 停止服务器
   const stopServer = async (id: string, force?: boolean): Promise<boolean> => {
-    console.log('🛑 [STORE DEBUG] stopServer called with:', { id, force });
+    console.log("🛑 [STORE DEBUG] stopServer called with:", { id, force });
     const result = await performServerAction(id, "stop", force);
-    console.log('🛑 [STORE DEBUG] stopServer result:', result);
+    console.log("🛑 [STORE DEBUG] stopServer result:", result);
     return result;
   };
 
@@ -451,7 +458,7 @@ export const useServerStore = defineStore("server", () => {
       const response = await serverAPI.getProcessResources(id, limit);
       return response;
     } catch (err) {
-      console.error('Failed to get process resources:', err);
+      console.error("Failed to get process resources:", err);
       throw err;
     }
   };
@@ -463,13 +470,13 @@ export const useServerStore = defineStore("server", () => {
       level?: string;
       limit?: number;
       since?: Date;
-    }
+    },
   ) => {
     try {
       const response = await serverAPI.getProcessLogStream(id, params);
       return response;
     } catch (err) {
-      console.error('Failed to get process log stream:', err);
+      console.error("Failed to get process log stream:", err);
       throw err;
     }
   };
@@ -479,7 +486,7 @@ export const useServerStore = defineStore("server", () => {
       const response = await serverAPI.getProcessFullInfo(id);
       return response;
     } catch (err) {
-      console.error('Failed to get process full info:', err);
+      console.error("Failed to get process full info:", err);
       throw err;
     }
   };

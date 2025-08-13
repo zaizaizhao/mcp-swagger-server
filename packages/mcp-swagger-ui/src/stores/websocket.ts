@@ -91,17 +91,21 @@ export const useWebSocketStore = defineStore("websocket", () => {
 
   // 重新连接后恢复订阅
   const restoreSubscriptions = () => {
-    console.log('[WebSocketStore] Restoring subscriptions after reconnect');
+    console.log("[WebSocketStore] Restoring subscriptions after reconnect");
     const currentSubscriptions = Array.from(subscriptions.value);
-    
-    currentSubscriptions.forEach(subscription => {
-      if (subscription.startsWith('process:info:')) {
-        const serverId = subscription.replace('process:info:', '');
-        console.log(`[WebSocketStore] Restoring process info subscription for server: ${serverId}`);
+
+    currentSubscriptions.forEach((subscription) => {
+      if (subscription.startsWith("process:info:")) {
+        const serverId = subscription.replace("process:info:", "");
+        console.log(
+          `[WebSocketStore] Restoring process info subscription for server: ${serverId}`,
+        );
         websocketService.subscribeToProcessInfo(serverId);
-      } else if (subscription.startsWith('process:logs:')) {
-        const serverId = subscription.replace('process:logs:', '');
-        console.log(`[WebSocketStore] Restoring process logs subscription for server: ${serverId}`);
+      } else if (subscription.startsWith("process:logs:")) {
+        const serverId = subscription.replace("process:logs:", "");
+        console.log(
+          `[WebSocketStore] Restoring process logs subscription for server: ${serverId}`,
+        );
         websocketService.subscribeToProcessLogs(serverId);
       }
     });
@@ -114,7 +118,7 @@ export const useWebSocketStore = defineStore("websocket", () => {
     setConnecting(false);
     // 清理订阅状态
     subscriptions.value.clear();
-    console.log('[WebSocketStore] Cleared all subscriptions on disconnect');
+    console.log("[WebSocketStore] Cleared all subscriptions on disconnect");
 
     appStore.addNotification({
       type: "info",
@@ -192,17 +196,21 @@ export const useWebSocketStore = defineStore("websocket", () => {
 
   // 订阅进程信息
   const subscribeToProcessInfo = (serverId: string) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[WebSocketStore] subscribeToProcessInfo called for server: ${serverId}`);
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        `[WebSocketStore] subscribeToProcessInfo called for server: ${serverId}`,
+      );
     }
-    
+
     if (!connected.value) {
-      console.warn('[WebSocketStore] Not connected, cannot subscribe to process info');
+      console.warn(
+        "[WebSocketStore] Not connected, cannot subscribe to process info",
+      );
       return;
     }
 
     const subscriptionKey = `process:info:${serverId}`;
-    
+
     // 暂时移除重复订阅检查，确保订阅请求能够发送
     websocketService.subscribeToProcessInfo(serverId);
     subscriptions.value.add(subscriptionKey);
@@ -218,17 +226,21 @@ export const useWebSocketStore = defineStore("websocket", () => {
 
   // 订阅进程日志
   const subscribeToProcessLogs = (serverId: string) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[WebSocketStore] subscribeToProcessLogs called for server: ${serverId}`);
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        `[WebSocketStore] subscribeToProcessLogs called for server: ${serverId}`,
+      );
     }
-    
+
     if (!connected.value) {
-      console.warn('[WebSocketStore] Not connected, cannot subscribe to process logs');
+      console.warn(
+        "[WebSocketStore] Not connected, cannot subscribe to process logs",
+      );
       return;
     }
 
     const subscriptionKey = `process:logs:${serverId}`;
-    
+
     // 暂时移除重复订阅检查，确保订阅请求能够发送
     websocketService.subscribeToProcessLogs(serverId);
     subscriptions.value.add(subscriptionKey);
@@ -253,11 +265,14 @@ export const useWebSocketStore = defineStore("websocket", () => {
       setConnecting(false);
       setReconnectAttempts(0);
       setLastError(null);
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[WebSocketStore] WebSocket connected, current subscriptions:', Array.from(subscriptions.value));
+
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          "[WebSocketStore] WebSocket connected, current subscriptions:",
+          Array.from(subscriptions.value),
+        );
       }
-      
+
       // 不要清空订阅记录，这会导致重复订阅检查失效
       // 只在真正断开连接时才清空
     });
@@ -265,9 +280,9 @@ export const useWebSocketStore = defineStore("websocket", () => {
     websocketService.on("disconnect", () => {
       setConnected(false);
       setConnecting(false);
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[WebSocketStore] WebSocket disconnected');
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[WebSocketStore] WebSocket disconnected");
       }
     });
 
@@ -408,19 +423,28 @@ export const useWebSocketStore = defineStore("websocket", () => {
   };
 
   // 存储每个订阅的回调函数，用于精确取消订阅
-  const subscriptionCallbacks = new Map<string, Map<string, (data: any) => void>>();
+  const subscriptionCallbacks = new Map<
+    string,
+    Map<string, (data: any) => void>
+  >();
 
   // 通用订阅方法
-  const subscribe = (eventType: string, callback: (data: any) => void, subscriptionId?: string) => {
+  const subscribe = (
+    eventType: string,
+    callback: (data: any) => void,
+    subscriptionId?: string,
+  ) => {
     // 生成唯一的订阅ID
-    const id = subscriptionId || `${eventType}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+    const id =
+      subscriptionId ||
+      `${eventType}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
     // 存储回调函数
     if (!subscriptionCallbacks.has(eventType)) {
       subscriptionCallbacks.set(eventType, new Map());
     }
     subscriptionCallbacks.get(eventType)!.set(id, callback);
-    
+
     switch (eventType) {
       case "server-status":
         websocketService.on("server:status", callback);
@@ -452,7 +476,7 @@ export const useWebSocketStore = defineStore("websocket", () => {
   // 通用取消订阅方法
   const unsubscribe = (eventType: string, subscriptionId?: string) => {
     const callbacks = subscriptionCallbacks.get(eventType);
-    
+
     if (subscriptionId && callbacks) {
       // 精确取消特定的订阅
       const callback = callbacks.get(subscriptionId);
@@ -478,7 +502,7 @@ export const useWebSocketStore = defineStore("websocket", () => {
             break;
         }
         callbacks.delete(subscriptionId);
-        
+
         // 如果该事件类型没有更多回调，从订阅集合中移除
         if (callbacks.size === 0) {
           subscriptions.value.delete(eventType);

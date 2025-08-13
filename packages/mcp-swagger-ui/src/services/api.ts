@@ -252,18 +252,25 @@ export const serverAPI = {
     action: "start" | "stop" | "restart",
     force?: boolean,
   ): Promise<{ success: boolean; message: string }> {
-    console.log('🛑 [API DEBUG] performServerAction called with:', { id, action, force });
-    console.log('🛑 [API DEBUG] Making POST request to:', `/v1/servers/${id}/actions`);
-    
+    console.log("🛑 [API DEBUG] performServerAction called with:", {
+      id,
+      action,
+      force,
+    });
+    console.log(
+      "🛑 [API DEBUG] Making POST request to:",
+      `/v1/servers/${id}/actions`,
+    );
+
     const requestData = { action, force };
-    console.log('🛑 [API DEBUG] Request data:', requestData);
-    
+    console.log("🛑 [API DEBUG] Request data:", requestData);
+
     try {
       const response = await api.post(`/v1/servers/${id}/actions`, requestData);
-      console.log('🛑 [API DEBUG] Response received:', response.data);
+      console.log("🛑 [API DEBUG] Response received:", response.data);
       return response.data;
     } catch (error) {
-      console.error('🛑 [API DEBUG] Request failed:', error);
+      console.error("🛑 [API DEBUG] Request failed:", error);
       throw error;
     }
   },
@@ -357,7 +364,7 @@ export const serverAPI = {
   // 获取进程资源使用情况
   async getProcessResources(
     id: string,
-    limit?: number
+    limit?: number,
   ): Promise<{
     current: {
       pid: number;
@@ -385,7 +392,7 @@ export const serverAPI = {
     };
   }> {
     const response = await api.get(`/v1/servers/${id}/process/resources`, {
-      params: { limit }
+      params: { limit },
     });
     return response.data;
   },
@@ -398,13 +405,13 @@ export const serverAPI = {
       level?: string;
       limit?: number;
       since?: Date;
-    }
+    },
   ): Promise<{
     logs: Array<{
       serverId: string;
       pid: number;
       timestamp: Date;
-      level: 'stdout' | 'stderr' | 'file';
+      level: "stdout" | "stderr" | "file";
       source: string;
       message: string;
       metadata?: Record<string, any>;
@@ -418,9 +425,9 @@ export const serverAPI = {
         limit: params?.limit || 100,
         startTime: params?.since?.toISOString(),
         // 注意：后端接口不支持 keyword 参数，如需搜索功能可使用 /process/logs/search 接口
-      }
+      },
     });
-    
+
     // 转换后端返回的数据格式以匹配前端期望的格式
     const logs = response.data || [];
     return {
@@ -428,12 +435,12 @@ export const serverAPI = {
         serverId: id,
         pid: log.pid || 0,
         timestamp: new Date(log.timestamp || Date.now()),
-        level: log.level || 'info',
-        source: log.source || 'process',
-        message: log.message || '',
-        metadata: log.metadata || {}
+        level: log.level || "info",
+        source: log.source || "process",
+        message: log.message || "",
+        metadata: log.metadata || {},
       })),
-      total: logs.length
+      total: logs.length,
     };
   },
 
@@ -444,32 +451,34 @@ export const serverAPI = {
       limit?: number;
       startTime?: string;
       endTime?: string;
-    }
-  ): Promise<Array<{
-    id: string;
-    timestamp: Date;
-    level: 'info' | 'warn' | 'error' | 'debug';
-    source: string;
-    message: string;
-    metadata?: Record<string, any>;
-  }>> {
+    },
+  ): Promise<
+    Array<{
+      id: string;
+      timestamp: Date;
+      level: "info" | "warn" | "error" | "debug";
+      source: string;
+      message: string;
+      metadata?: Record<string, any>;
+    }>
+  > {
     const response = await api.get(`/v1/servers/${id}/process/logs/history`, {
       params: {
         limit: params?.limit || 100,
         startTime: params?.startTime,
         endTime: params?.endTime,
-      }
+      },
     });
-    
+
     // 转换后端返回的数据格式
     const logs = response.data || [];
     return logs.map((log: any) => ({
       id: log.id || `${Date.now()}-${Math.random()}`,
       timestamp: new Date(log.timestamp || Date.now()),
-      level: log.level || 'info',
-      source: log.source || 'process',
-      message: log.message || '',
-      metadata: log.metadata || {}
+      level: log.level || "info",
+      source: log.source || "process",
+      message: log.message || "",
+      metadata: log.metadata || {},
     }));
   },
 
