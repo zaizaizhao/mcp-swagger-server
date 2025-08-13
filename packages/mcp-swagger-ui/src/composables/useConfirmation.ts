@@ -66,25 +66,24 @@ export function useConfirmation() {
     message: string,
     options: Partial<ConfirmationOptions> = {},
   ): Promise<boolean> => {
-    console.log('🛑 [FRONTEND DEBUG] confirmDangerousAction called with message:', message);
-    
-    return ElMessageBox.confirm(
+    console.log(
+      "🛑 [FRONTEND DEBUG] confirmDangerousAction called with message:",
       message,
-      options.title || "危险操作确认",
-      {
-        confirmButtonText: options.confirmText || "确定",
-        cancelButtonText: options.cancelText || "取消",
-        type: "warning",
-        center: true,
-        dangerouslyUseHTMLString: false,
-      }
-    )
+    );
+
+    return ElMessageBox.confirm(message, options.title || "危险操作确认", {
+      confirmButtonText: options.confirmText || "确定",
+      cancelButtonText: options.cancelText || "取消",
+      type: "warning",
+      center: true,
+      dangerouslyUseHTMLString: false,
+    })
       .then(() => {
-        console.log('🛑 [FRONTEND DEBUG] User confirmed dangerous action');
+        console.log("🛑 [FRONTEND DEBUG] User confirmed dangerous action");
         return true;
       })
       .catch(() => {
-        console.log('🛑 [FRONTEND DEBUG] User cancelled dangerous action');
+        console.log("🛑 [FRONTEND DEBUG] User cancelled dangerous action");
         return false;
       });
   };

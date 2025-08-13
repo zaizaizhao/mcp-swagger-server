@@ -20,18 +20,18 @@ class WebSocketDebugger {
       event,
       data,
       socketId,
-      connected
+      connected,
     };
-    
+
     this.logs.unshift(debugInfo);
     if (this.logs.length > this.maxLogs) {
       this.logs = this.logs.slice(0, this.maxLogs);
     }
-    
+
     console.log(`[WebSocketDebug] ${debugInfo.timestamp} - ${event}`, {
       data,
       socketId,
-      connected
+      connected,
     });
   }
 
@@ -44,11 +44,14 @@ class WebSocketDebugger {
   }
 
   generateReport(): string {
-    const report = this.logs.map(log => 
-      `${log.timestamp} | ${log.event} | SocketID: ${log.socketId || 'N/A'} | Connected: ${log.connected || 'N/A'}`
-    ).join('\n');
-    
-    return `WebSocket Debug Report\n${'='.repeat(50)}\n${report}`;
+    const report = this.logs
+      .map(
+        (log) =>
+          `${log.timestamp} | ${log.event} | SocketID: ${log.socketId || "N/A"} | Connected: ${log.connected || "N/A"}`,
+      )
+      .join("\n");
+
+    return `WebSocket Debug Report\n${"=".repeat(50)}\n${report}`;
   }
 
   // 分析连接模式
@@ -58,14 +61,18 @@ class WebSocketDebugger {
     averageConnectionDuration: number;
     frequentDisconnectReasons: string[];
   } {
-    const connections = this.logs.filter(log => log.event === 'connect');
-    const disconnections = this.logs.filter(log => log.event === 'disconnect');
-    
+    const connections = this.logs.filter((log) => log.event === "connect");
+    const disconnections = this.logs.filter(
+      (log) => log.event === "disconnect",
+    );
+
     return {
       totalConnections: connections.length,
       totalDisconnections: disconnections.length,
       averageConnectionDuration: 0, // 需要更复杂的计算
-      frequentDisconnectReasons: disconnections.map(d => d.data?.reason || 'unknown')
+      frequentDisconnectReasons: disconnections.map(
+        (d) => d.data?.reason || "unknown",
+      ),
     };
   }
 }
@@ -77,5 +84,5 @@ export const wsDebugger = new WebSocketDebugger();
   logs: () => wsDebugger.getLogs(),
   report: () => console.log(wsDebugger.generateReport()),
   clear: () => wsDebugger.clear(),
-  analyze: () => wsDebugger.analyzeConnectionPattern()
+  analyze: () => wsDebugger.analyzeConnectionPattern(),
 };

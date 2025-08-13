@@ -308,7 +308,14 @@ const systemStatus = ref({
 });
 
 // 计算属性
-const activeRoute = computed(() => route.path);
+const activeRoute = computed(() => {
+  // 如果当前路由有parent属性，则激活parent对应的菜单项
+  if (route.meta?.parent) {
+    return route.meta.parent;
+  }
+  // 否则返回当前路径
+  return route.path;
+});
 const currentRoute = computed(() => route);
 const isDark = computed(() => themeStore.isDark);
 const currentLanguage = computed(() => localeStore.currentLanguage);
