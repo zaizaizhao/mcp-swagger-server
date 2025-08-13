@@ -244,7 +244,7 @@
         <el-table
           :data="filteredServers"
           v-loading="loading"
-          @row-click="goToServerDetail"
+          @row-click="(row: MCPServer) => goToServerDetail(row.id)"
           row-class-name="server-row"
         >
           <el-table-column
@@ -336,36 +336,69 @@
           <el-table-column
             fixed="right"
             :label="t('common.actions')"
-            width="120"
+            width="100"
           >
             <template #default="{ row }">
-              <el-button-group>
-                <el-button
+              <div class="action-buttons-container">
+                <el-tooltip
                   v-if="row.status === 'stopped'"
-                  size="small"
-                  type="success"
-                  @click.stop="startServer(row)"
-                  :icon="VideoPlay"
-                />
-                <el-button
+                  :content="t('servers.startServer')"
+                  placement="top"
+                >
+                  <el-button
+                    class="action-btn start-btn"
+                    size="small"
+                    @click.stop="startServer(row)"
+                    :icon="VideoPlay"
+                  />
+                </el-tooltip>
+                <el-tooltip
                   v-else-if="row.status === 'running'"
-                  size="small"
-                  type="warning"
-                  @click.stop="stopServer(row)"
-                  :icon="VideoPause"
-                />
-                <el-button
-                  size="small"
-                  @click.stop="editServer(row)"
-                  :icon="Edit"
-                />
-                <el-button
-                  size="small"
-                  type="danger"
-                  @click.stop="deleteServer(row)"
-                  :icon="Delete"
-                />
-              </el-button-group>
+                  :content="t('servers.stopServer')"
+                  placement="top"
+                >
+                  <el-button
+                    class="action-btn stop-btn"
+                    size="small"
+                    @click.stop="stopServer(row)"
+                    :icon="VideoPause"
+                  />
+                </el-tooltip>
+                <el-tooltip
+                  v-if="row.status === 'running'"
+                  :content="t('servers.restartServer')"
+                  placement="top"
+                >
+                  <el-button
+                    class="action-btn restart-btn"
+                    size="small"
+                    @click.stop="restartServer(row)"
+                    :icon="RefreshRight"
+                  />
+                </el-tooltip>
+                <el-tooltip
+                  :content="t('servers.editServer')"
+                  placement="top"
+                >
+                  <el-button
+                    class="action-btn edit-btn"
+                    size="small"
+                    @click.stop="editServer(row)"
+                    :icon="Edit"
+                  />
+                </el-tooltip>
+                <el-tooltip
+                  :content="t('servers.deleteServer')"
+                  placement="top"
+                >
+                  <el-button
+                    class="action-btn delete-btn"
+                    size="small"
+                    @click.stop="deleteServer(row)"
+                    :icon="Delete"
+                  />
+                </el-tooltip>
+              </div>
             </template>
           </el-table-column>
         </el-table>
@@ -542,12 +575,39 @@ const getStatusText = (status: ServerStatus) => {
 const formatUptime = (uptime: number, server?: any) => {
   // 如果有startedAt字段，基于它实时计算运行时间
   if (server?.metrics?.startedAt) {
-    const startTime = new Date(server.metrics.startedAt);
-    const now = new Date();
-    const uptimeMs = now.getTime() - startTime.getTime();
-    const hours = Math.floor(uptimeMs / 3600000);
-    const minutes = Math.floor((uptimeMs % 3600000) / 60000);
-    return `${hours}h ${minutes}m`;
+    try {
+      const startTime = new Date(server.metrics.startedAt);
+      
+      // 检查日期是否有效
+      if (isNaN(startTime.getTime())) {
+        console.warn('Invalid startedAt value:', server.metrics.startedAt);
+        // 回退到使用uptime参数
+        const hours = Math.floor(uptime / 3600000);
+        const minutes = Math.floor((uptime % 3600000) / 60000);
+        return `${hours}h ${minutes}m`;
+      }
+      
+      const now = new Date();
+      const uptimeMs = now.getTime() - startTime.getTime();
+      
+      // 确保计算结果为正数
+      if (uptimeMs < 0) {
+        console.warn('Negative uptime calculated, using fallback');
+        const hours = Math.floor(uptime / 3600000);
+        const minutes = Math.floor((uptime % 3600000) / 60000);
+        return `${hours}h ${minutes}m`;
+      }
+      
+      const hours = Math.floor(uptimeMs / 3600000);
+      const minutes = Math.floor((uptimeMs % 3600000) / 60000);
+      return `${hours}h ${minutes}m`;
+    } catch (error) {
+      console.error('Error formatting uptime with startedAt:', error);
+      // 回退到使用uptime参数
+      const hours = Math.floor(uptime / 3600000);
+      const minutes = Math.floor((uptime % 3600000) / 60000);
+      return `${hours}h ${minutes}m`;
+    }
   }
 
   // 兼容旧的uptime字段（毫秒）
@@ -556,14 +616,35 @@ const formatUptime = (uptime: number, server?: any) => {
   return `${hours}h ${minutes}m`;
 };
 
-const formatDateTime = (date: Date) => {
-  return new Intl.DateTimeFormat("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
+const formatDateTime = (date: Date | string | number) => {
+  let validDate: Date;
+  
+  // 处理不同类型的输入
+  if (date instanceof Date) {
+    validDate = date;
+  } else if (typeof date === 'string' || typeof date === 'number') {
+    validDate = new Date(date);
+  } else {
+    return "N/A";
+  }
+  
+  // 检查日期是否有效
+  if (isNaN(validDate.getTime())) {
+    return "N/A";
+  }
+  
+  try {
+    return new Intl.DateTimeFormat("zh-CN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(validDate);
+  } catch (error) {
+    console.warn('formatDateTime error:', error);
+    return "N/A";
+  }
 };
 
 const getErrorRateColor = (errorRate: number) => {
@@ -853,7 +934,7 @@ const handleServerMetricsUpdate = (data: any) => {
 }
 
 .status-filter {
-  width: 120px;
+  width: 160px;
 }
 
 .view-toggle {
@@ -1076,6 +1157,323 @@ const handleServerMetricsUpdate = (data: any) => {
 
 .danger-action {
   color: var(--el-color-danger) !important;
+}
+
+/* 操作按钮样式 */
+.action-buttons-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+  align-items: center;
+  min-height: 140px;
+  padding: 8px 4px;
+}
+
+/* 重置Element Plus按钮默认间距 */
+.action-buttons-container .el-button {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.action-buttons-container .el-button + .el-button {
+  margin-left: 0 !important;
+}
+
+.action-btn {
+  position: relative;
+  border-radius: 8px !important;
+  border: none !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  min-width: 32px;
+  height: 32px;
+}
+
+.action-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.2) 50%, transparent 70%);
+  transform: translateX(-100%);
+  transition: transform 0.6s;
+}
+
+.action-btn:hover::before {
+  transform: translateX(100%);
+}
+
+.action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.action-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 启动按钮 */
+.start-btn {
+  background: linear-gradient(135deg, #52c41a 0%, #73d13d 100%) !important;
+  color: white !important;
+  border: 1px solid rgba(82, 196, 26, 0.3) !important;
+}
+
+.start-btn:hover {
+  background: linear-gradient(135deg, #73d13d 0%, #95de64 100%) !important;
+  box-shadow: 0 4px 16px rgba(82, 196, 26, 0.5);
+  border-color: rgba(82, 196, 26, 0.6) !important;
+}
+
+/* 停止按钮 */
+.stop-btn {
+  background: linear-gradient(135deg, #fa8c16 0%, #ffa940 100%) !important;
+  color: white !important;
+  border: 1px solid rgba(250, 140, 22, 0.3) !important;
+}
+
+.stop-btn:hover {
+  background: linear-gradient(135deg, #ffa940 0%, #ffc069 100%) !important;
+  box-shadow: 0 4px 16px rgba(250, 140, 22, 0.5);
+  border-color: rgba(250, 140, 22, 0.6) !important;
+}
+
+/* 重启按钮 */
+.restart-btn {
+  background: linear-gradient(135deg, #722ed1 0%, #9254de 100%) !important;
+  color: white !important;
+  border: 1px solid rgba(114, 46, 209, 0.3) !important;
+}
+
+.restart-btn:hover {
+  background: linear-gradient(135deg, #9254de 0%, #b37feb 100%) !important;
+  box-shadow: 0 4px 16px rgba(114, 46, 209, 0.5);
+  border-color: rgba(114, 46, 209, 0.6) !important;
+}
+
+/* 编辑按钮 */
+.edit-btn {
+  background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%) !important;
+  color: white !important;
+  border: 1px solid rgba(24, 144, 255, 0.3) !important;
+}
+
+.edit-btn:hover {
+  background: linear-gradient(135deg, #40a9ff 0%, #69c0ff 100%) !important;
+  box-shadow: 0 4px 16px rgba(24, 144, 255, 0.5);
+  border-color: rgba(24, 144, 255, 0.6) !important;
+}
+
+/* 删除按钮 */
+.delete-btn {
+  background: linear-gradient(135deg, #ff4d4f 0%, #ff7875 100%) !important;
+  color: white !important;
+  border: 1px solid rgba(255, 77, 79, 0.3) !important;
+}
+
+.delete-btn:hover {
+  background: linear-gradient(135deg, #ff7875 0%, #ffa39e 100%) !important;
+  box-shadow: 0 4px 16px rgba(255, 77, 79, 0.5);
+  border-color: rgba(255, 77, 79, 0.6) !important;
+}
+
+/* 按钮禁用状态 */
+.action-btn:disabled {
+  background: linear-gradient(135deg, #c0c4cc 0%, #d3d4d6 100%) !important;
+  color: #a8abb2 !important;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+.action-btn:disabled::before {
+  display: none;
+}
+
+/* 网格视图下拉菜单按钮样式 */
+.dropdown-trigger-btn {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.dropdown-trigger-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.3) 50%, transparent 70%);
+  transform: translateX(-100%);
+  transition: transform 0.6s;
+}
+
+.dropdown-trigger-btn:hover::before {
+  transform: translateX(100%);
+}
+
+.dropdown-trigger-btn:hover {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  transform: scale(1.1) rotate(90deg);
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+}
+
+.dropdown-trigger-btn:active {
+  transform: scale(1.05) rotate(90deg);
+}
+
+/* 下拉菜单项样式优化 */
+:deep(.el-dropdown-menu) {
+  border-radius: 12px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  padding: 8px !important;
+}
+
+:deep(.el-dropdown-menu__item) {
+  border-radius: 8px !important;
+  margin: 2px 0 !important;
+  padding: 10px 16px !important;
+  transition: all 0.2s ease !important;
+  font-weight: 500 !important;
+}
+
+:deep(.el-dropdown-menu__item:hover) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  transform: translateX(4px);
+}
+
+:deep(.el-dropdown-menu__item.danger-action) {
+  color: #f56c6c !important;
+}
+
+:deep(.el-dropdown-menu__item.danger-action:hover) {
+  background: linear-gradient(135deg, #f56c6c 0%, #f89898 100%) !important;
+  color: white !important;
+}
+
+/* 按钮脉冲动画 */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(64, 158, 255, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(64, 158, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(64, 158, 255, 0);
+  }
+}
+
+@keyframes success-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(103, 194, 58, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(103, 194, 58, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(103, 194, 58, 0);
+  }
+}
+
+@keyframes danger-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(245, 108, 108, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(245, 108, 108, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 108, 108, 0);
+  }
+}
+
+@keyframes restart-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(114, 46, 209, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(114, 46, 209, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(114, 46, 209, 0);
+  }
+}
+
+/* 按钮点击时的脉冲效果 */
+.action-btn:active {
+  animation: pulse 0.6s;
+}
+
+.start-btn:active {
+  animation: success-pulse 0.6s;
+}
+
+.delete-btn:active {
+  animation: danger-pulse 0.6s;
+}
+
+.restart-btn:active {
+  animation: restart-pulse 0.6s;
+}
+
+/* 按钮加载状态 */
+.action-btn.is-loading {
+  position: relative;
+}
+
+.action-btn.is-loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 按钮组整体动画 */
+.action-buttons-container {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* 响应式设计 */
