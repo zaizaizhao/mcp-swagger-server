@@ -1189,15 +1189,36 @@ const fetchServerDetail = async () => {
 };
 
 // 格式化方法
-const formatDateTime = (date: Date) => {
-  return date.toLocaleString("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
+const formatDateTime = (date: Date | string | number) => {
+  let validDate: Date;
+  
+  // 处理不同类型的输入
+  if (date instanceof Date) {
+    validDate = date;
+  } else if (typeof date === 'string' || typeof date === 'number') {
+    validDate = new Date(date);
+  } else {
+    return "N/A";
+  }
+  
+  // 检查日期是否有效
+  if (isNaN(validDate.getTime())) {
+    return "N/A";
+  }
+  
+  try {
+    return validDate.toLocaleString("zh-CN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  } catch (error) {
+    console.warn('formatDateTime error:', error);
+    return "N/A";
+  }
 };
 
 const formatDuration = (duration: number) => {
@@ -1400,12 +1421,39 @@ const getStatusText = (status: ServerStatus) => {
 const formatUptime = (uptime: number) => {
   // 如果有startedAt字段，基于它实时计算运行时间
   if (serverInfo.value?.metrics?.startedAt) {
-    const startTime = new Date(serverInfo.value.metrics.startedAt);
-    const now = new Date();
-    const uptimeMs = now.getTime() - startTime.getTime();
-    const hours = Math.floor(uptimeMs / 3600000);
-    const minutes = Math.floor((uptimeMs % 3600000) / 60000);
-    return `${hours}h ${minutes}m`;
+    try {
+      const startTime = new Date(serverInfo.value.metrics.startedAt);
+      
+      // 检查日期是否有效
+      if (isNaN(startTime.getTime())) {
+        console.warn('Invalid startedAt value:', serverInfo.value.metrics.startedAt);
+        // 回退到使用uptime参数
+        const hours = Math.floor(uptime / 3600000);
+        const minutes = Math.floor((uptime % 3600000) / 60000);
+        return `${hours}h ${minutes}m`;
+      }
+      
+      const now = new Date();
+      const uptimeMs = now.getTime() - startTime.getTime();
+      
+      // 确保计算结果为正数
+      if (uptimeMs < 0) {
+        console.warn('Negative uptime calculated, using fallback');
+        const hours = Math.floor(uptime / 3600000);
+        const minutes = Math.floor((uptime % 3600000) / 60000);
+        return `${hours}h ${minutes}m`;
+      }
+      
+      const hours = Math.floor(uptimeMs / 3600000);
+      const minutes = Math.floor((uptimeMs % 3600000) / 60000);
+      return `${hours}h ${minutes}m`;
+    } catch (error) {
+      console.error('Error formatting uptime with startedAt:', error);
+      // 回退到使用uptime参数
+      const hours = Math.floor(uptime / 3600000);
+      const minutes = Math.floor((uptime % 3600000) / 60000);
+      return `${hours}h ${minutes}m`;
+    }
   }
 
   // 兼容旧的uptime字段（毫秒）

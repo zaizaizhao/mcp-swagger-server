@@ -75,6 +75,8 @@ export default {
     noTags: "暂无标签",
     noDescription: "暂无描述",
     createdAt: "创建时间",
+    total: "总计",
+    actions: "操作",
   },
 
   // 导航菜单
@@ -198,6 +200,7 @@ export default {
     parameterCount: "参数数量",
     usageCount: "使用次数",
     lastUsed: "最后使用",
+    lastUpdated: "最后更新",
     actions: "操作",
     test: "测试",
     noToolsOrNoResults: "暂无工具或搜索无结果",
@@ -325,6 +328,7 @@ export default {
     createServerFailed: "创建服务器失败",
     // 新增的key
     searchPlaceholder: "搜索服务器...",
+    statusFilter: "筛选状态",
     editConfig: "编辑配置",
     toolCount: "工具数量",
     autoStart: "自动启动",

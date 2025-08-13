@@ -83,10 +83,13 @@ export default {
     hoursAndMinutes: "{hours} hours {minutes} minutes",
     description: "Description",
     updatedAt: "Last Updated",
+    lastUpdated: "Last Updated",
     tags: "Tags",
     noTags: "No tags",
     noDescription: "No description",
     createdAt: "Created At",
+    total: "Total",
+    actions: "Actions",
   },
 
   // Navigation menu
@@ -340,6 +343,7 @@ export default {
     createServerFailed: "Failed to create server",
     // New keys
     searchPlaceholder: "Search servers...",
+    statusFilter: "Filter by status",
     editConfig: "Edit Config",
     toolCount: "Tool Count",
     autoStart: "Auto Start",
