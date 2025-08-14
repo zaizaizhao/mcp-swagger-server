@@ -246,93 +246,16 @@
           <el-tab-pane :label="t('servers.toolManagement')" name="tools">
             <div class="tools-content">
               <div class="tools-header">
-                <el-input
-                  v-model="toolSearchQuery"
-                  :placeholder="t('servers.searchTools')"
-                  :prefix-icon="Search"
-                  style="width: 300px"
-                  clearable
-                />
-                <el-button :icon="Refresh" @click="refreshTools">{{
+                <el-button :icon="Refresh" @click="refreshTools">{{ 
                   t("common.refresh")
                 }}</el-button>
               </div>
 
-              <el-table
-                :data="filteredTools"
-                class="tools-table"
-                @row-click="showToolDetail"
-                style="cursor: pointer"
-              >
-                <el-table-column
-                  prop="name"
-                  :label="t('servers.toolName')"
-                  width="200"
-                >
-                  <template #default="{ row }">
-                    <div class="tool-name-cell">
-                      <el-icon><Cpu /></el-icon>
-                      <span class="tool-name">{{ row.name }}</span>
-                    </div>
-                  </template>
-                </el-table-column>
-                <el-table-column
-                  prop="description"
-                  :label="t('common.description')"
-                  show-overflow-tooltip
-                />
-                <el-table-column
-                  :label="t('servers.parameterCount')"
-                  width="100"
-                  align="center"
-                >
-                  <template #default="{ row }">
-                    {{ getParameterCount(row.parameters) }}
-                  </template>
-                </el-table-column>
-                <el-table-column
-                  :label="t('servers.usageCount')"
-                  width="100"
-                  align="center"
-                >
-                  <template #default="{ row }">
-                    {{ row.usageCount || 0 }}
-                  </template>
-                </el-table-column>
-                <el-table-column
-                  :label="t('servers.lastUsed')"
-                  width="150"
-                  align="center"
-                >
-                  <template #default="{ row }">
-                    {{
-                      row.lastUsed
-                        ? formatDateTime(new Date(row.lastUsed))
-                        : "N/A"
-                    }}
-                  </template>
-                </el-table-column>
-                <el-table-column
-                  :label="t('common.actions')"
-                  width="120"
-                  align="center"
-                >
-                  <template #default="{ row }">
-                    <el-button
-                      size="small"
-                      type="primary"
-                      @click.stop="testTool(row)"
-                    >
-                      {{ t("servers.test") }}
-                    </el-button>
-                  </template>
-                </el-table-column>
-              </el-table>
-
-              <el-empty
-                v-if="filteredTools.length === 0"
-                :description="t('servers.noToolsFound')"
-                :image-size="100"
+              <MCPToolPreview
+                :tools="serverInfo?.tools || []"
+                :server-url="getServerUrl()"
+                @test-tool="testTool"
+                @show-tool-detail="showToolDetail"
               />
             </div>
           </el-tab-pane>
@@ -923,8 +846,10 @@ import type { MCPServer, MCPTool, LogEntry, ServerStatus } from "@/types";
 import { useServerStore } from "@/stores/server";
 import { useWebSocketStore } from "@/stores/websocket";
 import { serverAPI } from "@/services/api";
+import { mcpApiService } from "@/services/mcpApi";
 import ServerFormDialog from "./components/ServerFormDialog.vue";
 import ToolDetailDialog from "@/modules/testing/components/ToolDetailDialog.vue";
+import MCPToolPreview from "@/modules/openapi/components/openapi/MCPToolPreview.vue";
 
 // 路由和状态
 const route = useRoute();
@@ -941,7 +866,7 @@ const chartLoading = ref(false);
 const showEditDialog = ref(false);
 const showToolDialog = ref(false);
 const showDeleteConfirm = ref(false);
-const toolSearchQuery = ref("");
+
 const logLevel = ref("all");
 const logSearchQuery = ref("");
 const logDateRange = ref<[string, string] | null>(null);
@@ -1008,17 +933,7 @@ const customHeadersArray = computed(() => {
   );
 });
 
-const filteredTools = computed(() => {
-  if (!serverInfo.value?.tools) return [];
-  if (!toolSearchQuery.value) return serverInfo.value.tools;
 
-  const query = toolSearchQuery.value.toLowerCase();
-  return serverInfo.value.tools.filter(
-    (tool) =>
-      tool.name.toLowerCase().includes(query) ||
-      tool.description.toLowerCase().includes(query),
-  );
-});
 
 const filteredLogs = computed(() => {
   let filtered = logs.value;
@@ -1234,9 +1149,23 @@ const formatDuration = (duration: number) => {
 // 工具管理方法
 const refreshTools = async () => {
   try {
+    // 获取服务器详情
     await serverStore.fetchServerDetails(serverId.value);
+    
+    // 获取服务器工具列表
+    const toolsResponse = await mcpApiService.getServerTools(serverId.value);
+    if (toolsResponse.success && toolsResponse.data) {
+      // 更新服务器信息中的工具列表
+      if (serverInfo.value) {
+        serverInfo.value.tools = toolsResponse.data;
+      }
+    } else {
+      console.warn('Failed to fetch server tools:', toolsResponse.error);
+    }
+    
     ElMessage.success(t("servers.toolsRefreshed"));
   } catch (error) {
+    console.error('Error refreshing tools:', error);
     ElMessage.error(t("servers.refreshToolsFailed"));
   }
 };
@@ -1491,6 +1420,12 @@ const formatLogTime = (timestamp: string | number | Date) => {
 
 const getParameterCount = (parameters: any) => {
   return parameters?.properties ? Object.keys(parameters.properties).length : 0;
+};
+
+const getServerUrl = () => {
+  if (!serverInfo.value) return "";
+  const port = serverInfo.value.port || 3000;
+  return `http://localhost:${port}`;
 };
 
 const getLogLevelType = (level: string) => {
@@ -2419,22 +2354,8 @@ const MAX_PROCESS_LOGS = 500;
 
 .tools-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
-}
-
-.tools-table {
-  margin-top: 16px;
-}
-
-.tool-name-cell {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.tool-name {
-  font-weight: 500;
 }
 
 /* 连接管理样式 */

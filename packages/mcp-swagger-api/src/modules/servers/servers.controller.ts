@@ -23,6 +23,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { ServerManagerService } from './services/server-manager.service';
+import { OpenAPIService } from '../openapi/services/openapi.service';
 import { ServerHealthService } from './services/server-health.service';
 import { ServerMetricsService } from './services/server-metrics.service';
 import { ProcessManagerService } from './services/process-manager.service';
@@ -62,6 +63,7 @@ export class ServersController {
     private readonly processResourceMonitor: ProcessResourceMonitorService,
     private readonly processLogMonitor: ProcessLogMonitorService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly openApiService: OpenAPIService,
   ) {}
 
   /**
@@ -140,6 +142,109 @@ export class ServersController {
       
       throw new HttpException(
         `Failed to get server: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 获取服务器工具列表
+   */
+  @Get(':id/tools')
+  @ApiOperation({ summary: '获取服务器工具列表', description: '获取指定MCP服务器的工具列表' })
+  @ApiParam({ name: 'id', description: '服务器ID' })
+  @ApiResponse({ status: 200, description: '获取成功', schema: { type: 'array', items: { type: 'object' } } })
+  @ApiResponse({ status: 404, description: '服务器不存在' })
+  async getServerTools(@Param('id') id: string) {
+    try {
+      // 首先检查服务器是否存在
+      const server = await this.serverManager.getServerById(id);
+      
+      // 方案二：优先使用OpenAPI解析方式获取工具
+      try {
+        // 尝试从服务器的OpenAPI文档中解析工具
+        const openApiData = await this.openApiService.getOpenApiByServerId(id);
+        
+        if (openApiData) {
+          // 使用OpenAPI解析服务解析工具
+          const parseResult = await this.openApiService.parseOpenAPI({
+            source: {
+              type: 'content' as any,
+              content: JSON.stringify(openApiData)
+            },
+            options: {
+              includeDeprecated: false,
+              requestTimeout: 30000
+            }
+          });
+          
+          return {
+            success: true,
+            data: parseResult.tools || [],
+            message: 'Tools retrieved successfully from OpenAPI document'
+          };
+        }
+      } catch (openApiError) {
+        this.logger.warn(`Failed to get tools from OpenAPI document: ${openApiError.message}`);
+        // 继续执行原有逻辑作为回退方案
+      }
+      
+      // 回退方案：使用原有的MCP服务器实例获取方式
+      // 如果服务器不在运行状态，返回空工具列表
+      if (server.status !== 'running') {
+        return {
+          success: true,
+          data: [],
+          message: `Server is not running (status: ${server.status}) and no OpenAPI document available`
+        };
+      }
+      
+      // 从ServerManagerService获取服务器实例
+      const serverInstance = this.serverManager.getServerInstance(id);
+      
+      if (!serverInstance) {
+        return {
+          success: true,
+          data: [],
+          message: 'Server instance not found in running instances and no OpenAPI document available'
+        };
+      }
+      
+      // 如果服务器实例有MCP服务器，获取真实的工具列表
+      if (serverInstance.mcpServer && typeof serverInstance.mcpServer.getTools === 'function') {
+        try {
+          const tools = serverInstance.mcpServer.getTools();
+          return {
+            success: true,
+            data: tools || [],
+            message: 'Tools retrieved successfully from MCP server instance'
+          };
+        } catch (mcpError) {
+          this.logger.warn(`Failed to get tools from MCP server instance: ${mcpError.message}`);
+          // 如果MCP服务器获取工具失败，返回空列表而不是错误
+          return {
+            success: true,
+            data: [],
+            message: 'MCP server tools unavailable'
+          };
+        }
+      }
+      
+      // 如果没有MCP服务器实例或getTools方法，返回空工具列表
+      return {
+        success: true,
+        data: [],
+        message: 'No MCP server instance available for tools retrieval and no OpenAPI document available'
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get server tools ${id}: ${error.message}`, error.stack);
+      
+      if (error.message.includes('not found')) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+      
+      throw new HttpException(
+        `Failed to get server tools: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }

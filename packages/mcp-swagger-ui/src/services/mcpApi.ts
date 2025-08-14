@@ -13,7 +13,7 @@ class MCPApiService {
 
   constructor() {
     this.api = axios.create({
-      baseURL: "/api/mcp",
+      baseURL: "/api/v1",
       timeout: 30000,
       headers: {
         "Content-Type": "application/json",
