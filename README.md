@@ -6,6 +6,8 @@
 [![Node.js](https://img.shields.io/badge/Node.js-16+-green.svg)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
+[![Trust Score](https://archestra.ai/mcp-catalog/api/badge/quality/zaizaizhao/mcp-swagger-server)](https://archestra.ai/mcp-catalog/zaizaizhao__mcp-swagger-server)
+
 **将 OpenAPI/Swagger 规范转换为 Model Context Protocol (MCP) 格式的服务器**
 
 零配置将您的 REST API 转换为 AI 可调用的工具
