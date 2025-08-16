@@ -1168,4 +1168,94 @@ export class ServersController {
     }
   }
 
+  /**
+   * 获取MCP连接统计
+   */
+  @Get(':id/mcp/connections/stats')
+  @ApiOperation({ summary: '获取MCP连接统计', description: '获取指定服务器的MCP连接统计信息' })
+  @ApiParam({ name: 'id', description: '服务器ID' })
+  @ApiResponse({ status: 200, description: '获取成功' })
+  @ApiResponse({ status: 404, description: '服务器不存在' })
+  async getMCPConnectionStats(@Param('id') id: string) {
+    try {
+      // 检查服务器是否存在
+      const server = await this.serverManager.getServerById(id);
+      
+      // 通过事件发射器请求MCP连接统计
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Request timeout'));
+        }, 5000);
+
+        // 监听响应事件
+        this.eventEmitter.once(`mcp.connection.stats.response.${id}`, (stats) => {
+          clearTimeout(timeout);
+          resolve({
+            success: true,
+            data: stats,
+            serverId: id
+          });
+        });
+
+        // 发送请求事件
+        this.eventEmitter.emit('mcp.connection.stats.request', { serverId: id });
+      });
+    } catch (error) {
+      this.logger.error(`Failed to get MCP connection stats for server ${id}: ${error.message}`, error.stack);
+      
+      if (error.message.includes('not found')) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+      
+      if (error.message.includes('timeout')) {
+        throw new HttpException('Request timeout', HttpStatus.REQUEST_TIMEOUT);
+      }
+      
+      throw new HttpException(
+        `Failed to get MCP connection stats: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 获取所有服务器的MCP连接统计
+   */
+  @Get('mcp/connections/stats')
+  @ApiOperation({ summary: '获取所有MCP连接统计', description: '获取所有服务器的MCP连接统计信息' })
+  @ApiResponse({ status: 200, description: '获取成功' })
+  async getAllMCPConnectionStats() {
+    try {
+      // 通过事件发射器请求所有MCP连接统计
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Request timeout'));
+        }, 5000);
+
+        // 监听响应事件
+        this.eventEmitter.once('mcp.connection.stats.response.all', (allStats) => {
+          clearTimeout(timeout);
+          resolve({
+            success: true,
+            data: allStats
+          });
+        });
+
+        // 发送请求事件
+        this.eventEmitter.emit('mcp.connection.stats.request.all');
+      });
+    } catch (error) {
+      this.logger.error(`Failed to get all MCP connection stats: ${error.message}`, error.stack);
+      
+      if (error.message.includes('timeout')) {
+        throw new HttpException('Request timeout', HttpStatus.REQUEST_TIMEOUT);
+      }
+      
+      throw new HttpException(
+        `Failed to get all MCP connection stats: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
 }

@@ -21,6 +21,29 @@ import {
 import { ProcessResourceMonitorService, ProcessResourceMetrics, SystemResourceInfo } from './process-resource-monitor.service';
 import { ProcessLogMonitorService, ProcessLogEntry } from './process-log-monitor.service';
 
+// MCP连接监控相关接口
+interface MCPConnectionEvent {
+  type: 'connection' | 'disconnection' | 'stats';
+  connectionId?: string;
+  clientInfo?: {
+    userAgent?: string;
+    remoteAddress?: string;
+  };
+  stats?: {
+    totalConnections: number;
+    activeConnections: number;
+    totalRequests: number;
+  };
+  timestamp: string;
+}
+
+interface MCPConnectionStats {
+  totalConnections: number;
+  activeConnections: number;
+  totalRequests: number;
+  lastUpdated: Date;
+}
+
 @Injectable()
 export class ProcessManagerService implements OnModuleDestroy {
   private readonly logger = new Logger(ProcessManagerService.name);
@@ -28,6 +51,9 @@ export class ProcessManagerService implements OnModuleDestroy {
   private readonly processInfo = new Map<string, ProcessInfo>();
   private readonly config: ProcessManagerConfig;
   private readonly execAsync = promisify(exec);
+  
+  // MCP连接统计缓存
+  private readonly mcpConnectionStats = new Map<string, MCPConnectionStats>();
 
   constructor(
     @InjectRepository(ProcessInfoEntity)
@@ -440,6 +466,9 @@ export class ProcessManagerService implements OnModuleDestroy {
       childProcess.stdout.on('data', async (data: Buffer) => {
         const message = data.toString().trim();
         if (message) {
+          // 尝试解析MCP连接事件
+          await this.handleProcessOutput(serverId, message);
+          
           // 添加到日志监控器
           const logEntry: ProcessLogEntry = {
             serverId,
@@ -761,4 +790,159 @@ export class ProcessManagerService implements OnModuleDestroy {
        }
      });
    }
+
+  /**
+   * 处理进程输出，解析MCP连接事件
+   */
+  private async handleProcessOutput(serverId: string, message: string): Promise<void> {
+    try {
+      // 检查是否为MCP连接事件消息（带有[MCP_CONNECTION]前缀）
+      if (message.includes('[MCP_CONNECTION]')) {
+        // 提取JSON部分
+        const jsonStart = message.indexOf('{');
+        if (jsonStart !== -1) {
+          const jsonStr = message.substring(jsonStart);
+          const mcpEvent = JSON.parse(jsonStr);
+          
+          // 验证是否为MCP_CONNECTION_EVENT类型
+          if (mcpEvent.type === 'MCP_CONNECTION_EVENT') {
+            // 转换事件格式以匹配API端期望的格式
+            const convertedEvent: MCPConnectionEvent = {
+              type: this.convertEventType(mcpEvent.eventType),
+              connectionId: mcpEvent.clientInfo?.sessionId,
+              clientInfo: {
+                userAgent: mcpEvent.clientInfo?.userAgent,
+                remoteAddress: mcpEvent.clientInfo?.remoteAddress
+              },
+              stats: mcpEvent.connectionStats ? {
+                totalConnections: mcpEvent.connectionStats.totalConnections,
+                activeConnections: mcpEvent.connectionStats.activeConnections,
+                totalRequests: 0 // MCP事件中没有这个字段，设为0
+              } : undefined,
+              timestamp: mcpEvent.timestamp
+            };
+            
+            this.logger.debug(`Parsed MCP connection event for ${serverId}:`, convertedEvent);
+            await this.handleMCPConnectionEvent(serverId, convertedEvent);
+          }
+        }
+      }
+      // 保留原有的JSON解析逻辑作为备用
+      else if (message.startsWith('{') && message.endsWith('}')) {
+        const event = JSON.parse(message) as MCPConnectionEvent;
+        
+        // 验证是否为MCP连接事件
+        if (event.type && ['connection', 'disconnection', 'stats'].includes(event.type)) {
+          await this.handleMCPConnectionEvent(serverId, event);
+        }
+      }
+    } catch (error) {
+      // 忽略JSON解析错误，这些可能是普通的日志消息
+      this.logger.debug(`Failed to parse MCP event from message: ${message}`, error);
+    }
+  }
+
+  /**
+   * 转换MCP事件类型
+   */
+  private convertEventType(eventType: string): 'connection' | 'disconnection' | 'stats' {
+    switch (eventType) {
+      case 'connected':
+        return 'connection';
+      case 'disconnected':
+        return 'disconnection';
+      case 'stats_update':
+        return 'stats';
+      default:
+        return 'stats';
+    }
+  }
+
+  /**
+   * 处理MCP连接事件
+   */
+  private async handleMCPConnectionEvent(serverId: string, event: MCPConnectionEvent): Promise<void> {
+    this.logger.debug(`Received MCP connection event for ${serverId}:`, event);
+    
+    // 更新连接统计
+    if (event.stats) {
+      this.updateMCPConnectionStats(serverId, event.stats);
+    }
+    
+    // 获取进程信息以获取pid
+    const processInfo = this.getProcessInfo(serverId);
+    const pid = processInfo?.pid || 0; // 如果进程不存在，使用0作为默认值
+
+    // 构建扩展的日志条目
+    const extendedLogEntry = {
+      serverId,
+      pid,
+      timestamp: new Date(),
+      level: 'stdout' as const,
+      source: 'mcp-connection' as const,
+      message: this.formatMCPEventMessage(event),
+      metadata: {
+        mcpEvent: event,
+        eventType: 'mcp_connection'
+      }
+    };
+    
+    // 添加到日志监控器
+    this.logMonitor.addLogEntry(serverId, extendedLogEntry);
+    
+    // 发射MCP连接变化事件
+    this.eventEmitter.emit('mcp.connection.changed', {
+      serverId,
+      event,
+      stats: this.getMCPConnectionStats(serverId),
+      timestamp: new Date()
+    });
+    
+    // 发射扩展的进程日志事件
+    this.eventEmitter.emit('process.logs.updated', {
+      serverId,
+      logData: extendedLogEntry,
+      timestamp: new Date()
+    });
+  }
+
+  /**
+   * 更新MCP连接统计
+   */
+  private updateMCPConnectionStats(serverId: string, stats: { totalConnections: number; activeConnections: number; totalRequests: number }): void {
+    this.mcpConnectionStats.set(serverId, {
+      ...stats,
+      lastUpdated: new Date()
+    });
+  }
+
+  /**
+   * 获取MCP连接统计
+   */
+  getMCPConnectionStats(serverId: string): MCPConnectionStats | null {
+    return this.mcpConnectionStats.get(serverId) || null;
+  }
+
+  /**
+   * 获取所有服务器的MCP连接统计
+   */
+  getAllMCPConnectionStats(): Map<string, MCPConnectionStats> {
+    return new Map(this.mcpConnectionStats);
+  }
+
+  /**
+   * 格式化MCP事件消息
+   */
+  private formatMCPEventMessage(event: MCPConnectionEvent): string {
+    switch (event.type) {
+      case 'connection':
+        return `MCP client connected: ${event.connectionId || 'unknown'}`;
+      case 'disconnection':
+        return `MCP client disconnected: ${event.connectionId || 'unknown'}`;
+      case 'stats':
+        return `MCP connection stats updated: ${event.stats?.activeConnections || 0} active, ${event.stats?.totalConnections || 0} total`;
+      default:
+        return `MCP event: ${event.type}`;
+    }
+  }
 }

@@ -42,8 +42,8 @@ importers:
   packages/mcp-swagger-api:
     dependencies:
       '@modelcontextprotocol/sdk':
-        specifier: ^1.12.0
-        version: 1.13.0
+        specifier: 1.17.3
+        version: 1.17.3
       '@nestjs/axios':
         specifier: ^3.0.0
         version: 3.1.3(@nestjs/common@10.4.19(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.1.14)(rxjs@7.8.2))(axios@1.10.0)(rxjs@7.8.2)
@@ -305,8 +305,8 @@ importers:
   packages/mcp-swagger-server:
     dependencies:
       '@modelcontextprotocol/sdk':
-        specifier: ^1.12.0
-        version: 1.13.0
+        specifier: 1.17.3
+        version: 1.17.3
       axios:
         specifier: ^1.9.0
         version: 1.10.0
@@ -1088,8 +1088,8 @@ packages:
     resolution: {integrity: sha512-yiu4LmtYF4xG4rPyRzGROZU+9AvM/nt9YzCr1FmOBGK3vzxbRca/O3eoPQPshtNmVaUd9q/nCgbyKHZSuGy8Ww==}
     hasBin: true
 
-  '@modelcontextprotocol/sdk@1.13.0':
-    resolution: {integrity: sha512-P5FZsXU0kY881F6Hbk9GhsYx02/KgWK1DYf7/tyE/1lcFKhDYPQR9iYjhQXJn+Sg6hQleMo3DB7h7+p4wgp2Lw==}
+  '@modelcontextprotocol/sdk@1.17.3':
+    resolution: {integrity: sha512-JPwUKWSsbzx+DLFznf/QZ32Qa+ptfbUlHhRLrBQBAFu9iI1iYvizM4p+zhhRDceSsPutXp4z+R/HPVphlIiclg==}
     engines: {node: '>=18'}
 
   '@nestjs/axios@3.1.3':
@@ -6372,7 +6372,7 @@ snapshots:
 
   '@modelcontextprotocol/inspector-cli@0.13.0':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.13.0
+      '@modelcontextprotocol/sdk': 1.17.3
       commander: 13.1.0
       spawn-rx: 5.1.2
     transitivePeerDependencies:
@@ -6380,7 +6380,7 @@ snapshots:
 
   '@modelcontextprotocol/inspector-client@0.13.0':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.13.0
+      '@modelcontextprotocol/sdk': 1.17.3
       '@radix-ui/react-checkbox': 1.3.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-dialog': 1.1.14(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-icons': 1.3.2(react@18.3.1)
@@ -6412,7 +6412,7 @@ snapshots:
 
   '@modelcontextprotocol/inspector-server@0.13.0':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.13.0
+      '@modelcontextprotocol/sdk': 1.17.3
       cors: 2.8.5
       express: 5.1.0
       ws: 8.18.2
@@ -6427,7 +6427,7 @@ snapshots:
       '@modelcontextprotocol/inspector-cli': 0.13.0
       '@modelcontextprotocol/inspector-client': 0.13.0
       '@modelcontextprotocol/inspector-server': 0.13.0
-      '@modelcontextprotocol/sdk': 1.13.0
+      '@modelcontextprotocol/sdk': 1.17.3
       concurrently: 9.1.2
       open: 10.1.2
       shell-quote: 1.8.3
@@ -6446,13 +6446,14 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@modelcontextprotocol/sdk@1.13.0':
+  '@modelcontextprotocol/sdk@1.17.3':
     dependencies:
       ajv: 6.12.6
       content-type: 1.0.5
       cors: 2.8.5
       cross-spawn: 7.0.6
       eventsource: 3.0.7
+      eventsource-parser: 3.0.2
       express: 5.1.0
       express-rate-limit: 7.5.1(express@5.1.0)
       pkce-challenge: 5.0.0
