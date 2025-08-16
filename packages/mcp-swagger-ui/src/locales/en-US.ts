@@ -90,6 +90,7 @@ export default {
     createdAt: "Created At",
     total: "Total",
     actions: "Actions",
+    details: "Details",
   },
 
   // Navigation menu

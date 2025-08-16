@@ -39,8 +39,11 @@ interface MCPConnectionEvent {
 }
 
 // MCP连接监控器 - 利用现有的stdout输出机制
-class MCPConnectionMonitor extends EventEmitter {
-  private connections = new Map<string, ClientConnection>();
+export class MCPConnectionMonitor extends EventEmitter {
+  private connections: Map<string, ClientConnection> = new Map();
+  private connectionHistory: MCPConnectionEvent[] = [];
+  private lastStatsHash: string = '';
+  private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
   private serverId: string;
 
   constructor(serverId?: string) {
@@ -84,32 +87,47 @@ class MCPConnectionMonitor extends EventEmitter {
     };
   }
 
-  // 通过console.log发送结构化日志 - 利用现有的setupProcessOutputMonitoring
+  // 通过console.log发送结构化日志 - 利用现有的setupProcessOutputMonitoring，添加防抖机制
   private logConnectionEvent(eventType: 'connected' | 'disconnected', connection: ClientConnection): void {
-    const logEntry: MCPConnectionEvent = {
-      type: 'MCP_CONNECTION_EVENT',
-      eventType,
-      clientInfo: {
-        sessionId: connection.sessionId,
-        remoteAddress: connection.remoteAddress,
-        userAgent: connection.userAgent,
-        connectedAt: connection.connectedAt
-      },
-      connectionStats: {
-        totalConnections: this.connections.size,
-        activeConnections: this.connections.size
-      },
-      timestamp: new Date()
-    };
-
-    // 发送到stdout - 会被API进程的setupProcessOutputMonitoring捕获
-    console.log(`[MCP_CONNECTION] ${JSON.stringify(logEntry)}`);
+    const debounceKey = `${eventType}_${connection.sessionId}`;
     
-    this.emit('connectionChange', logEntry);
+    // 清除之前的防抖定时器
+    if (this.debounceTimers.has(debounceKey)) {
+      clearTimeout(this.debounceTimers.get(debounceKey)!);
+    }
+    
+    // 设置新的防抖定时器，延迟500ms发送事件
+    const timer = setTimeout(() => {
+      const logEntry: MCPConnectionEvent = {
+        type: 'MCP_CONNECTION_EVENT',
+        eventType,
+        clientInfo: {
+          sessionId: connection.sessionId,
+          remoteAddress: connection.remoteAddress,
+          userAgent: connection.userAgent,
+          connectedAt: connection.connectedAt
+        },
+        connectionStats: {
+          totalConnections: this.connections.size,
+          activeConnections: this.connections.size
+        },
+        timestamp: new Date()
+      };
+
+      // 发送到stdout - 会被API进程的setupProcessOutputMonitoring捕获
+      console.log(`[MCP_CONNECTION] ${JSON.stringify(logEntry)}`);
+      
+      this.emit('connectionChange', logEntry);
+      
+      // 清理已完成的定时器
+      this.debounceTimers.delete(debounceKey);
+    }, 500);
+    
+    this.debounceTimers.set(debounceKey, timer);
   }
 
-  // 定期发送连接统计
-  startStatsReporting(intervalMs: number = 5000): NodeJS.Timeout {
+  // 定期发送连接统计 - 增加推送间隔到60秒并添加去重机制
+  startStatsReporting(intervalMs: number = 60000): NodeJS.Timeout {
     return setInterval(() => {
       const stats = this.getConnectionStats();
       const logEntry: MCPConnectionEvent = {
@@ -122,8 +140,18 @@ class MCPConnectionMonitor extends EventEmitter {
         timestamp: new Date()
       };
       
-      console.log(`[MCP_CONNECTION] ${JSON.stringify(logEntry)}`);
+      // 计算统计数据的哈希值进行去重
+      const statsHash = this.calculateStatsHash(logEntry.connectionStats);
+      if (statsHash !== this.lastStatsHash) {
+        this.lastStatsHash = statsHash;
+        console.log(`[MCP_CONNECTION] ${JSON.stringify(logEntry)}`);
+      }
     }, intervalMs);
+  }
+
+  // 计算统计数据哈希值用于去重
+  private calculateStatsHash(stats: any): string {
+    return JSON.stringify(stats);
   }
 
   private extractRemoteAddress(transport: any, req?: IncomingMessage): string | undefined {

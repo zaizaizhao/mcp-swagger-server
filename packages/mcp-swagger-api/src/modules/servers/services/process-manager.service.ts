@@ -54,6 +54,10 @@ export class ProcessManagerService implements OnModuleDestroy {
   
   // MCP连接统计缓存
   private readonly mcpConnectionStats = new Map<string, MCPConnectionStats>();
+  
+  // MCP事件去重缓存 - 存储最近的事件哈希值
+  private readonly mcpEventCache = new Map<string, string>();
+  private readonly mcpEventCacheTimeout = 5000; // 5秒缓存超时
 
   constructor(
     @InjectRepository(ProcessInfoEntity)
@@ -864,6 +868,25 @@ export class ProcessManagerService implements OnModuleDestroy {
   private async handleMCPConnectionEvent(serverId: string, event: MCPConnectionEvent): Promise<void> {
     this.logger.debug(`Received MCP connection event for ${serverId}:`, event);
     
+    // 计算事件哈希值用于去重
+    const eventHash = this.calculateMCPEventHash(serverId, event);
+    const cacheKey = `${serverId}_${event.type}`;
+    
+    // 检查是否为重复事件
+    const lastEventHash = this.mcpEventCache.get(cacheKey);
+    if (lastEventHash === eventHash) {
+      this.logger.debug(`Skipping duplicate MCP event for ${serverId}:`, event.type);
+      return;
+    }
+    
+    // 更新缓存
+    this.mcpEventCache.set(cacheKey, eventHash);
+    
+    // 设置缓存清理定时器
+    setTimeout(() => {
+      this.mcpEventCache.delete(cacheKey);
+    }, this.mcpEventCacheTimeout);
+    
     // 更新连接统计
     if (event.stats) {
       this.updateMCPConnectionStats(serverId, event.stats);
@@ -944,5 +967,23 @@ export class ProcessManagerService implements OnModuleDestroy {
       default:
         return `MCP event: ${event.type}`;
     }
+  }
+
+  /**
+   * 计算MCP事件哈希值用于去重
+   */
+  private calculateMCPEventHash(serverId: string, event: MCPConnectionEvent): string {
+    // 对于连接/断开事件，使用连接ID和事件类型
+    if (event.type === 'connection' || event.type === 'disconnection') {
+      return `${event.type}_${event.connectionId || 'unknown'}_${event.timestamp}`;
+    }
+    
+    // 对于统计事件，使用统计数据的关键字段
+    if (event.type === 'stats' && event.stats) {
+      return `stats_${event.stats.activeConnections}_${event.stats.totalConnections}_${event.stats.totalRequests}`;
+    }
+    
+    // 默认使用事件类型和时间戳
+    return `${event.type}_${event.timestamp}`;
   }
 }

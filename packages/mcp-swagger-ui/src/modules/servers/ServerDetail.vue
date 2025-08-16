@@ -4,6 +4,7 @@
     <div class="detail-header">
       <el-page-header
         @back="goBack"
+        :title="$t('common.back')"
         :content="serverInfo?.name || 'Loading...'"
       >
         <template #extra>
