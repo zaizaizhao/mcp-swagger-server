@@ -1,7 +1,7 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { MCPMonitoringService } from '../services/monitoring.service';
-import { JwtAuthGuard } from '../modules/security/guards/jwt-auth.guard';
+import { MCPMonitoringService } from '../../services/monitoring.service';
+import { JwtAuthGuard } from '../security/guards/jwt-auth.guard';
 
 @ApiTags('Monitoring')
 @Controller('api/v1/monitoring')

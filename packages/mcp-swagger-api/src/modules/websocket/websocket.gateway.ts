@@ -307,6 +307,80 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
   }
 
   /**
+   * 订阅MCP连接事件
+   */
+  @SubscribeMessage('subscribe-mcp-connections')
+  handleSubscribeMCPConnections(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { serverId?: string }
+  ) {
+    const room = data.serverId ? `mcp-connections-${data.serverId}` : 'mcp-connections-all';
+    client.join(room);
+    this.rooms.add(room);
+    this.addRoomMember(room, client.id);
+    
+    const clientInfo = this.clients.get(client.id);
+    if (clientInfo) {
+      clientInfo.subscribedRooms.add(room);
+      clientInfo.lastActivity = new Date();
+    }
+
+    this.logger.log(`Client ${client.id} subscribed to MCP connections ${data.serverId || 'all'}`);
+    
+    // 记录订阅指标
+    this.wsMetricsService.recordSubscription(client.id, room);
+    
+    client.emit('subscription-confirmed', {
+      room,
+      serverId: data.serverId,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  /**
+   * 获取MCP连接统计
+   */
+  @SubscribeMessage('get-mcp-connection-stats')
+  async handleGetMCPConnectionStats(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { serverId: string }
+  ) {
+    try {
+      // 这里需要从ProcessManagerService获取MCP连接统计
+      // 由于依赖注入的限制，我们通过事件发射器来获取数据
+      this.eventEmitter.emit('mcp.connection.stats.request', {
+        serverId: data.serverId,
+        clientId: client.id
+      });
+    } catch (error) {
+      this.logger.error(`Failed to get MCP connection stats for ${data.serverId}:`, error);
+      client.emit('error', {
+        message: 'Failed to get MCP connection stats',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * 获取所有MCP连接统计
+   */
+  @SubscribeMessage('get-all-mcp-connection-stats')
+  async handleGetAllMCPConnectionStats(@ConnectedSocket() client: Socket) {
+    try {
+      // 通过事件发射器获取所有MCP连接统计
+      this.eventEmitter.emit('mcp.connection.stats.request.all', {
+        clientId: client.id
+      });
+    } catch (error) {
+      this.logger.error('Failed to get all MCP connection stats:', error);
+      client.emit('error', {
+        message: 'Failed to get all MCP connection stats',
+        error: error.message
+      });
+    }
+  }
+
+  /**
    * 取消订阅
    */
   @SubscribeMessage('unsubscribe')
@@ -618,6 +692,31 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
       logDataType: typeof payload.logData
     });
     
+    // 检查是否为MCP连接日志
+    if (payload.logData && payload.logData.isMCPConnectionLog) {
+      // 发送MCP连接日志到专门的房间
+      const mcpRoom = `mcp-connections-${payload.serverId}`;
+      const mcpAllRoom = 'mcp-connections-all';
+      
+      const mcpLogData = {
+        serverId: payload.serverId,
+        connectionEvent: payload.logData.connectionEvent,
+        timestamp: timestamp.toISOString(),
+      };
+      
+      // 发送到特定服务器的MCP连接订阅者
+      if (this.getRoomInternalSize(mcpRoom) > 0) {
+        this.emitToRoom(mcpRoom, 'mcpConnectionLog', mcpLogData);
+        this.logger.debug(`[handleProcessLogsUpdated] Emitted MCP connection log to room ${mcpRoom}`);
+      }
+      
+      // 发送到所有MCP连接订阅者
+      if (this.getRoomInternalSize(mcpAllRoom) > 0) {
+        this.emitToRoom(mcpAllRoom, 'mcpConnectionLog', mcpLogData);
+        this.logger.debug(`[handleProcessLogsUpdated] Emitted MCP connection log to room ${mcpAllRoom}`);
+      }
+    }
+    
     if (internalSize > 0) {
       this.emitToRoom(room, 'process:logs', {
         serverId: payload.serverId,
@@ -650,6 +749,21 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
         timestamp: new Date(),
       });
     });
+
+    // 监听MCP连接变化事件
+    this.eventEmitter.on('mcp.connection.changed', (data) => {
+      this.handleMCPConnectionChanged(data);
+    });
+
+    // 监听MCP连接统计请求响应
+    this.eventEmitter.on('mcp.connection.stats.response', (data) => {
+      this.handleMCPConnectionStatsResponse(data);
+    });
+
+    // 监听所有MCP连接统计请求响应
+    this.eventEmitter.on('mcp.connection.stats.response.all', (data) => {
+      this.handleAllMCPConnectionStatsResponse(data);
+    });
   }
 
   /**
@@ -666,6 +780,74 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
         lastActivity: info.lastActivity,
       })),
     };
+  }
+
+  /**
+   * 处理MCP连接变化事件
+   */
+  private handleMCPConnectionChanged(data: {
+    serverId: string;
+    connectionEvent: any;
+    stats: any;
+    timestamp: Date;
+  }) {
+    const mcpRoom = `mcp-connections-${data.serverId}`;
+    const mcpAllRoom = 'mcp-connections-all';
+    
+    const eventData = {
+      serverId: data.serverId,
+      connectionEvent: data.connectionEvent,
+      stats: data.stats,
+      timestamp: data.timestamp.toISOString(),
+    };
+    
+    // 发送到特定服务器的MCP连接订阅者
+    if (this.getRoomInternalSize(mcpRoom) > 0) {
+      this.emitToRoom(mcpRoom, 'mcpConnectionChanged', eventData);
+      this.logger.debug(`[handleMCPConnectionChanged] Emitted to room ${mcpRoom}`);
+    }
+    
+    // 发送到所有MCP连接订阅者
+    if (this.getRoomInternalSize(mcpAllRoom) > 0) {
+      this.emitToRoom(mcpAllRoom, 'mcpConnectionChanged', eventData);
+      this.logger.debug(`[handleMCPConnectionChanged] Emitted to room ${mcpAllRoom}`);
+    }
+  }
+
+  /**
+   * 处理MCP连接统计响应
+   */
+  private handleMCPConnectionStatsResponse(data: {
+    serverId: string;
+    stats: any;
+    clientId: string;
+  }) {
+    const client = this.server.sockets.sockets.get(data.clientId);
+    if (client) {
+      client.emit('mcp-connection-stats', {
+        serverId: data.serverId,
+        stats: data.stats,
+        timestamp: new Date().toISOString(),
+      });
+      this.logger.debug(`[handleMCPConnectionStatsResponse] Sent stats to client ${data.clientId}`);
+    }
+  }
+
+  /**
+   * 处理所有MCP连接统计响应
+   */
+  private handleAllMCPConnectionStatsResponse(data: {
+    allStats: Record<string, any>;
+    clientId: string;
+  }) {
+    const client = this.server.sockets.sockets.get(data.clientId);
+    if (client) {
+      client.emit('all-mcp-connection-stats', {
+        allStats: data.allStats,
+        timestamp: new Date().toISOString(),
+      });
+      this.logger.debug(`[handleAllMCPConnectionStatsResponse] Sent all stats to client ${data.clientId}`);
+    }
   }
 
   /**
