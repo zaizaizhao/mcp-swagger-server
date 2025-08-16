@@ -77,6 +77,7 @@ export default {
     createdAt: "创建时间",
     total: "总计",
     actions: "操作",
+    details: "详情",
   },
 
   // 导航菜单
