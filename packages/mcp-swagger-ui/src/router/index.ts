@@ -11,18 +11,8 @@ const routes: RouteRecordRaw[] = [
   {
     path: "/",
     component: MainLayout,
-    redirect: "/dashboard",
+    redirect: "/servers",
     children: [
-      {
-        path: "/dashboard",
-        name: "dashboard",
-        component: () => import("@/modules/dashboard/Dashboard.vue"),
-        meta: {
-          title: "仪表板",
-          icon: "Monitor",
-          description: "系统概览和实时监控",
-        },
-      },
       {
         path: "/servers",
         name: "servers",
@@ -174,19 +164,19 @@ router.beforeEach(async (to, from, next) => {
           "登录页面 - 认证初始化完成 - currentUser:",
           !!authStore.currentUser,
         );
-        // 如果初始化后有用户信息，重定向到仪表板
+        // 如果初始化后有用户信息，重定向到服务器管理
         if (authStore.currentUser) {
-          console.log("登录页面 - 用户已认证，重定向到仪表板");
-          next("/dashboard");
+          console.log("登录页面 - 用户已认证，重定向到服务器管理");
+          next("/servers");
           return;
         }
       } catch (error) {
         console.error("登录页面 - 认证初始化失败:", error);
       }
     } else if (authStore.currentUser) {
-      // 如果已经有用户信息，重定向到仪表板
-      console.log("登录页面 - 用户已认证，重定向到仪表板");
-      next("/dashboard");
+      // 如果已经有用户信息，重定向到服务器管理
+      console.log("登录页面 - 用户已认证，重定向到服务器管理");
+      next("/servers");
       return;
     }
     // 允许访问登录页面

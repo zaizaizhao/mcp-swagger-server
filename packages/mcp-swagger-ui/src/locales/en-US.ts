@@ -95,7 +95,6 @@ export default {
 
   // Navigation menu
   menu: {
-    dashboard: "Dashboard",
     servers: "Server Management",
     "server-detail": "Server Details",
     openapi: "OpenAPI Management",
@@ -127,26 +126,6 @@ export default {
     switched: "Language switched to {language}",
   },
 
-  // Dashboard
-  dashboard: {
-    title: "System Overview",
-    systemStatus: "System Status",
-    performanceMetrics: "Performance Metrics",
-    recentActivity: "Recent Activity",
-    activeServers: "Active Servers",
-    totalRequests: "Total Requests",
-    errorRate: "Error Rate",
-    responseTime: "Response Time",
-    cpuUsage: "CPU Usage",
-    memoryUsage: "Memory Usage",
-    networkTraffic: "Network Traffic",
-    uptime: "Uptime",
-    lastUpdate: "Last Update",
-    refresh: "Refresh Data",
-    viewDetails: "View Details",
-    noData: "No Data",
-    loadingData: "Loading data...",
-  },
 
   // Server management
   servers: {

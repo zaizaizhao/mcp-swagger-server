@@ -410,7 +410,7 @@ const handleSubmit = async () => {
     // 再次确认认证状态
     if (authStore.isAuthenticated) {
       const redirect = router.currentRoute.value.query.redirect as string;
-      router.push(redirect || "/dashboard");
+      router.push(redirect || "/servers");
     } else {
       console.warn("登录成功但认证状态未正确设置");
     }
@@ -435,7 +435,7 @@ const handleLanguageChange = (locale: string) => {
 onMounted(() => {
   // 如果已经登录，直接跳转
   if (isAuthenticated) {
-    router.push("/dashboard");
+    router.push("/servers");
   }
 
   // 清除之前的错误
