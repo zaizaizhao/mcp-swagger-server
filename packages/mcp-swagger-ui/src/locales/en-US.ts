@@ -349,6 +349,13 @@ export default {
     toolCount: "Tool Count",
     autoStart: "Auto Start",
     errorRate: "Error Rate",
+    // Event types translations
+    eventTypes: {
+      serverStarted: "Server Started",
+      serverStopped: "Server Stopped",
+      serverRestarted: "Server Restarted",
+      serverEdited: "Server Edited",
+    },
   },
 
   // OpenAPI management

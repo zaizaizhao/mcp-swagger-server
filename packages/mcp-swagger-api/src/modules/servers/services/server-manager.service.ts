@@ -13,6 +13,8 @@ import { ProcessErrorHandlerService } from './process-error-handler.service';
 import { CreateServerDto, UpdateServerDto, ServerQueryDto, ServerResponseDto, PaginatedResponseDto } from '../dto/server.dto';
 import { ServerMapper } from '../utils/server-mapper.util';
 import { DocumentsService } from '../../documents/services/documents.service';
+import { SystemLogService } from './system-log.service';
+import { SystemLogEventType, SystemLogLevel } from '../../../database/entities/system-log.entity';
 import {
   ProcessStatus,
   ProcessInfo,
@@ -49,6 +51,7 @@ export class ServerManagerService implements OnModuleInit, OnApplicationShutdown
     private readonly processErrorHandler: ProcessErrorHandlerService,
     private readonly documentsService: DocumentsService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly systemLogService: SystemLogService,
   ) {
     // 监听进程事件
     this.setupProcessEventListeners();
@@ -630,6 +633,24 @@ export class ServerManagerService implements OnModuleInit, OnApplicationShutdown
       await this.updateServerStatus(id, ServerStatus.RUNNING, instance.endpoint);
       await this.logInfo(id, `Server '${server.name}' started successfully on ${instance.endpoint}`);
       
+      // 记录系统日志
+      try {
+        await this.systemLogService.createLog({
+          serverId: id,
+          eventType: SystemLogEventType.SERVER_STARTED,
+          description: `Server '${server.name}' started successfully on ${instance.endpoint}`,
+          level: SystemLogLevel.INFO,
+          details: {
+            serverName: server.name,
+            endpoint: instance.endpoint,
+            port: server.port,
+            transport: server.transport,
+          },
+        });
+      } catch (logError) {
+        this.logger.error(`Failed to create system log for server start: ${logError.message}`);
+      }
+      
       this.eventEmitter.emit('server.started', {
         serverId: id,
         serverName: server.name,
@@ -638,6 +659,25 @@ export class ServerManagerService implements OnModuleInit, OnApplicationShutdown
     } catch (error) {
       await this.updateServerStatus(id, ServerStatus.ERROR, undefined, error.message);
       await this.logError(id, `Failed to start server '${server.name}'`, error);
+      
+      // 记录系统日志
+      try {
+        await this.systemLogService.createLog({
+          serverId: id,
+          eventType: SystemLogEventType.SERVER_STARTED,
+          description: `Failed to start server '${server.name}': ${error.message}`,
+          level: SystemLogLevel.ERROR,
+          details: {
+            serverName: server.name,
+            error: error.message,
+            port: server.port,
+            transport: server.transport,
+          },
+        });
+      } catch (logError) {
+        this.logger.error(`Failed to create system log for server start error: ${logError.message}`);
+      }
+      
       throw error;
     } finally {
       // 从启动锁中移除
@@ -694,6 +734,23 @@ export class ServerManagerService implements OnModuleInit, OnApplicationShutdown
       await this.updateServerStatus(id, ServerStatus.STOPPED);
       await this.logInfo(id, `Server '${server.name}' stopped successfully`);
       
+      // 记录系统日志
+      try {
+        await this.systemLogService.createLog({
+          serverId: id,
+          eventType: SystemLogEventType.SERVER_STOPPED,
+          description: `Server '${server.name}' stopped successfully`,
+          level: SystemLogLevel.INFO,
+          details: {
+            serverName: server.name,
+            port: server.port,
+            transport: server.transport,
+          },
+        });
+      } catch (logError) {
+        this.logger.error(`Failed to create system log for server stop: ${logError.message}`);
+      }
+      
       this.logger.log(`🛑 [DEBUG] Emitting server.stopped event for ${server.name}`);
       this.eventEmitter.emit('server.stopped', {
         serverId: id,
@@ -705,6 +762,25 @@ export class ServerManagerService implements OnModuleInit, OnApplicationShutdown
       this.logger.error(`🛑 [DEBUG] stopServer failed for ${server.name}:`, error);
       await this.updateServerStatus(id, ServerStatus.ERROR, undefined, error.message);
       await this.logError(id, `Failed to stop server '${server.name}'`, error);
+      
+      // 记录系统日志
+      try {
+        await this.systemLogService.createLog({
+          serverId: id,
+          eventType: SystemLogEventType.SERVER_STOPPED,
+          description: `Failed to stop server '${server.name}': ${error.message}`,
+          level: SystemLogLevel.ERROR,
+          details: {
+            serverName: server.name,
+            error: error.message,
+            port: server.port,
+            transport: server.transport,
+          },
+        });
+      } catch (logError) {
+        this.logger.error(`Failed to create system log for server stop error: ${logError.message}`);
+      }
+      
       throw error;
     }
   }
@@ -720,6 +796,25 @@ export class ServerManagerService implements OnModuleInit, OnApplicationShutdown
     }
     
     await this.startServer(id);
+    
+    // 记录系统日志
+    try {
+      await this.systemLogService.createLog({
+        serverId: id,
+        eventType: SystemLogEventType.SERVER_RESTARTED,
+        description: `Server '${server.name}' restarted successfully`,
+        level: SystemLogLevel.INFO,
+        details: {
+            serverName: server.name,
+            port: server.port,
+            transport: server.transport,
+          },
+      });
+    } catch (logError) {
+      this.logger.error(`Failed to create system log for server restart: ${logError.message}`);
+    }
+    
+    this.logger.log(`Server '${server.name}' restarted successfully`);
   }
 
   /**

@@ -11,6 +11,7 @@ import { Role } from './entities/role.entity';
 import { Permission } from './entities/permission.entity';
 import { AuditLog } from './entities/audit-log.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
+import { SystemLogEntity } from './entities/system-log.entity';
 import { AiAssistantTemplateEntity } from '../modules/ai-assistant/entities/ai-assistant-template.entity';
 import { AiAssistantConfigEntity } from '../modules/ai-assistant/entities/ai-assistant-config.entity';
 import { OpenAPIDocument } from './entities/openapi-document.entity';
@@ -37,6 +38,7 @@ import { SeedService } from './seed.service';
           Permission,
           AuditLog,
           RefreshToken,
+          SystemLogEntity,
           AiAssistantTemplateEntity,
           AiAssistantConfigEntity,
           OpenAPIDocument,
@@ -63,9 +65,9 @@ import { SeedService } from './seed.service';
       User,
       Role,
       Permission,
-
       AuditLog,
       RefreshToken,
+      SystemLogEntity,
       AiAssistantTemplateEntity,
       AiAssistantConfigEntity,
       OpenAPIDocument,

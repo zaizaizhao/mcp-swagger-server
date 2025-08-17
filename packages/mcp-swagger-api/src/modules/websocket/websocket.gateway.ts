@@ -764,6 +764,7 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
     this.eventEmitter.on('mcp.connection.stats.response.all', (data) => {
       this.handleAllMCPConnectionStatsResponse(data);
     });
+
   }
 
   /**
@@ -849,6 +850,8 @@ export class MonitoringGateway implements OnGatewayInit, OnGatewayConnection, On
       this.logger.debug(`[handleAllMCPConnectionStatsResponse] Sent all stats to client ${data.clientId}`);
     }
   }
+
+
 
   /**
    * 广播系统通知

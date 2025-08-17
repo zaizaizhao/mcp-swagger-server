@@ -334,6 +334,13 @@ export default {
     toolCount: "工具数量",
     autoStart: "自动启动",
     errorRate: "错误率",
+    // 事件类型翻译
+    eventTypes: {
+      serverStarted: "服务器已启动",
+      serverStopped: "服务器已停止",
+      serverRestarted: "服务器已重启",
+      serverEdited: "服务器已编辑",
+    },
   },
 
   // OpenAPI管理

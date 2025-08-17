@@ -15,6 +15,7 @@ import { ProcessHealthService } from './services/process-health.service';
 import { ProcessErrorHandlerService } from './services/process-error-handler.service';
 import { ProcessResourceMonitorService } from './services/process-resource-monitor.service';
 import { ProcessLogMonitorService } from './services/process-log-monitor.service';
+import { SystemLogService } from './services/system-log.service';
 
 import { MCPServerEntity } from '../../database/entities/mcp-server.entity';
 import { AuthConfigEntity } from '../../database/entities/auth-config.entity';
@@ -22,6 +23,7 @@ import { LogEntryEntity } from '../../database/entities/log-entry.entity';
 import { ProcessInfoEntity } from './entities/process-info.entity';
 import { HealthCheckResultEntity } from './entities/health-check-result.entity';
 import { ProcessLogEntity } from './entities/process-log.entity';
+import { SystemLogEntity } from '../../database/entities/system-log.entity';
 
 // 导入其他模块的服务
 import { MCPModule } from '../mcp/mcp.module';
@@ -37,6 +39,7 @@ import { DocumentsModule } from '../documents/documents.module';
       ProcessInfoEntity,
       HealthCheckResultEntity,
       ProcessLogEntity,
+      SystemLogEntity,
     ]),
     EventEmitterModule,
     HttpModule.register({
@@ -60,6 +63,7 @@ import { DocumentsModule } from '../documents/documents.module';
     ProcessErrorHandlerService,
     ProcessResourceMonitorService,
     ProcessLogMonitorService,
+    SystemLogService,
   ],
   exports: [
     ServerManagerService,
@@ -71,6 +75,7 @@ import { DocumentsModule } from '../documents/documents.module';
     ProcessErrorHandlerService,
     ProcessResourceMonitorService,
     ProcessLogMonitorService,
+    SystemLogService,
   ],
 })
 export class ServersModule {}
