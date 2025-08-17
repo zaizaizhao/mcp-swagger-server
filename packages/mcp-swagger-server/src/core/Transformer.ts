@@ -90,7 +90,8 @@ export class Transformer implements ITransformer {
         baseUrl: options.baseUrl,
         includeDeprecated: options.includeDeprecated,
         requestTimeout: options.requestTimeout,
-        pathPrefix: options.pathPrefix
+        pathPrefix: options.pathPrefix,
+        operationFilter: options.operationFilter
       };
 
       const parserTools = transformToMCPTools(spec, transformerOptions);

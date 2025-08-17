@@ -11,7 +11,8 @@ export async function transformOpenApiToMcpTools(
   openApiData?: any,
   authConfig?: AuthConfig,
   customHeaders?: any,
-  debugHeaders?: boolean
+  debugHeaders?: boolean,
+  operationFilter?: any
 ): Promise<MCPTool[]> {
   try {
     let parseResult: any;
@@ -58,7 +59,8 @@ export async function transformOpenApiToMcpTools(
       pathPrefix: '',
       authConfig, // 传递认证配置
       customHeaders, // 传递自定义请求头配置
-      debugHeaders // 传递调试选项
+      debugHeaders, // 传递调试选项
+      operationFilter // 传递操作过滤配置
     });
 
     

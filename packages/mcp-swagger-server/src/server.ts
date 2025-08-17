@@ -9,6 +9,7 @@ export interface ServerOptions {
   authConfig?: AuthConfig;
   customHeaders?: any;
   debugHeaders?: boolean;
+  operationFilter?: any;
 }
 
 export async function createMcpServer(options: ServerOptions = {}) {
@@ -26,7 +27,7 @@ export async function createMcpServer(options: ServerOptions = {}) {
   );
 
   // 先初始化工具，确保在连接传输层前完成
-  await initTools(server, options.openApiData, options.authConfig, options.customHeaders, options.debugHeaders);
+  await initTools(server, options.openApiData, options.authConfig, options.customHeaders, options.debugHeaders, options.operationFilter);
 
   process.on("SIGINT", async () => {
     await server.close();
@@ -40,9 +41,10 @@ export async function runStdioServer(
   openApiData?: any, 
   authConfig?: AuthConfig,
   customHeaders?: any,
-  debugHeaders?: boolean
+  debugHeaders?: boolean,
+  operationFilter?: any
 ): Promise<void> {
-  const server = await createMcpServer({ openApiData, authConfig, customHeaders, debugHeaders });
+  const server = await createMcpServer({ openApiData, authConfig, customHeaders, debugHeaders, operationFilter });
   await startStdioMcpServer(server);
 }
 
@@ -52,9 +54,10 @@ export async function runSseServer(
   openApiData?: any,
   authConfig?: AuthConfig,
   customHeaders?: any,
-  debugHeaders?: boolean
+  debugHeaders?: boolean,
+  operationFilter?: any
 ): Promise<void> {
-  const server = await createMcpServer({ openApiData, authConfig, customHeaders, debugHeaders });
+  const server = await createMcpServer({ openApiData, authConfig, customHeaders, debugHeaders, operationFilter });
   await startSseMcpServer(server, endpoint, port);
 }
 
@@ -64,8 +67,9 @@ export async function runStreamableServer(
   openApiData?: any,
   authConfig?: AuthConfig,
   customHeaders?: any,
-  debugHeaders?: boolean
+  debugHeaders?: boolean,
+  operationFilter?: any
 ): Promise<void> {
-  const server = await createMcpServer({ openApiData, authConfig, customHeaders, debugHeaders });
+  const server = await createMcpServer({ openApiData, authConfig, customHeaders, debugHeaders, operationFilter });
   await startStreamableMcpServer(server, endpoint, port);
 }
