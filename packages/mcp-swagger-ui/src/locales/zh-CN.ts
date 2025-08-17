@@ -82,7 +82,6 @@ export default {
 
   // 导航菜单
   menu: {
-    dashboard: "仪表板",
     servers: "服务器管理",
     "server-detail": "服务器详情",
     openapi: "OpenAPI管理",
@@ -114,26 +113,6 @@ export default {
     switched: "语言已切换到{language}",
   },
 
-  // 仪表板
-  dashboard: {
-    title: "系统概览",
-    systemStatus: "系统状态",
-    performanceMetrics: "性能指标",
-    recentActivity: "最近活动",
-    activeServers: "活跃服务器",
-    totalRequests: "总请求数",
-    errorRate: "错误率",
-    responseTime: "响应时间",
-    cpuUsage: "CPU使用率",
-    memoryUsage: "内存使用率",
-    networkTraffic: "网络流量",
-    uptime: "运行时间",
-    lastUpdate: "最后更新",
-    refresh: "刷新数据",
-    viewDetails: "查看详情",
-    noData: "暂无数据",
-    loadingData: "正在加载数据...",
-  },
 
   // 服务器管理
   servers: {

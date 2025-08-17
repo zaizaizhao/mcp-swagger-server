@@ -373,8 +373,8 @@ const toggleSidebar = () => {
 };
 
 const goHome = () => {
-  if (route.path !== "/dashboard") {
-    router.push("/dashboard");
+  if (route.path !== "/servers") {
+    router.push("/servers");
   }
 };
 
