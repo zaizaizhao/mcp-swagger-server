@@ -23,6 +23,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { ServerManagerService } from './services/server-manager.service';
+import { SystemLogService } from './services/system-log.service';
 import { OpenAPIService } from '../openapi/services/openapi.service';
 import { ServerHealthService } from './services/server-health.service';
 import { ServerMetricsService } from './services/server-metrics.service';
@@ -45,6 +46,11 @@ import {
   PaginatedResponseDto,
   OperationResultDto,
 } from './dto/server.dto';
+import {
+  SystemLogQueryDto,
+  SystemLogResponseDto,
+  PaginatedSystemLogResponseDto,
+} from './dto/system-log.dto';
 
 
 @ApiTags('服务器管理')
@@ -55,6 +61,7 @@ export class ServersController {
 
   constructor(
     private readonly serverManager: ServerManagerService,
+    private readonly systemLogService: SystemLogService,
     private readonly serverHealth: ServerHealthService,
     private readonly serverMetrics: ServerMetricsService,
     private readonly processManager: ProcessManagerService,
@@ -1253,6 +1260,133 @@ export class ServersController {
       
       throw new HttpException(
         `Failed to get all MCP connection stats: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 查询系统日志
+   */
+  @Get('system-logs')
+  @ApiOperation({ summary: '查询系统日志', description: '查询MCP服务器的系统事件日志' })
+  @ApiResponse({ status: 200, description: '查询成功', type: PaginatedSystemLogResponseDto })
+  async getSystemLogs(@Query() query: SystemLogQueryDto): Promise<PaginatedSystemLogResponseDto> {
+    try {
+      this.logger.log(`Querying system logs with filters: ${JSON.stringify(query)}`);
+      
+      // 转换日期字符串为Date对象
+      const queryParams = {
+        ...query,
+        startDate: query.startDate ? new Date(query.startDate) : undefined,
+        endDate: query.endDate ? new Date(query.endDate) : undefined,
+      };
+      
+      const result = await this.systemLogService.queryLogs(queryParams);
+      
+      // 转换返回格式
+      return {
+        data: result.logs,
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.totalPages,
+        hasNext: result.page < result.totalPages,
+        hasPrev: result.page > 1,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to query system logs: ${error.message}`, error.stack);
+      
+      throw new HttpException(
+        `Failed to query system logs: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 获取指定服务器的系统日志
+   */
+  @Get(':id/system-logs')
+  @ApiOperation({ summary: '获取服务器系统日志', description: '获取指定服务器的系统事件日志，支持分页和过滤' })
+  @ApiParam({ name: 'id', description: '服务器ID' })
+  @ApiResponse({ status: 200, description: '查询成功', type: PaginatedSystemLogResponseDto })
+  @ApiResponse({ status: 404, description: '服务器不存在' })
+  async getServerSystemLogs(
+    @Param('id') id: string,
+    @Query() query: SystemLogQueryDto
+  ): Promise<PaginatedSystemLogResponseDto> {
+    try {
+      // 检查服务器是否存在
+      await this.serverManager.getServerById(id);
+      
+      this.logger.log(`Querying system logs for server ${id} with filters: ${JSON.stringify(query)}`);
+      
+      // 强制设置serverId过滤条件
+      const queryParams = {
+        ...query,
+        serverId: id,
+        startDate: query.startDate ? new Date(query.startDate) : undefined,
+        endDate: query.endDate ? new Date(query.endDate) : undefined,
+      };
+      
+      const result = await this.systemLogService.queryLogs(queryParams);
+      
+      // 转换返回格式
+      return {
+        data: result.logs,
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.totalPages,
+        hasNext: result.page < result.totalPages,
+        hasPrev: result.page > 1,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to query system logs for server ${id}: ${error.message}`, error.stack);
+      
+      if (error.message.includes('not found')) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+      
+      throw new HttpException(
+        `Failed to query system logs: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * 获取指定服务器的最新系统日志
+   */
+  @Get(':id/system-logs/latest')
+  @ApiOperation({ summary: '获取最新系统日志', description: '获取指定服务器的最新系统事件日志' })
+  @ApiParam({ name: 'id', description: '服务器ID' })
+  @ApiQuery({ name: 'limit', required: false, description: '返回数量限制，默认10' })
+  @ApiResponse({ status: 200, description: '获取成功', type: [SystemLogResponseDto] })
+  @ApiResponse({ status: 404, description: '服务器不存在' })
+  async getLatestSystemLogs(
+    @Param('id') id: string,
+    @Query('limit') limit?: number
+  ): Promise<SystemLogResponseDto[]> {
+    try {
+      // 检查服务器是否存在
+      await this.serverManager.getServerById(id);
+      
+      this.logger.log(`Getting latest system logs for server ${id}, limit: ${limit || 10}`);
+      
+      const logs = await this.systemLogService.getLatestLogs(id, limit || 10);
+      
+      return logs;
+    } catch (error) {
+      this.logger.error(`Failed to get latest system logs for server ${id}: ${error.message}`, error.stack);
+      
+      if (error.message.includes('not found')) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+      
+      throw new HttpException(
+        `Failed to get latest system logs: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }

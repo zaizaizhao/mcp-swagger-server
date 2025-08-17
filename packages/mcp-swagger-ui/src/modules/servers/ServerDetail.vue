@@ -597,30 +597,6 @@
             <div class="logs-content">
               <div class="logs-controls">
                 <el-row :gutter="16" align="middle">
-                  <el-col :span="4">
-                    <el-select
-                      v-model="logLevel"
-                      :placeholder="t('servers.logLevel')"
-                    >
-                      <el-option :label="t('common.all')" value="all" />
-                      <el-option
-                        :label="t('servers.logLevels.error')"
-                        value="error"
-                      />
-                      <el-option
-                        :label="t('servers.logLevels.warn')"
-                        value="warn"
-                      />
-                      <el-option
-                        :label="t('servers.logLevels.info')"
-                        value="info"
-                      />
-                      <el-option
-                        :label="t('servers.logLevels.debug')"
-                        value="debug"
-                      />
-                    </el-select>
-                  </el-col>
                   <el-col :span="6">
                     <el-date-picker
                       v-model="logDateRange"
@@ -671,14 +647,17 @@
                   <div
                     v-for="log in filteredLogs"
                     :key="log.id"
-                    :class="['log-entry', `log-${log.level}`]"
+                    :class="['log-entry', `log-${log.level}`, `event-${log.eventType?.toLowerCase()}`]"
                   >
                     <div class="log-time">
                       {{ formatDateTime(new Date(log.timestamp)) }}
                     </div>
-                    <div class="log-level">
-                      <el-tag :type="getLogLevelType(log.level)" size="small">
-                        {{ log.level.toUpperCase() }}
+                    <div class="log-event-type">
+                      <el-icon :class="getEventTypeIconClass(log.eventType || '')" :size="16">
+                        <component :is="getEventTypeIcon(log.eventType || '')" />
+                      </el-icon>
+                      <el-tag :type="getEventTypeTagType(log.eventType || '')" size="small">
+                        {{ getEventTypeLabel(log.eventType || '') }}
                       </el-tag>
                     </div>
                     <div class="log-source" v-if="log.source">
@@ -687,7 +666,7 @@
                       }}</el-text>
                     </div>
                     <div class="log-message">{{ log.message }}</div>
-                    <div class="log-actions" v-if="log.level === 'error'">
+                    <div class="log-actions" v-if="log.metadata">
                       <el-button size="small" text @click="viewLogDetails(log)">
                         {{ t("common.details") }}
                       </el-button>
@@ -841,6 +820,10 @@ import {
   Connection,
   User,
   Loading,
+  CircleCheck,
+  CircleClose,
+  RefreshRight,
+  EditPen,
 } from "@element-plus/icons-vue";
 import VChart from "vue-echarts";
 import type { MCPServer, MCPTool, LogEntry, ServerStatus } from "@/types";
@@ -868,7 +851,6 @@ const showEditDialog = ref(false);
 const showToolDialog = ref(false);
 const showDeleteConfirm = ref(false);
 
-const logLevel = ref("all");
 const logSearchQuery = ref("");
 const logDateRange = ref<[string, string] | null>(null);
 const autoScroll = ref(true);
@@ -939,25 +921,21 @@ const customHeadersArray = computed(() => {
 const filteredLogs = computed(() => {
   let filtered = logs.value;
 
-  // 按级别过滤
-  if (logLevel.value && logLevel.value !== "all") {
-    filtered = filtered.filter((log) => log.level === logLevel.value);
-  }
-
   // 按搜索关键词过滤
   if (logSearchQuery.value) {
     const query = logSearchQuery.value.toLowerCase();
     filtered = filtered.filter(
-      (log) =>
+      (log: LogEntry) =>
         log.message.toLowerCase().includes(query) ||
-        (log.source && log.source.toLowerCase().includes(query)),
+        (log.source && log.source.toLowerCase().includes(query)) ||
+        ((log as any).eventType && (log as any).eventType.toLowerCase().includes(query)),
     );
   }
 
   // 按时间范围过滤
   if (logDateRange.value && logDateRange.value.length === 2) {
     const [startTime, endTime] = logDateRange.value;
-    filtered = filtered.filter((log) => {
+    filtered = filtered.filter((log: LogEntry) => {
       const logTime = new Date(log.timestamp).getTime();
       return (
         logTime >= new Date(startTime).getTime() &&
@@ -1246,45 +1224,94 @@ const viewConnectionDetails = (connection: any) => {
 // 日志监控方法
 const refreshLogs = async () => {
   try {
-    // 模拟获取日志数据
-    const mockLogs = [
-      {
-        id: "log-001",
-        timestamp: new Date(Date.now() - 60000),
-        level: "info" as const,
-        source: "server",
-        message: t("servers.serverStartedSuccessfully"),
-      },
-      {
-        id: "log-002",
-        timestamp: new Date(Date.now() - 30000),
-        level: "warn" as const,
-        source: "tool",
-        message: t("servers.toolExecutionTimeoutWarning"),
-      },
-      {
-        id: "log-003",
-        timestamp: new Date(),
-        level: "error" as const,
-        source: "connection",
-        message: t("servers.clientConnectionFailed"),
-      },
-    ];
-
-    logs.value = [...logs.value, ...mockLogs];
-
-    // 更新日志统计
-    logStats.value = {
-      error: logs.value.filter((l) => l.level === "error").length,
-      warn: logs.value.filter((l) => l.level === "warn").length,
-      info: logs.value.filter((l) => l.level === "info").length,
-      debug: logs.value.filter((l) => l.level === "debug").length,
+    // 获取系统日志数据
+    const params: {
+      page: number;
+      limit: number;
+      eventType?: string;
+      startTime?: string;
+      endTime?: string;
+    } = {
+      page: 1,
+      limit: 100,
     };
+    
 
-    ElMessage.success(t("servers.logsRefreshed"));
+    
+    // 如果有时间范围过滤
+    if (logDateRange.value && logDateRange.value.length === 2) {
+      params.startTime = new Date(logDateRange.value[0]).toISOString();
+      params.endTime = new Date(logDateRange.value[1]).toISOString();
+    }
+    
+    const response = await mcpApiService.getSystemLogs(serverId.value, params);    
+    if (response.data) {
+      // 转换系统日志数据格式
+      const systemLogs = response.data.map((log: any) => ({
+        id: log.id,
+        timestamp: new Date(log.createdAt),
+        level: log.level || getLogLevelFromEventType(log.eventType),
+        source: "system",
+        message: log.description || getLogMessageFromEvent(log),
+        eventType: log.eventType,
+        serverId: log.serverId,
+        metadata: log.details || log.metadata,
+      }));
+      
+      logs.value = systemLogs;
+      
+      // 更新日志统计
+      logStats.value = {
+        error: logs.value.filter((l) => l.level === "error").length,
+        warn: logs.value.filter((l) => l.level === "warn").length,
+        info: logs.value.filter((l) => l.level === "info").length,
+        debug: logs.value.filter((l) => l.level === "debug").length,
+      };
+      
+      ElMessage.success(t("servers.logsRefreshed"));
+    } else {
+      ElMessage.error(response.error || t("servers.refreshLogsFailed"));
+    }
   } catch (error) {
+    console.error("Failed to refresh system logs:", error);
     ElMessage.error(t("servers.refreshLogsFailed"));
   }
+};
+
+// 根据事件类型获取日志级别
+const getLogLevelFromEventType = (eventType: string) => {
+  const upperEventType = eventType.toUpperCase();
+  switch (upperEventType) {
+    case "SERVER_STARTED":
+    case "SERVER_EDITED":
+      return "info";
+    case "SERVER_STOPPED":
+      return "warn";
+    case "SERVER_RESTARTED":
+      return "info";
+    default:
+      return "info";
+  }
+};
+
+// 根据事件生成日志消息
+const getLogMessageFromEvent = (log: any) => {
+  const eventMessages: Record<string, string> = {
+    SERVER_STARTED: t("servers.systemLog.serverStarted"),
+    SERVER_STOPPED: t("servers.systemLog.serverStopped"),
+    SERVER_RESTARTED: t("servers.systemLog.serverRestarted"),
+    SERVER_EDITED: t("servers.systemLog.serverEdited"),
+  };
+  
+  const upperEventType = log.eventType.toUpperCase();
+  const baseMessage = eventMessages[upperEventType] || log.eventType;
+  
+  // 如果有额外的元数据信息，可以添加到消息中
+  if (log.metadata && log.metadata.details) {
+    return `${baseMessage}: ${log.metadata.details}`;
+  }
+  
+  return baseMessage;
 };
 
 const exportLogs = () => {
@@ -1442,6 +1469,65 @@ const getLogLevelType = (level: string) => {
     default:
       return "info";
   }
+};
+
+// 获取事件类型图标
+const getEventTypeIcon = (eventType: string) => {
+  switch (eventType) {
+    case "SERVER_STARTED":
+      return "CircleCheck";
+    case "SERVER_STOPPED":
+      return "CircleClose";
+    case "SERVER_RESTARTED":
+      return "RefreshRight";
+    case "SERVER_EDITED":
+      return "EditPen";
+    default:
+      return "Document";
+  }
+};
+
+// 获取事件类型图标样式类
+const getEventTypeIconClass = (eventType: string) => {
+  switch (eventType) {
+    case "SERVER_STARTED":
+      return "event-icon-success";
+    case "SERVER_STOPPED":
+      return "event-icon-warning";
+    case "SERVER_RESTARTED":
+      return "event-icon-info";
+    case "SERVER_EDITED":
+      return "event-icon-primary";
+    default:
+      return "event-icon-default";
+  }
+};
+
+// 获取事件类型标签类型
+const getEventTypeTagType = (eventType: string) => {
+  switch (eventType) {
+    case "SERVER_STARTED":
+      return "success";
+    case "SERVER_STOPPED":
+      return "warning";
+    case "SERVER_RESTARTED":
+      return "info";
+    case "SERVER_EDITED":
+      return "primary";
+    default:
+      return "info";
+  }
+};
+
+// 获取事件类型标签文本
+const getEventTypeLabel = (eventType: string) => {
+  const labels: Record<string, string> = {
+    SERVER_STARTED: t("servers.eventTypes.serverStarted"),
+    SERVER_STOPPED: t("servers.eventTypes.serverStopped"),
+    SERVER_RESTARTED: t("servers.eventTypes.serverRestarted"),
+    SERVER_EDITED: t("servers.eventTypes.serverEdited"),
+  };
+  return labels[eventType] || eventType;
 };
 
 const formatBytes = (bytes: number) => {
@@ -2503,6 +2589,50 @@ const MAX_PROCESS_LOGS = 500;
 .log-debug {
   background-color: var(--el-color-primary-light-9);
   border-left: 3px solid var(--el-color-primary);
+}
+
+/* 事件类型样式 */
+.event-server_started {
+  background-color: var(--el-color-success-light-9);
+  border-left: 3px solid var(--el-color-success);
+}
+
+.event-server_stopped {
+  background-color: var(--el-color-danger-light-9);
+  border-left: 3px solid var(--el-color-danger);
+}
+
+.event-server_restarted {
+  background-color: var(--el-color-warning-light-9);
+  border-left: 3px solid var(--el-color-warning);
+}
+
+.event-server_edited {
+  background-color: var(--el-color-info-light-9);
+  border-left: 3px solid var(--el-color-info);
+}
+
+.log-event-type {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+}
+
+.event-icon-success {
+  color: var(--el-color-success);
+}
+
+.event-icon-danger {
+  color: var(--el-color-danger);
+}
+
+.event-icon-warning {
+  color: var(--el-color-warning);
+}
+
+.event-icon-info {
+  color: var(--el-color-info);
 }
 
 .log-stat-card {

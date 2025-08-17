@@ -357,6 +357,7 @@ export interface LogEntry {
   serverId?: string;
   metadata?: Record<string, any>;
   source?: string;
+  eventType?: string;
 }
 
 export interface LogFilter {

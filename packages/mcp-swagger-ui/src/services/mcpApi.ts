@@ -113,6 +113,37 @@ class MCPApiService {
       };
     }
   }
+
+  async getSystemLogs(
+    serverId: string,
+    params?: {
+      page?: number;
+      limit?: number;
+      eventType?: string;
+      startDate?: string;
+      endDate?: string;
+    }
+  ): Promise<ApiResponse<any>> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.page) queryParams.append('page', params.page.toString());
+      if (params?.limit) queryParams.append('limit', params.limit.toString());
+      if (params?.eventType) queryParams.append('eventType', params.eventType);
+      if (params?.startDate) queryParams.append('startDate', params.startDate);
+      if (params?.endDate) queryParams.append('endDate', params.endDate);
+      
+      const queryString = queryParams.toString();
+      const url = `/servers/${serverId}/system-logs${queryString ? '?' + queryString : ''}`;
+      
+      const response = await this.api.get(url);
+      return response.data;
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
 }
 
 export const mcpApiService = new MCPApiService();
