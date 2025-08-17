@@ -1,5 +1,5 @@
 // 核心类型定义
-import { AuthConfig } from 'mcp-swagger-parser';
+import { AuthConfig, TransformerOptions, OperationFilter } from 'mcp-swagger-parser';
 
 export interface MCPTool {
   id: string;
@@ -33,19 +33,16 @@ export interface McpServerConfig {
   auth?: AuthConfig;
 }
 
-export interface TransformOptions {
-  baseUrl?: string;
-  includeDeprecated?: boolean;
-  requestTimeout?: number;
-  pathPrefix?: string;
+// 为了保持向后兼容性，创建TransformOptions作为TransformerOptions的类型别名
+// 同时扩展一些mcp-swagger-server特有的字段
+export interface TransformOptions extends TransformerOptions {
+  // mcp-swagger-server特有的字段
   tagFilter?: string[];
   operationIdPrefix?: string;
   enableAuth?: boolean;
   authHeaders?: Record<string, string>;
-  /**
-   * 认证配置
-   */
-  authConfig?: AuthConfig;
+  // 操作过滤配置
+  operationFilter?: OperationFilter;
 }
 
 export interface ValidationResult {

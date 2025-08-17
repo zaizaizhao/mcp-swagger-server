@@ -8,7 +8,8 @@ export async function initTools(
   openApiData?: any, 
   authConfig?: AuthConfig,
   customHeaders?: any,
-  debugHeaders?: boolean
+  debugHeaders?: boolean,
+  operationFilter?: any
 ) {
     console.log("🔧 初始化 MCP 工具...");
     
@@ -25,7 +26,8 @@ export async function initTools(
           openApiData, 
           authConfig, 
           customHeaders, 
-          debugHeaders
+          debugHeaders,
+          operationFilter
         );
    
         

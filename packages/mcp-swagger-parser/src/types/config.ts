@@ -69,6 +69,8 @@ export interface ExtractorConfig {
   filterMethods?: ('GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS' | 'TRACE')[];
 }
 
+// OperationFilter interface is defined in transformer/types.ts
+
 export interface ParserSettings {
   parser: ParserConfig;
   validator: ValidatorConfig;

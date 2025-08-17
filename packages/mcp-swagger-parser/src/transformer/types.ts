@@ -201,6 +201,44 @@ export interface CustomHeaders {
 }
 
 /**
+ * 操作过滤配置接口
+ */
+export interface OperationFilter {
+  /** HTTP 方法过滤 */
+  methods?: {
+    include?: string[]; // 包含的方法，如 ['GET', 'POST']
+    exclude?: string[]; // 排除的方法，如 ['DELETE']
+  };
+  
+  /** 路径过滤 */
+  paths?: {
+    include?: string[]; // 包含的路径模式，支持通配符
+    exclude?: string[]; // 排除的路径模式，支持通配符
+  };
+  
+  /** 操作ID过滤 */
+  operationIds?: {
+    include?: string[]; // 包含的操作ID模式
+    exclude?: string[]; // 排除的操作ID模式
+  };
+  
+  /** 响应状态码过滤 */
+  statusCodes?: {
+    include?: number[]; // 包含的状态码，如 [200, 201]
+    exclude?: number[]; // 排除的状态码，如 [404, 500]
+  };
+  
+  /** 参数过滤 */
+  parameters?: {
+    required?: string[]; // 必需的参数名称列表
+    forbidden?: string[]; // 禁止的参数名称列表
+  };
+  
+  /** 自定义过滤函数 */
+  customFilter?: (operation: any, method: string, path: string) => boolean;
+}
+
+/**
  * Transformer Options
  */
 export interface TransformerOptions {
@@ -278,6 +316,11 @@ export interface TransformerOptions {
      */
     maxDepth?: number;
   };
+  
+  /**
+   * 操作过滤配置
+   */
+  operationFilter?: OperationFilter;
 }
 
 /**

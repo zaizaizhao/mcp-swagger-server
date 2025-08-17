@@ -22,3 +22,4 @@ export type {
 
 // Configuration types
 export * from './config';
+export type { OperationFilter } from '../transformer/types';

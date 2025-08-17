@@ -1,5 +1,5 @@
 import { OpenAPISpec, OperationObject, ParameterObject, RequestBodyObject, SchemaObject, ReferenceObject, MediaTypeObject, ExampleObject } from '../types/index';
-import { MCPTool, MCPToolResponse, TransformerOptions, TextContent, ImageContent, AudioContent, ResourceLink, EmbeddedResource, ContentBlock, ResponseSchemaAnnotation, FieldAnnotation } from './types';
+import { MCPTool, MCPToolResponse, TransformerOptions, TextContent, ImageContent, AudioContent, ResourceLink, EmbeddedResource, ContentBlock, ResponseSchemaAnnotation, FieldAnnotation, OperationFilter } from './types';
 import { SchemaAnnotationExtractor } from '../extractors/schema-annotation-extractor';
 import { AuthManager, AuthConfig } from '../auth/types';
 import { BearerAuthManager } from '../auth/bearer-auth';
@@ -73,11 +73,12 @@ function createResourceLink(uri: string, name?: string, description?: string, mi
  */
 export class OpenAPIToMCPTransformer {
   private spec: OpenAPISpec;
-  private options: Required<Omit<TransformerOptions, 'authConfig' | 'customHeaders' | 'debugHeaders' | 'protectedHeaders'>> & { 
+  private options: Required<Omit<TransformerOptions, 'authConfig' | 'customHeaders' | 'debugHeaders' | 'protectedHeaders' | 'operationFilter'>> & { 
     authConfig?: AuthConfig;
     customHeaders?: TransformerOptions['customHeaders'];
     debugHeaders?: boolean;
     protectedHeaders?: string[];
+    operationFilter?: OperationFilter;
   };
   private annotationExtractor: SchemaAnnotationExtractor;
   private authManager?: AuthManager;
@@ -109,7 +110,8 @@ export class OpenAPIToMCPTransformer {
         maxFieldsToShow: options.annotationOptions?.maxFieldsToShow ?? 50,
         maxDepth: options.annotationOptions?.maxDepth ?? 5,
         ...options.annotationOptions
-      }
+      },
+      operationFilter: options.operationFilter
     };
 
     // 初始化注释提取器
@@ -170,7 +172,7 @@ export class OpenAPIToMCPTransformer {
 
       for (const method of methods) {
         const operation = pathItem[method];
-        if (operation && this.shouldIncludeOperation(operation)) {
+        if (operation && this.shouldIncludeOperation(operation, method, path)) {
           const tool = this.createMCPToolFromOperation(method, path, operation);
           if (tool) {
             tools.push(tool);
@@ -229,7 +231,7 @@ export class OpenAPIToMCPTransformer {
   /**
    * Check if operation should be included based on options
    */
-  private shouldIncludeOperation(operation: OperationObject): boolean {
+  private shouldIncludeOperation(operation: OperationObject, method?: string, path?: string): boolean {
     // Skip deprecated operations if not included
     if (operation.deprecated && !this.options.includeDeprecated) {
       return false;
@@ -254,7 +256,142 @@ export class OpenAPIToMCPTransformer {
       }
     }
 
+    // Apply operation filter if configured
+    if (this.options.operationFilter) {
+      return this.applyOperationFilter(operation, method, path);
+    }
+
     return true;
+  }
+
+  /**
+   * Apply operation filter based on OperationFilter configuration
+   */
+  private applyOperationFilter(operation: OperationObject, method?: string, path?: string): boolean {
+    const filter = this.options.operationFilter!;
+
+    // HTTP方法过滤
+    if (filter.methods && method) {
+      const methodUpper = method.toUpperCase();
+      if (filter.methods.include && filter.methods.include.length > 0) {
+        if (!filter.methods.include.map((m: string) => m.toUpperCase()).includes(methodUpper)) {
+          return false;
+        }
+      }
+      if (filter.methods.exclude && filter.methods.exclude.length > 0) {
+        if (filter.methods.exclude.map((m: string) => m.toUpperCase()).includes(methodUpper)) {
+          return false;
+        }
+      }
+    }
+
+    // 路径过滤
+    if (filter.paths && path) {
+      if (filter.paths.include && filter.paths.include.length > 0) {
+        const matchesInclude = filter.paths.include.some((pattern: string) => 
+          this.matchesPattern(path, pattern)
+        );
+        if (!matchesInclude) {
+          return false;
+        }
+      }
+      if (filter.paths.exclude && filter.paths.exclude.length > 0) {
+        const matchesExclude = filter.paths.exclude.some((pattern: string) => 
+          this.matchesPattern(path, pattern)
+        );
+        if (matchesExclude) {
+          return false;
+        }
+      }
+    }
+
+    // 操作ID过滤
+    if (filter.operationIds && operation.operationId) {
+      if (filter.operationIds.include && filter.operationIds.include.length > 0) {
+        const matchesInclude = filter.operationIds.include.some((pattern: string) => 
+          this.matchesPattern(operation.operationId!, pattern)
+        );
+        if (!matchesInclude) {
+          return false;
+        }
+      }
+      if (filter.operationIds.exclude && filter.operationIds.exclude.length > 0) {
+        const matchesExclude = filter.operationIds.exclude.some((pattern: string) => 
+          this.matchesPattern(operation.operationId!, pattern)
+        );
+        if (matchesExclude) {
+          return false;
+        }
+      }
+    }
+
+    // 响应状态码过滤
+    if (filter.statusCodes && operation.responses) {
+      const responseCodes = Object.keys(operation.responses)
+        .map(code => parseInt(code))
+        .filter(code => !isNaN(code));
+      
+      if (filter.statusCodes.include && filter.statusCodes.include.length > 0) {
+        const hasIncludedStatus = responseCodes.some(code => 
+          filter.statusCodes!.include!.includes(code)
+        );
+        if (!hasIncludedStatus) {
+          return false;
+        }
+      }
+      if (filter.statusCodes.exclude && filter.statusCodes.exclude.length > 0) {
+        const hasExcludedStatus = responseCodes.some(code => 
+          filter.statusCodes!.exclude!.includes(code)
+        );
+        if (hasExcludedStatus) {
+          return false;
+        }
+      }
+    }
+
+    // 参数过滤
+    if (filter.parameters && operation.parameters) {
+      const paramNames = operation.parameters
+        .filter(param => !this.isReferenceObject(param))
+        .map(param => (param as any).name);
+      
+      if (filter.parameters.required && filter.parameters.required.length > 0) {
+        const hasRequiredParam = filter.parameters.required.some((paramName: string) => 
+          paramNames.includes(paramName)
+        );
+        if (!hasRequiredParam) {
+          return false;
+        }
+      }
+      if (filter.parameters.forbidden && filter.parameters.forbidden.length > 0) {
+        const hasForbiddenParam = filter.parameters.forbidden.some((paramName: string) => 
+          paramNames.includes(paramName)
+        );
+        if (hasForbiddenParam) {
+          return false;
+        }
+      }
+    }
+
+    // 自定义过滤函数
+    if (filter.customFilter && method && path) {
+      return filter.customFilter(operation, method, path);
+    }
+
+    return true;
+  }
+
+  /**
+   * Check if a string matches a pattern (supports wildcards)
+   */
+  private matchesPattern(str: string, pattern: string): boolean {
+    // Convert wildcard pattern to regex
+    const regexPattern = pattern
+      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // Escape special regex chars
+      .replace(/\\\*/g, '.*'); // Convert * to .*
+    
+    const regex = new RegExp(`^${regexPattern}$`, 'i');
+    return regex.test(str);
   }
 
   /**

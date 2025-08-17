@@ -7,6 +7,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import chalk from 'chalk';
 import { AuthConfig } from 'mcp-swagger-parser';
+import type { OperationFilter } from 'mcp-swagger-parser';
+import { validateOperationFilter, normalizeOperationFilter } from './utils/validation.js';
 
 // 导出主要API和类型
 export { createMcpServer, runSseServer, runStdioServer, runStreamableServer } from './server';
@@ -48,6 +50,12 @@ interface ServerOptions {
   customHeadersConfig?: string;    // --custom-headers-config headers.json
   customHeadersEnv?: string[];     // --custom-header-env "X-Client-ID=CLIENT_ID"
   debugHeaders?: boolean;          // --debug-headers
+  // 操作过滤选项
+  'operation-filter-methods'?: string[];        // --operation-filter-methods
+  'operation-filter-paths'?: string[];          // --operation-filter-paths
+  'operation-filter-operation-ids'?: string[];  // --operation-filter-operation-ids
+  'operation-filter-status-codes'?: string[];   // --operation-filter-status-codes
+  'operation-filter-parameters'?: string[];     // --operation-filter-parameters
 }
 
 // 解析命令行参数
@@ -122,13 +130,34 @@ const { values, positionals } = parseArgs({
       type: "boolean",
       default: false,
     },
+    // 操作过滤选项
+    "operation-filter-methods": {
+      type: "string",
+      multiple: true,
+    },
+    "operation-filter-paths": {
+      type: "string",
+      multiple: true,
+    },
+    "operation-filter-operation-ids": {
+      type: "string",
+      multiple: true,
+    },
+    "operation-filter-status-codes": {
+      type: "string",
+      multiple: true,
+    },
+    "operation-filter-parameters": {
+      type: "string",
+      multiple: true,
+    },
     help: {
       type: "boolean",
       short: "h",
       default: false,
     }
   },
-}) as { values: ServerOptions & { help?: boolean; 'auth-type'?: string; 'bearer-token'?: string; 'bearer-env'?: string; 'auto-restart'?: boolean; 'max-retries'?: string; 'retry-delay'?: string; 'custom-header'?: string[]; 'custom-headers-config'?: string; 'custom-header-env'?: string[]; 'debug-headers'?: boolean }; positionals: string[] };
+}) as { values: ServerOptions & { help?: boolean; 'auth-type'?: string; 'bearer-token'?: string; 'bearer-env'?: string; 'auto-restart'?: boolean; 'max-retries'?: string; 'retry-delay'?: string; 'custom-header'?: string[]; 'custom-headers-config'?: string; 'custom-header-env'?: string[]; 'debug-headers'?: boolean; 'operation-filter-methods'?: string[]; 'operation-filter-paths'?: string[]; 'operation-filter-operation-ids'?: string[]; 'operation-filter-status-codes'?: string[]; 'operation-filter-parameters'?: string[] }; positionals: string[] };
 
 // 显示帮助信息 - 重新设计的专业版本
 function showHelp() {
@@ -158,6 +187,13 @@ function showHelp() {
   console.log(CliDesign.option('--custom-header-env <header>', '环境变量请求头 "Key=VAR_NAME" (可重复)'));
   console.log(CliDesign.option('--debug-headers', '启用请求头调试模式', 'false'));
   
+  console.log(CliDesign.section(`${CliDesign.icons.gear} 操作过滤选项`));
+  console.log(CliDesign.option('--operation-filter-methods <methods>', 'HTTP方法过滤 (可重复) [示例: GET,POST]'));
+  console.log(CliDesign.option('--operation-filter-paths <paths>', '路径过滤 (支持通配符, 可重复) [示例: /api/*]'));
+  console.log(CliDesign.option('--operation-filter-operation-ids <ids>', '操作ID过滤 (可重复) [示例: getUserById]'));
+  console.log(CliDesign.option('--operation-filter-status-codes <codes>', '状态码过滤 (可重复) [示例: 200,201]'));
+  console.log(CliDesign.option('--operation-filter-parameters <params>', '参数过滤 (可重复) [示例: userId,name]'));
+
   console.log(CliDesign.section(`${CliDesign.icons.gear} 高级选项`));
   console.log(CliDesign.option('-w, --watch', '监控文件变化并自动重载', 'false'));
   console.log(CliDesign.option('-m, --managed', '启用托管模式 (进程管理)', 'false'));
@@ -276,6 +312,15 @@ interface ConfigFile {
   };
   // 新增：调试选项
   debugHeaders?: boolean;
+  // 新增：操作过滤配置
+  operationFilter?: {
+    methods?: string[];
+    paths?: string[];
+    operationIds?: string[];
+    statusCodes?: number[];
+    parameters?: string[];
+    customFilter?: string; // 自定义过滤函数的字符串表示
+  };
 }
 
 // 加载配置文件
@@ -639,6 +684,126 @@ class CliDesign {
 }
 
 /**
+ * 解析操作过滤配置
+ */
+function parseOperationFilter(
+  options: ServerOptions & { 'operation-filter-methods'?: string[], 'operation-filter-paths'?: string[], 'operation-filter-operation-ids'?: string[], 'operation-filter-status-codes'?: string[], 'operation-filter-parameters'?: string[] },
+  config?: ConfigFile
+): OperationFilter | undefined {
+  const filter: OperationFilter = {};
+  let hasConfig = false;
+
+  // 1. 从配置文件读取
+  if (config?.operationFilter) {
+    Object.assign(filter, config.operationFilter);
+    hasConfig = true;
+  }
+
+  // 2. 从命令行参数读取
+  if (options['operation-filter-methods']) {
+    filter.methods = { include: options['operation-filter-methods'] };
+    hasConfig = true;
+  }
+
+  if (options['operation-filter-paths']) {
+    filter.paths = { include: options['operation-filter-paths'] };
+    hasConfig = true;
+  }
+
+  if (options['operation-filter-operation-ids']) {
+    filter.operationIds = { include: options['operation-filter-operation-ids'] };
+    hasConfig = true;
+  }
+
+  if (options['operation-filter-status-codes']) {
+    filter.statusCodes = { include: options['operation-filter-status-codes'].map(code => parseInt(code, 10)).filter(code => !isNaN(code)) };
+    hasConfig = true;
+  }
+
+  if (options['operation-filter-parameters']) {
+    filter.parameters = { required: options['operation-filter-parameters'] };
+    hasConfig = true;
+  }
+
+  if (!hasConfig) {
+    return undefined;
+  }
+
+  // 验证配置
+  const validationResult = validateOperationFilter(filter);
+  
+  if (!validationResult.valid) {
+    console.error(chalk.red('❌ Operation filter configuration validation failed:'));
+    validationResult.errors.forEach(error => {
+      console.error(chalk.red(`   • ${error}`));
+    });
+    process.exit(1);
+  }
+
+  // 显示警告信息
+  if (validationResult.warnings.length > 0) {
+    console.warn(chalk.yellow('⚠️  Operation filter configuration warnings:'));
+    validationResult.warnings.forEach(warning => {
+      console.warn(chalk.yellow(`   • ${warning}`));
+    });
+  }
+
+  // 规范化配置
+  const normalizedFilter = normalizeOperationFilter(filter);
+  
+  if (normalizedFilter && Object.keys(normalizedFilter).length > 0) {
+    console.log(chalk.green('✅ Operation filter configuration loaded successfully'));
+    
+    // 显示过滤配置摘要
+    if (normalizedFilter.methods) {
+      const methods = [];
+      if (normalizedFilter.methods.include) methods.push(`include: ${normalizedFilter.methods.include.join(', ')}`);
+      if (normalizedFilter.methods.exclude) methods.push(`exclude: ${normalizedFilter.methods.exclude.join(', ')}`);
+      if (methods.length > 0) {
+        console.log(chalk.blue(`   Methods: ${methods.join('; ')}`));
+      }
+    }
+    if (normalizedFilter.paths) {
+      const paths = [];
+      if (normalizedFilter.paths.include) paths.push(`include: ${normalizedFilter.paths.include.length} path(s)`);
+      if (normalizedFilter.paths.exclude) paths.push(`exclude: ${normalizedFilter.paths.exclude.length} path(s)`);
+      if (paths.length > 0) {
+        console.log(chalk.blue(`   Paths: ${paths.join('; ')}`));
+      }
+    }
+    if (normalizedFilter.operationIds) {
+      const operationIds = [];
+      if (normalizedFilter.operationIds.include) operationIds.push(`include: ${normalizedFilter.operationIds.include.length} ID(s)`);
+      if (normalizedFilter.operationIds.exclude) operationIds.push(`exclude: ${normalizedFilter.operationIds.exclude.length} ID(s)`);
+      if (operationIds.length > 0) {
+        console.log(chalk.blue(`   Operation IDs: ${operationIds.join('; ')}`));
+      }
+    }
+    if (normalizedFilter.statusCodes) {
+      const statusCodes = [];
+      if (normalizedFilter.statusCodes.include) statusCodes.push(`include: ${normalizedFilter.statusCodes.include.join(', ')}`);
+      if (normalizedFilter.statusCodes.exclude) statusCodes.push(`exclude: ${normalizedFilter.statusCodes.exclude.join(', ')}`);
+      if (statusCodes.length > 0) {
+        console.log(chalk.blue(`   Status Codes: ${statusCodes.join('; ')}`));
+      }
+    }
+    if (normalizedFilter.parameters) {
+      const parameters = [];
+      if (normalizedFilter.parameters.required) parameters.push(`required: ${normalizedFilter.parameters.required.length} parameter(s)`);
+      if (normalizedFilter.parameters.forbidden) parameters.push(`forbidden: ${normalizedFilter.parameters.forbidden.length} parameter(s)`);
+      if (parameters.length > 0) {
+        console.log(chalk.blue(`   Parameters: ${parameters.join('; ')}`));
+      }
+    }
+    if (normalizedFilter.customFilter) {
+      console.log(chalk.blue('   Custom Filter: enabled'));
+    }
+  }
+
+  return normalizedFilter;
+}
+
+/**
  * 解析自定义请求头配置
  */
 function parseCustomHeaders(
@@ -784,6 +949,9 @@ async function main() {
   const customHeaders = parseCustomHeaders(options, config, envVars);
   const debugHeaders = options['debug-headers'] || config?.debugHeaders || false;
 
+  // 解析操作过滤配置
+  const operationFilter = parseOperationFilter(options, config);
+
   // 显示启动横幅
   CliDesign.showHeader('MCP SWAGGER SERVER');
   console.log(CliDesign.brand.primary.bold(`  ${CliDesign.icons.rocket} 正在启动服务器...`));
@@ -900,7 +1068,7 @@ async function main() {
         case 'stdio':
           console.log(CliDesign.loading('正在启动 STDIO 服务器...'));
           console.log(CliDesign.brand.muted(`  ${CliDesign.icons.chat} 适用于 AI 客户端集成（如 Claude Desktop）`));
-          await runStdioServer(openApiData, authConfig, customHeaders, debugHeaders);
+          await runStdioServer(openApiData, authConfig, customHeaders, debugHeaders, operationFilter);
           break;
 
         case 'streamable':
@@ -909,7 +1077,7 @@ async function main() {
           const streamUrl = `http://localhost:${port}${streamEndpoint}`;
           console.log(CliDesign.brand.muted(`  ${CliDesign.icons.web} 服务器地址: ${streamUrl}`));
           console.log(CliDesign.brand.muted(`  ${CliDesign.icons.link} 适用于 Web 应用集成`));
-          await runStreamableServer(streamEndpoint, port, openApiData, authConfig, customHeaders, debugHeaders);
+          await runStreamableServer(streamEndpoint, port, openApiData, authConfig, customHeaders, debugHeaders, operationFilter);
           break;
 
         case 'sse':
@@ -918,7 +1086,7 @@ async function main() {
           const sseUrl = `http://localhost:${port}${sseEndpoint}`;
           console.log(CliDesign.brand.muted(`  ${CliDesign.icons.signal} SSE 端点: ${sseUrl}`));
           console.log(CliDesign.brand.muted(`  ${CliDesign.icons.bolt} 适用于实时 Web 应用`));
-          await runSseServer(sseEndpoint, port, openApiData, authConfig, customHeaders, debugHeaders);
+          await runSseServer(sseEndpoint, port, openApiData, authConfig, customHeaders, debugHeaders, operationFilter);
           break;
 
         default:
