@@ -65,15 +65,9 @@ pnpm build
 
 ### 快速启动
 
-```bash
-# 进入 MCP 服务器包目录
-cd packages/mcp-swagger-server
-
-# 使用 Petstore API 示例启动
-pnpm cli:petstore
-
-# 或者使用 GitHub API 示例
-pnpm cli:github
+```bash 
+# 启动服务器
+node packages/mcp-swagger-server/dist/index.js -openapi https://api.example.com/openapi.json --operation-filter-methods GET,POST --transport streamable -auth-type bearer --bearer-token "your-token-here"
 ```
 
 ## 📖 使用指南
@@ -116,6 +110,13 @@ mcp-swagger-server [选项]
 --bearer-token      直接指定 Bearer Token
 --bearer-env        从环境变量读取 Token
 --config, -c        配置文件路径
+
+# 操作过滤选项：
+--operation-filter-methods <methods>        HTTP方法过滤 (可重复) [示例: GET,POST]
+--operation-filter-paths <paths>            路径过滤 (支持通配符, 可重复) [示例: /api/*]
+--operation-filter-operation-ids <ids>      操作ID过滤 (可重复) [示例: getUserById]
+--operation-filter-status-codes <codes>     状态码过滤 (可重复) [示例: 200,201]
+--operation-filter-parameters <params>      参数过滤 (可重复) [示例: userId,name]
 ```
 
 #### 示例
@@ -135,7 +136,30 @@ mcp-swagger-server --openapi https://api.example.com/openapi.json --auth-type be
 
 # 从环境变量读取 Token
 export API_TOKEN="your-token-here"
-mcp-swagger-server --openapi https://api.example.com/openapi.json --auth-type bearer --bearer-env API_TOKEN --transport stdio
+mcp-swagger-server --openapi https://api.example.com/openapi.json --auth-type bearer --bearer-env API_TOKEN --transport streamable
+
+# 使用操作过滤选项
+# 只包含 GET 和 POST 方法的接口
+mcp-swagger-server --openapi https://api.example.com/openapi.json --operation-filter-methods GET,POST --transport streamable
+
+# 只包含特定路径的接口
+mcp-swagger-server --openapi https://api.example.com/openapi.json --operation-filter-paths "/api/users/*,/api/orders/*" --transport streamable
+
+# 只包含特定操作ID的接口
+mcp-swagger-server --openapi https://api.example.com/openapi.json --operation-filter-operation-ids "getUserById,createUser" --transport streamable
+
+# 只包含特定状态码的接口
+mcp-swagger-server --openapi https://api.example.com/openapi.json --operation-filter-status-codes "200,201,204" --transport streamable
+
+# 只包含特定参数的接口
+mcp-swagger-server --openapi https://api.example.com/openapi.json --operation-filter-parameters "userId,email" --transport streamable
+
+# 组合使用多个过滤选项
+mcp-swagger-server --openapi https://api.example.com/openapi.json \
+  --operation-filter-methods GET,POST \
+  --operation-filter-paths "/api/users/*" \
+  --operation-filter-status-codes "200,201" \
+  --transport streamable
 ```
 
 ### 🔐 Bearer Token 认证
@@ -146,7 +170,7 @@ mcp-swagger-server --openapi https://api.example.com/openapi.json --auth-type be
 
 **1. 直接指定 Token**
 ```bash
-mcp-swagger-server --auth-type bearer --bearer-token "your-token-here" --openapi https://api.example.com/openapi.json
+mcp-swagger-server --auth-type bearer --bearer-token "your-token-here" --openapi https://api.example.com/openapi.json --transport streamable
 ```
 
 **2. 环境变量方式**
