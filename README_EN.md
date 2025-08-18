@@ -44,7 +44,7 @@ mcp-swagger-server/
 
 ### Prerequisites
 
-- Node.js ≥ 16.0.0
+- Node.js ≥ 20.0.0
 - pnpm ≥ 8.0.0 (recommended)
 
 ### Installation
@@ -64,14 +64,8 @@ pnpm build
 ### Quick Launch
 
 ```bash
-# Navigate to MCP server package
-cd packages/mcp-swagger-server
-
-# Start with Petstore API example
-pnpm cli:petstore
-
-# Or start with GitHub API example
-pnpm cli:github
+# Start the server with example configuration
+node packages/mcp-swagger-server/dist/index.js -openapi https://api.example.com/openapi.json --operation-filter-methods GET,POST --transport streamable -auth-type bearer --bearer-token "your-token-here"
 ```
 
 ## � Usage Guide
@@ -114,6 +108,13 @@ mcp-swagger-server [options]
 --bearer-token      Directly specify Bearer Token
 --bearer-env        Read token from environment variable
 --config, -c        Configuration file path
+
+# Operation filtering options:
+--operation-filter-methods <methods>        HTTP method filtering (repeatable) [Example: GET,POST]
+--operation-filter-paths <paths>            Path filtering (supports wildcards, repeatable) [Example: /api/*]
+--operation-filter-operation-ids <ids>      Operation ID filtering (repeatable) [Example: getUserById]
+--operation-filter-status-codes <codes>     Status code filtering (repeatable) [Example: 200,201]
+--operation-filter-parameters <params>      Parameter filtering (repeatable) [Example: userId,name]
 ```
 
 #### Examples
@@ -134,6 +135,29 @@ mcp-swagger-server --openapi https://api.example.com/openapi.json --auth-type be
 # Read token from environment variable
 export API_TOKEN="your-token-here"
 mcp-swagger-server --openapi https://api.example.com/openapi.json --auth-type bearer --bearer-env API_TOKEN --transport stdio
+
+# Using operation filtering options
+# Include only GET and POST method endpoints
+mcp-swagger-server --openapi https://api.example.com/openapi.json --operation-filter-methods GET,POST --transport streamable
+
+# Include only specific path endpoints
+mcp-swagger-server --openapi https://api.example.com/openapi.json --operation-filter-paths "/api/users/*,/api/orders/*" --transport streamable
+
+# Include only specific operation ID endpoints
+mcp-swagger-server --openapi https://api.example.com/openapi.json --operation-filter-operation-ids "getUserById,createUser" --transport streamable
+
+# Include only specific status code endpoints
+mcp-swagger-server --openapi https://api.example.com/openapi.json --operation-filter-status-codes "200,201,204" --transport streamable
+
+# Include only endpoints with specific parameters
+mcp-swagger-server --openapi https://api.example.com/openapi.json --operation-filter-parameters "userId,email" --transport streamable
+
+# Combine multiple filtering options
+mcp-swagger-server --openapi https://api.example.com/openapi.json \
+  --operation-filter-methods GET,POST \
+  --operation-filter-paths "/api/users/*" \
+  --operation-filter-status-codes "200,201" \
+  --transport streamable
 ```
 
 ### 🔐 Bearer Token Authentication
