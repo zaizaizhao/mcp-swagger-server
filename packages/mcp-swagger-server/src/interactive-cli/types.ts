@@ -1,7 +1,7 @@
 /**
  * 传输协议类型
  */
-export type TransportType = 'stdio' | 'sse' | 'ws';
+export type TransportType = 'stdio' | 'sse' | 'streamable';
 
 /**
  * 认证配置
@@ -246,7 +246,7 @@ export interface CLIOptions {
   config?: string;
   port?: number;
   host?: string;
-  transport?: 'stdio' | 'sse' | 'ws';
+  transport?: 'stdio' | 'sse' | 'streamable';
   verbose?: boolean;
   quiet?: boolean;
   debug?: boolean;
