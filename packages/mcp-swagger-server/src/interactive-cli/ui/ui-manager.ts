@@ -1,9 +1,10 @@
 import { SessionConfig } from '../types';
+import chalk from 'chalk';
+import boxen from 'boxen';
+import Table from 'cli-table3';
+import ora from 'ora';
 
 type Ora = any;
-type ChalkInstance = any;
-type BoxenFunction = any;
-type TableConstructor = any;
 
 export interface ProgressOptions {
   text: string;
@@ -20,45 +21,21 @@ export interface TableColumn {
 
 export class UIManager {
   private activeSpinners: Map<string, Ora> = new Map();
-  private chalk: ChalkInstance | null = null;
-  private boxen: BoxenFunction | null = null;
-  private Table: TableConstructor | null = null;
-  private ora: any = null;
-  private initialized: boolean = false;
-
-  private async initModules() {
-    if (this.initialized) return;
-    
-    const [chalkModule, boxenModule, tableModule, oraModule] = await Promise.all([
-      import('chalk'),
-      import('boxen'),
-      import('cli-table3'),
-      import('ora')
-    ]);
-    
-    this.chalk = chalkModule.default;
-    this.boxen = boxenModule.default;
-    this.Table = tableModule.default;
-    this.ora = oraModule.default;
-    this.initialized = true;
-  }
 
   /**
    * 显示成功消息
    */
   async showSuccess(message: string): Promise<void> {
-    await this.initModules();
-    console.log(this.chalk!.green('✅ ' + message));
+    console.log(chalk.green('✅ ' + message));
   }
 
   /**
    * 显示错误消息
    */
   async showError(message: string, error?: Error): Promise<void> {
-    await this.initModules();
-    console.log(this.chalk!.red('❌ ' + message));
+    console.log(chalk.red('❌ ' + message));
     if (error && process.env.DEBUG) {
-      console.log(this.chalk!.gray(error.stack));
+      console.log(chalk.gray(error.stack));
     }
   }
 
@@ -66,16 +43,14 @@ export class UIManager {
    * 显示警告消息
    */
   async showWarning(message: string): Promise<void> {
-    await this.initModules();
-    console.log(this.chalk!.yellow('⚠️  ' + message));
+    console.log(chalk.yellow('⚠️  ' + message));
   }
 
   /**
    * 显示信息消息
    */
   async showInfo(message: string): Promise<void> {
-    await this.initModules();
-    console.log(this.chalk!.cyan('ℹ️  ' + message));
+    console.log(chalk.cyan('ℹ️  ' + message));
   }
 
   /**
@@ -83,8 +58,7 @@ export class UIManager {
    */
   async showDebug(message: string): Promise<void> {
     if (process.env.DEBUG) {
-      await this.initModules();
-      console.log(this.chalk!.gray('🐛 ' + message));
+      console.log(chalk.gray('🐛 ' + message));
     }
   }
 
@@ -92,8 +66,7 @@ export class UIManager {
    * 创建进度指示器
    */
   async createSpinner(id: string, options: ProgressOptions): Promise<Ora> {
-    await this.initModules();
-    const spinner = this.ora!({
+    const spinner = ora({
       text: options.text,
       color: options.color || 'cyan'
     });
@@ -137,16 +110,18 @@ export class UIManager {
   /**
    * 显示带边框的消息
    */
-  async showBox(content: string, options?: {
-    title?: string;
-    padding?: number;
-    margin?: number;
-    borderStyle?: 'single' | 'double' | 'round' | 'bold' | 'singleDouble' | 'doubleSingle' | 'classic';
-    borderColor?: string;
-    backgroundColor?: string;
-    align?: 'left' | 'center' | 'right';
-  }): Promise<void> {
-    await this.initModules();
+  async showBox(
+    content: string,
+    options?: {
+      title?: string;
+      padding?: number;
+      margin?: number;
+      borderStyle?: 'single' | 'double' | 'round' | 'bold' | 'singleDouble' | 'doubleSingle' | 'classic';
+      borderColor?: string;
+      backgroundColor?: string;
+      align?: 'left' | 'center' | 'right';
+    }
+  ): Promise<void> {
     const boxOptions = {
       padding: options?.padding || 1,
       margin: options?.margin || 1,
@@ -157,7 +132,7 @@ export class UIManager {
       titleAlignment: options?.align || 'center' as const
     };
 
-    console.log(this.boxen!(content, boxOptions));
+    console.log(boxen(content, boxOptions));
   }
 
   /**
@@ -176,9 +151,8 @@ export class UIManager {
       return;
     }
 
-    await this.initModules();
     const tableStyle = this.getTableStyle(options?.style || 'normal');
-    const table = new this.Table!({
+    const table = new Table({
       head: columns.map(col => col.header),
       colWidths: columns.map(col => col.width || null),
       colAligns: columns.map(col => col.align || 'left'),
@@ -194,7 +168,7 @@ export class UIManager {
     }
 
     if (options?.title) {
-      console.log(this.chalk!.cyan.bold('\n' + options.title));
+      console.log(chalk.cyan.bold('\n' + options.title));
     }
     console.log(table.toString());
   }
@@ -252,7 +226,6 @@ export class UIManager {
    * 显示会话详情
    */
   async showSessionDetails(session: SessionConfig): Promise<void> {
-    await this.initModules();
     const details = [
       ['ID', session.id],
       ['名称', session.name],
@@ -288,7 +261,7 @@ export class UIManager {
       }
     }
 
-    const table = new this.Table!({
+    const table = new Table({
       head: ['属性', '值'],
       colWidths: [15, 50]
     });
@@ -297,7 +270,7 @@ export class UIManager {
       table.push([key, value]);
     });
 
-    console.log(this.chalk!.cyan.bold(`\n📋 配置详情: ${session.name}`));
+    console.log(chalk.cyan.bold(`\n📋 配置详情: ${session.name}`));
     console.log(table.toString());
   }
 
@@ -309,8 +282,7 @@ export class UIManager {
     requests: number;
     errors: number;
   }): Promise<void> {
-    await this.initModules();
-    const status = isRunning ? this.chalk!.green('🟢 运行中') : this.chalk!.red('🔴 已停止');
+    const status = isRunning ? chalk.green('🟢 运行中') : chalk.red('🔴 已停止');
     
     let content = `状态: ${status}\n`;
     content += `配置: ${config.name}\n`;
@@ -358,35 +330,34 @@ export class UIManager {
    * 显示帮助信息
    */
   async showHelp(): Promise<void> {
-    await this.initModules();
     const helpContent = `
-${this.chalk!.cyan.bold('🚀 MCP Swagger Server - 交互式 CLI')}
+${chalk.cyan.bold('🚀 MCP Swagger Server - 交互式 CLI')}
 
-${this.chalk!.yellow('主要功能:')}
+${chalk.yellow('主要功能:')}
 • 🆕 创建新的 OpenAPI 配置
 • 📋 管理现有配置 (查看、编辑、删除)
 • 🚀 快速启动服务器
 • ⚙️  全局设置
 • 📊 查看状态和统计信息
 
-${this.chalk!.yellow('支持的传输协议:')}
+${chalk.yellow('支持的传输协议:')}
 • 📟 STDIO - 标准输入输出 (推荐用于 Claude Desktop)
 • 🌊 SSE - Server-Sent Events (适用于 Web 应用)
 • 🔄 Streamable - 流式传输 (适用于实时应用)
 
-${this.chalk!.yellow('高级功能:')}
+${chalk.yellow('高级功能:')}
 • 🔍 操作过滤器 - 控制哪些 API 操作被转换
 • 🔐 认证配置 - Bearer Token 支持
 • 📋 自定义请求头 - 添加额外的 HTTP 头
 • 💾 会话管理 - 保存和重用配置
 
-${this.chalk!.yellow('快捷键:')}
+${chalk.yellow('快捷键:')}
 • Ctrl+C - 退出当前操作
 • ↑/↓ - 导航菜单选项
 • Space - 选择/取消选择 (多选)
 • Enter - 确认选择
 
-${this.chalk!.yellow('更多信息:')}
+${chalk.yellow('更多信息:')}
 • 项目主页: https://github.com/your-repo/mcp-swagger-server
 • 文档: https://docs.mcp-swagger-server.com
 • 问题反馈: https://github.com/your-repo/mcp-swagger-server/issues
@@ -406,8 +377,7 @@ ${this.chalk!.yellow('更多信息:')}
    * 显示分隔线
    */
   async showSeparator(char: string = '─', length: number = 50): Promise<void> {
-    await this.initModules();
-    console.log(this.chalk!.gray(char.repeat(length)));
+    console.log(chalk.gray(char.repeat(length)));
   }
 
   /**

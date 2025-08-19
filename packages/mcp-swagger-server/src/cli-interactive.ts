@@ -70,8 +70,8 @@ function parseCommandLineArgs(): CLIOptions {
 
       case '--transport':
       case '-t':
-        if (nextArg && ['stdio', 'sse', 'ws'].includes(nextArg)) {
-          options.transport = nextArg as 'stdio' | 'sse' | 'ws';
+        if (nextArg && ['stdio', 'sse', 'streamable'].includes(nextArg)) {
+          options.transport = nextArg as 'stdio' | 'sse' | 'streamable';
           i++;
         }
         break;
@@ -122,7 +122,7 @@ function showHelp() {
   -c, --config <path>     指定配置文件路径
   -p, --port <number>     指定服务器端口 (1-65535)
   -h, --host <address>    指定服务器主机地址
-  -t, --transport <type>  指定传输协议 (stdio|sse|ws)
+  -t, --transport <type>  指定传输协议 (stdio|sse|streamable)
   -v, --verbose           启用详细输出
   -q, --quiet             启用静默模式
   -d, --debug             启用调试模式

@@ -1,17 +1,14 @@
-// Dynamic imports for ES modules
+// Static imports for ES modules
 import type { QuestionCollection, Answers } from 'inquirer';
+import inquirer from 'inquirer';
+import ora from 'ora';
+import boxen from 'boxen';
+import chalk from 'chalk';
+import Table from 'cli-table3';
+
 type Inquirer = {
   prompt: <T extends Answers = Answers>(questions: QuestionCollection<T>) => Promise<T>;
 };
-type Ora = (text?: string) => {
-  start(): any;
-  stop(): any;
-  succeed(text?: string): any;
-  fail(text?: string): any;
-};
-type Boxen = (text: string, options?: any) => string;
-type Chalk = typeof import('chalk');
-type Table = typeof import('cli-table3');
 import { SessionManager } from './managers/session-manager';
 import { OpenAPIWizard } from './wizards/openapi-wizard';
 import { UIManager } from './ui/ui-manager';
@@ -23,7 +20,7 @@ import { SessionConfig } from './types';
 
 export interface InteractiveCLIOptions {
   port?: number;
-  transport?: 'stdio' | 'sse' | 'ws';
+  transport?: 'stdio' | 'sse' | 'streamable';
   configFile?: string;
   debug?: boolean;
 }
@@ -40,13 +37,8 @@ export class InteractiveCLI {
   private currentServerId?: string;
   private isRunning: boolean = false;
   
-  // Dynamic module imports
-  private inquirer?: Inquirer;
-  private ora?: Ora;
-  private boxen?: Boxen;
-  private chalk?: Chalk;
-  private Table?: Table;
-  private modulesInitialized: boolean = false;
+  // Static module references
+  private inquirer: Inquirer;
 
   constructor(private options: InteractiveCLIOptions = {}) {
     this.sessionManager = new SessionManager();
@@ -54,38 +46,18 @@ export class InteractiveCLI {
     this.uiManager = new UIManager();
     this.configManager = configManager;
     this.serverManager = serverManager;
+    this.inquirer = inquirer;
     
     // 设置服务器事件监听
     this.setupServerEventListeners();
   }
   
-  /**
-   * 初始化动态导入的模块
-   */
-  private async initModules(): Promise<void> {
-    if (this.modulesInitialized) {
-      return;
-    }
-    
-    const { default: inquirer } = await import('inquirer');
-    const { default: ora } = await import('ora');
-    const { default: boxen } = await import('boxen');
-    const { default: chalk } = await import('chalk');
-    const { default: Table } = await import('cli-table3');
-    
-    this.inquirer = inquirer;
-    this.ora = ora;
-    this.boxen = boxen;
-    this.chalk = chalk;
-    this.Table = Table;
-    this.modulesInitialized = true;
-  }
+
 
   /**
    * 启动交互式 CLI
    */
   async start(): Promise<void> {
-    await this.initModules();
     this.isRunning = true;
     
     this.uiManager.clear();
@@ -100,7 +72,7 @@ export class InteractiveCLI {
       } catch (error) {
         await this.uiManager.showError('发生错误', error instanceof Error ? error : undefined);
         
-        const { continueRunning } = await this.inquirer!.prompt([
+        const { continueRunning } = await this.inquirer.prompt([
           {
             type: 'confirm',
             name: 'continueRunning',
@@ -125,12 +97,11 @@ export class InteractiveCLI {
    * 显示欢迎信息
    */
   private async showWelcome(): Promise<void> {
-    await this.initModules();
-    const welcomeContent = `${this.chalk!.cyan.bold('🚀 MCP Swagger Server 交互式 CLI')}
+    const welcomeContent = `${chalk.cyan.bold('🚀 MCP Swagger Server 交互式 CLI')}
 
-${this.chalk!.gray('这个工具可以帮助您轻松配置和管理 OpenAPI 到 MCP 的转换服务')}
+${chalk.gray('这个工具可以帮助您轻松配置和管理 OpenAPI 到 MCP 的转换服务')}
 
-${this.chalk!.yellow('主要功能:')}
+${chalk.yellow('主要功能:')}
 • 🆕 创建新的 OpenAPI 配置
 • 📋 管理现有配置
 • 🚀 快速启动服务器
@@ -218,7 +189,7 @@ ${this.chalk!.yellow('主要功能:')}
       }
     ];
 
-    const { action } = await this.inquirer!.prompt([
+    const { action } = await this.inquirer.prompt([
       {
         type: 'list',
         name: 'action',
@@ -273,11 +244,11 @@ ${this.chalk!.yellow('主要功能:')}
       const config = await this.openApiWizard.runWizard();
       
       if (config) {
-        await this.sessionManager.saveSession(config);
-        await this.configManager.addRecentConfig(config.id);
+        const savedConfig = await this.sessionManager.saveSession(config);
+        await this.configManager.addRecentConfig(savedConfig.id);
         await this.uiManager.showSuccess('配置已保存！');
         
-        const { startNow } = await this.inquirer!.prompt([
+        const { startNow } = await this.inquirer.prompt([
           {
             type: 'confirm',
             name: 'startNow',
@@ -315,7 +286,7 @@ ${this.chalk!.yellow('主要功能:')}
 
     choices.push({ name: '🔙 返回主菜单', value: 'back' });
 
-    const { sessionId } = await this.inquirer!.prompt([
+    const { sessionId } = await this.inquirer.prompt([
       {
         type: 'list',
         name: 'sessionId',
@@ -344,7 +315,7 @@ ${this.chalk!.yellow('主要功能:')}
 
     await this.uiManager.showSessionDetails(session);
 
-    const { action } = await this.inquirer!.prompt([
+    const { action } = await this.inquirer.prompt([
       {
         type: 'list',
         name: 'action',
@@ -385,24 +356,30 @@ ${this.chalk!.yellow('主要功能:')}
       const result = await this.serverManager.startServer(config);
       if (result.success && result.serverId) {
         this.currentServerId = result.serverId;
+        
+        // 更新最近使用时间
+        await this.sessionManager.updateSession(config.id, {
+          ...config,
+          lastUsed: new Date().toISOString()
+        });
+        
+        await this.uiManager.showSuccess(`服务器已启动: ${config.name}`);
+        
+        if (config.transport === 'sse' && config.port) {
+          await this.uiManager.showInfo(`访问地址: http://localhost:${config.port}`);
+        } else if (config.transport === 'streamable' && config.port) {
+          await this.uiManager.showInfo(`访问地址: http://localhost:${config.port}/mcp`);
+        } else if (config.transport === 'stdio') {
+          await this.uiManager.showInfo('服务器已启动，使用 stdio 传输协议');
+        }
+        
       } else {
         throw new Error(result.error || '服务器启动失败');
       }
       
-      // 更新最近使用时间
-      await this.sessionManager.updateSession(config.id, {
-        ...config,
-        lastUsed: new Date().toISOString()
-      });
-      
-      await this.uiManager.showSuccess(`服务器已启动: ${config.name}`);
-      
-      if (config.transport === 'sse' && config.port) {
-        await this.uiManager.showInfo(`访问地址: http://localhost:${config.port}`);
-      }
-      
     } catch (error) {
       await this.uiManager.showError('服务器启动失败', error instanceof Error ? error : undefined);
+      throw error;
     }
   }
 
@@ -411,11 +388,11 @@ ${this.chalk!.yellow('主要功能:')}
    */
   private async startServer(config: SessionConfig): Promise<void> {
     if (this.isRunning) {
-      console.log(this.chalk!.yellow('服务器已在运行中'));
+      console.log(chalk.yellow('服务器已在运行中'));
       return;
     }
 
-    const spinner = this.ora!('启动服务器...').start();
+    const spinner = ora('启动服务器...').start();
     
     try {
       // 加载 OpenAPI 数据
@@ -438,12 +415,12 @@ ${this.chalk!.yellow('主要功能:')}
       this.isRunning = true;
       spinner.succeed(`服务器启动成功！`);
       
-      console.log(this.boxen!(
-        this.chalk!.green.bold('🎉 服务器运行中') + '\n\n' +
-        this.chalk!.gray(`配置: ${config.name}`) + '\n' +
-        this.chalk!.gray(`传输: ${config.transport}`) + '\n' +
-        (config.port ? this.chalk!.gray(`端口: ${config.port}`) + '\n' : '') +
-        this.chalk!.gray(`OpenAPI: ${config.openApiUrl}`),
+      console.log(boxen(
+          chalk.green.bold('🎉 服务器运行中') + '\n\n' +
+          chalk.gray(`配置: ${config.name}`) + '\n' +
+          chalk.gray(`传输: ${config.transport}`) + '\n' +
+          (config.port ? chalk.gray(`端口: ${config.port}`) + '\n' : '') +
+          chalk.gray(`OpenAPI: ${config.openApiUrl}`),
         {
           padding: 1,
           margin: 1,
@@ -469,7 +446,7 @@ ${this.chalk!.yellow('主要功能:')}
    */
   private async showServerControls(): Promise<void> {
     while (this.isRunning) {
-      const { action } = await this.inquirer!.prompt([
+      const { action } = await this.inquirer.prompt([
         {
           type: 'list',
           name: 'action',
@@ -528,7 +505,7 @@ ${this.chalk!.yellow('主要功能:')}
    * 重启服务器
    */
   private async restartServer(): Promise<void> {
-    console.log(this.chalk!.cyan('重启服务器...'));
+    console.log(chalk.cyan('重启服务器...'));
     await this.stopServer();
     // 这里需要保存当前配置以便重启
     // 实现细节待完善
@@ -544,7 +521,7 @@ ${this.chalk!.yellow('主要功能:')}
     }
 
     // 显示服务器状态信息
-    console.log(this.chalk!.green('✅ 服务器运行中'));
+    console.log(chalk.green('✅ 服务器运行中'));
     // 更多状态信息待实现
   }
 
@@ -581,7 +558,7 @@ ${this.chalk!.yellow('主要功能:')}
       value: session.id
     }));
     
-    const { sessionId } = await this.inquirer!.prompt([
+    const { sessionId } = await this.inquirer.prompt([
       {
         type: 'list',
         name: 'sessionId',
@@ -628,7 +605,7 @@ ${this.chalk!.yellow('主要功能:')}
    * 删除会话
    */
   private async deleteSession(session: SessionConfig): Promise<void> {
-    const { confirm } = await this.inquirer!.prompt([
+    const { confirm } = await this.inquirer.prompt([
       {
         type: 'confirm',
         name: 'confirm',
@@ -677,7 +654,7 @@ ${this.chalk!.yellow('主要功能:')}
     
     choices.push({ name: '🔙 返回主菜单', value: 'back' });
     
-    const { sessionId } = await this.inquirer!.prompt([
+    const { sessionId } = await this.inquirer.prompt([
       {
         type: 'list',
         name: 'sessionId',
@@ -721,7 +698,7 @@ ${this.chalk!.yellow('主要功能:')}
       { name: '🔙 返回主菜单', value: 'back' }
     ];
     
-    const { setting } = await this.inquirer!.prompt([
+    const { setting } = await this.inquirer.prompt([
       {
         type: 'list',
         name: 'setting',
@@ -735,7 +712,7 @@ ${this.chalk!.yellow('主要功能:')}
     }
     
     if (setting === 'reset') {
-      const { confirm } = await this.inquirer!.prompt([
+      const { confirm } = await this.inquirer.prompt([
         {
           type: 'confirm',
           name: 'confirm',
@@ -785,7 +762,7 @@ ${this.chalk!.yellow('主要功能:')}
     
     switch (setting) {
       case 'transport':
-        const { transport } = await this.inquirer!.prompt([
+        const { transport } = await this.inquirer.prompt([
           {
             type: 'list',
             name: 'transport',
@@ -793,7 +770,7 @@ ${this.chalk!.yellow('主要功能:')}
             choices: [
               { name: 'STDIO', value: 'stdio' },
               { name: 'SSE (Server-Sent Events)', value: 'sse' },
-              { name: 'WebSocket', value: 'ws' }
+              { name: 'Streamable', value: 'streamable' }
             ],
             default: config.defaultTransport
           }
@@ -803,7 +780,7 @@ ${this.chalk!.yellow('主要功能:')}
         break;
         
       case 'theme':
-        const { theme } = await this.inquirer!.prompt([
+        const { theme } = await this.inquirer.prompt([
           {
             type: 'list',
             name: 'theme',
@@ -821,7 +798,7 @@ ${this.chalk!.yellow('主要功能:')}
         break;
         
       case 'logLevel':
-        const { logLevel } = await this.inquirer!.prompt([
+        const { logLevel } = await this.inquirer.prompt([
           {
             type: 'list',
             name: 'logLevel',
@@ -845,7 +822,7 @@ ${this.chalk!.yellow('主要功能:')}
    * 等待按键
    */
   private async waitForKeyPress(): Promise<void> {
-    await this.inquirer!.prompt([
+    await this.inquirer.prompt([
       {
         type: 'input',
         name: 'continue',
@@ -861,7 +838,7 @@ ${this.chalk!.yellow('主要功能:')}
     const runningServers = this.serverManager.getRunningServers();
     
     if (runningServers.size > 0) {
-      const { stopServers } = await this.inquirer!.prompt([
+      const { stopServers } = await this.inquirer.prompt([
         {
           type: 'confirm',
           name: 'stopServers',

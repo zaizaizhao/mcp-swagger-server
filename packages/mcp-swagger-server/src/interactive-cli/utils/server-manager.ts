@@ -1,10 +1,10 @@
-import { ChildProcess, spawn } from 'child_process';
 import { EventEmitter } from 'events';
 import { SessionConfig, OperationFilter } from '../types';
 import { configManager } from './config-manager';
-
-// Dynamic import for ES module
-type Chalk = typeof import('chalk');
+import chalk from 'chalk';
+import { runStdioServer, runSseServer, runStreamableServer } from '../../server';
+import { AuthConfig } from 'mcp-swagger-parser';
+import axios from 'axios';
 
 export interface ServerStats {
   uptime: number;
@@ -19,8 +19,8 @@ export interface ServerStatus {
   isRunning: boolean;
   config?: SessionConfig;
   stats?: ServerStats;
-  process?: ChildProcess;
-  pid?: number;
+  serverPromise?: Promise<void>;
+  abortController?: AbortController;
 }
 
 export class ServerManager extends EventEmitter {
@@ -28,27 +28,19 @@ export class ServerManager extends EventEmitter {
   private logBuffer: Map<string, string[]> = new Map();
   private maxLogLines: number = 1000;
   private debugMode: boolean = false;
-  private chalk?: Chalk;
-  private modulesInitialized: boolean = false;
+  private chalk = chalk;
 
   constructor() {
     super();
     this.setupProcessHandlers();
-    // debugMode will be initialized in initModules
+    this.initDebugMode();
   }
 
   /**
-   * 初始化动态导入的模块
+   * 初始化调试模式
    */
-  private async initModules(): Promise<void> {
-    if (this.modulesInitialized) {
-      return;
-    }
-    
-    const { default: chalk } = await import('chalk');
-    this.chalk = chalk;
+  private async initDebugMode(): Promise<void> {
     this.debugMode = await configManager.get('debugMode') || false;
-    this.modulesInitialized = true;
   }
 
   /**
@@ -66,7 +58,7 @@ export class ServerManager extends EventEmitter {
     }
 
     try {
-      const process = await this.spawnServerProcess(config);
+      const { serverPromise, abortController } = await this.startServerProcess(config);
       const stats: ServerStats = {
         uptime: 0,
         requests: 0,
@@ -78,13 +70,13 @@ export class ServerManager extends EventEmitter {
         isRunning: true,
         config,
         stats,
-        process,
-        pid: process.pid
+        serverPromise,
+        abortController
       };
 
       this.runningServers.set(serverId, serverStatus);
       this.logBuffer.set(serverId, []);
-      this.setupProcessMonitoring(serverId, process);
+      this.setupServerMonitoring(serverId, serverPromise, abortController);
       this.startStatsTracking(serverId);
 
       this.emit('serverStarted', { serverId, config });
@@ -115,24 +107,25 @@ export class ServerManager extends EventEmitter {
     }
 
     try {
-      if (serverStatus.process) {
-        // 优雅关闭
-        serverStatus.process.kill('SIGTERM');
-        
-        // 等待进程结束，如果超时则强制杀死
-        await new Promise<void>((resolve) => {
-          const timeout = setTimeout(() => {
-            if (serverStatus.process && !serverStatus.process.killed) {
-              serverStatus.process.kill('SIGKILL');
-            }
-            resolve();
-          }, 5000);
-
-          serverStatus.process!.on('exit', () => {
-            clearTimeout(timeout);
-            resolve();
-          });
-        });
+      if (serverStatus.abortController) {
+        serverStatus.abortController.abort();
+      }
+      
+      // 等待服务器停止
+      if (serverStatus.serverPromise) {
+        try {
+          await Promise.race([
+            serverStatus.serverPromise,
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('服务器停止超时')), 5000)
+            )
+          ]);
+        } catch (error) {
+          // 忽略由于abort导致的错误
+          if (error instanceof Error && !error.message.includes('abort')) {
+            console.warn('服务器停止时出现错误:', error.message);
+          }
+        }
       }
 
       serverStatus.isRunning = false;
@@ -244,150 +237,143 @@ export class ServerManager extends EventEmitter {
   /**
    * 启动服务器进程
    */
-  private async spawnServerProcess(config: SessionConfig): Promise<ChildProcess> {
-    const args = await this.buildServerArgs(config);
-    const cliPath = require.resolve('../../cli.ts');
+  private async startServerProcess(config: SessionConfig): Promise<{ serverPromise: Promise<void>; abortController: AbortController }> {
+    const abortController = new AbortController();
     
-    const childProcess = spawn('ts-node', [cliPath, ...args], {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      env: {
-        ...process.env,
-        NODE_ENV: 'development',
-        DEBUG: this.debugMode ? '1' : '0'
-      },
-      cwd: process.cwd()
-    });
+    // 加载OpenAPI数据
+    let openApiData = null;
+    if (config.openApiUrl) {
+      try {
+        if (this.isUrl(config.openApiUrl)) {
+          const response = await axios.get(config.openApiUrl);
+          openApiData = response.data;
+        } else {
+          // 本地文件处理
+          const fs = await import('fs');
+          const path = await import('path');
+          const filePath = path.resolve(config.openApiUrl);
+          const fileContent = fs.readFileSync(filePath, 'utf8');
+          openApiData = JSON.parse(fileContent);
+        }
+      } catch (error) {
+        throw new Error(`加载OpenAPI数据失败: ${error instanceof Error ? error.message : '未知错误'}`);
+      }
+    }
 
-    const serverTimeout = await configManager.get('serverTimeout');
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        childProcess.kill();
-        reject(new Error('服务器启动超时'));
-      }, serverTimeout);
+    // 构建认证配置
+    const authConfig: AuthConfig = {
+      type: config.auth?.type || 'none',
+      ...(config.auth?.type === 'bearer' && config.auth.token ? {
+        bearer: {
+          source: 'static',
+          token: config.auth.token
+        }
+      } : {})
+    };
 
-      childProcess.on('spawn', () => {
-        clearTimeout(timeout);
-        resolve(childProcess);
-      });
+    // 构建操作过滤器
+    const operationFilter = config.operationFilter;
 
-      childProcess.on('error', (error: Error) => {
-        clearTimeout(timeout);
-        reject(error);
-      });
-    });
+    // 启动对应的服务器
+    let serverPromise: Promise<void>;
+    
+    switch (config.transport.toLowerCase()) {
+      case 'stdio':
+        serverPromise = runStdioServer(
+          openApiData,
+          authConfig,
+          config.customHeaders,
+          this.debugMode,
+          operationFilter
+        );
+        break;
+      case 'sse':
+        const ssePort = config.port || 3322;
+        serverPromise = runSseServer(
+          '/sse',
+          ssePort,
+          openApiData,
+          authConfig,
+          config.customHeaders,
+          this.debugMode,
+          operationFilter
+        );
+        break;
+      case 'streamable':
+        const streamPort = config.port || 3322;
+        serverPromise = runStreamableServer(
+          '/mcp',
+          streamPort,
+          openApiData,
+          authConfig,
+          config.customHeaders,
+          this.debugMode,
+          operationFilter
+        );
+        break;
+      default:
+        throw new Error(`不支持的传输协议: ${config.transport}`);
+    }
+
+    return { serverPromise, abortController };
   }
 
   /**
-   * 构建服务器启动参数
+   * 检查是否为URL
    */
-  private async buildServerArgs(config: SessionConfig): Promise<string[]> {
-    const args: string[] = [];
-
-    // OpenAPI URL
-    args.push('--url', config.openApiUrl);
-
-    // 传输协议
-    args.push('--transport', config.transport);
-
-    // 端口 (仅对 SSE 和 Streamable)
-    if (config.port && ['sse', 'streamable'].includes(config.transport)) {
-      args.push('--port', config.port.toString());
+  private isUrl(str: string): boolean {
+    try {
+      new URL(str);
+      return true;
+    } catch {
+      return false;
     }
-
-    // 认证
-    if (config.auth && config.auth.token) {
-      args.push('--auth-type', config.auth.type);
-      args.push('--auth-token', config.auth.token);
-    }
-
-    // 自定义请求头
-    if (config.customHeaders) {
-      for (const [key, value] of Object.entries(config.customHeaders)) {
-        args.push('--header', `${key}:${value}`);
-      }
-    }
-
-    // 添加操作过滤参数
-    if (config.operationFilter) {
-      const filter = config.operationFilter;
-      
-      // 添加方法过滤
-      if (filter.methods?.include && filter.methods.include.length > 0) {
-        args.push('--filter-methods-include', filter.methods.include.join(','));
-      }
-      if (filter.methods?.exclude && filter.methods.exclude.length > 0) {
-        args.push('--filter-methods-exclude', filter.methods.exclude.join(','));
-      }
-      
-      // 添加路径过滤
-      if (filter.paths?.include && filter.paths.include.length > 0) {
-        args.push('--filter-paths-include', filter.paths.include.join(','));
-      }
-      if (filter.paths?.exclude && filter.paths.exclude.length > 0) {
-        args.push('--filter-paths-exclude', filter.paths.exclude.join(','));
-      }
-    }
-
-    // 文件监控
-    if (await configManager.get('watchFiles')) {
-      args.push('--watch');
-    }
-
-    return args;
   }
 
+
+
   /**
-   * 设置进程监控
+   * 设置服务器监控
    */
-  private setupProcessMonitoring(serverId: string, process: ChildProcess): void {
+  private setupServerMonitoring(serverId: string, serverPromise: Promise<void>, abortController: AbortController): void {
     const serverStatus = this.runningServers.get(serverId);
     if (!serverStatus) return;
 
-    // 监听标准输出
-    process.stdout?.on('data', (data) => {
-      const log = data.toString().trim();
-      this.addLog(serverId, `[OUT] ${log}`);
-      
-      // 解析请求日志
-      if (log.includes('Request:') || log.includes('GET') || log.includes('POST')) {
-        if (serverStatus.stats) {
-          serverStatus.stats.requests++;
-          serverStatus.stats.lastRequest = new Date();
+    // 监控服务器Promise状态
+    serverPromise
+      .then(() => {
+        const message = `服务器 ${serverId} 正常结束`;
+        this.addLog(serverId, `[SYS] ${message}`);
+        
+        if (serverStatus) {
+          serverStatus.isRunning = false;
         }
-      }
-    });
+        
+        this.emit('serverStopped', { serverId, config: serverStatus.config });
+      })
+      .catch((error: Error) => {
+        const errorMessage = `服务器 ${serverId} 错误: ${error.message}`;
+        this.addLog(serverId, `[ERR] ${this.chalk.red(errorMessage)}`);
+        
+        if (serverStatus) {
+          serverStatus.isRunning = false;
+          if (serverStatus.stats) {
+            serverStatus.stats.errors++;
+            serverStatus.stats.lastError = new Date();
+          }
+        }
+        
+        this.emit('serverError', { serverId, config: serverStatus.config, error });
+      });
 
-    // 监听标准错误
-    process.stderr?.on('data', (data) => {
-      const log = data.toString().trim();
-      this.addLog(serverId, `[ERR] ${this.chalk?.red(log) || log}`);
+    // 监听abort信号
+    abortController.signal.addEventListener('abort', () => {
+      const message = `服务器 ${serverId} 被手动停止`;
+      this.addLog(serverId, `[SYS] ${message}`);
       
-      if (serverStatus.stats) {
-        serverStatus.stats.errors++;
-        serverStatus.stats.lastError = new Date();
-      }
-    });
-
-    // 监听进程退出
-    process.on('exit', (code, signal) => {
-      this.addLog(serverId, `[SYS] 进程退出: code=${code}, signal=${signal}`);
-      
-      if (serverStatus.isRunning) {
+      if (serverStatus) {
         serverStatus.isRunning = false;
-        this.emit('serverCrashed', { serverId, config: serverStatus.config, code, signal });
       }
-    });
-
-    // 监听进程错误
-    process.on('error', (error) => {
-      this.addLog(serverId, `[SYS] 进程错误: ${error.message}`);
-      
-      if (serverStatus.stats) {
-        serverStatus.stats.errors++;
-        serverStatus.stats.lastError = new Date();
-      }
-      
-      this.emit('serverError', { serverId, config: serverStatus.config, error });
     });
   }
 
@@ -432,8 +418,7 @@ export class ServerManager extends EventEmitter {
   private setupProcessHandlers(): void {
     // 优雅关闭
     const gracefulShutdown = async () => {
-      await this.initModules();
-      console.log(this.chalk?.yellow('\n正在关闭所有服务器...') || '\n正在关闭所有服务器...');
+      console.log(this.chalk.yellow('\n正在关闭所有服务器...'));
       await this.stopAllServers();
       process.exit(0);
     };
@@ -443,14 +428,12 @@ export class ServerManager extends EventEmitter {
     
     // 处理未捕获的异常
     process.on('uncaughtException', async (error) => {
-      await this.initModules();
-      console.error(this.chalk?.red('未捕获的异常:') || '未捕获的异常:', error);
+      console.error(this.chalk.red('未捕获的异常:'), error);
       gracefulShutdown();
     });
 
     process.on('unhandledRejection', async (reason) => {
-      await this.initModules();
-      console.error(this.chalk?.red('未处理的 Promise 拒绝:') || '未处理的 Promise 拒绝:', reason);
+      console.error(this.chalk.red('未处理的 Promise 拒绝:'), reason);
       gracefulShutdown();
     });
   }

@@ -1,8 +1,5 @@
-// inquirer 将通过 require 使用
 import type { QuestionCollection, Answers } from 'inquirer';
-type InquirerType = {
-  prompt: <T extends Answers = Answers>(questions: QuestionCollection<T>) => Promise<T>;
-};
+import inquirer from 'inquirer';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import axios from 'axios';
@@ -22,17 +19,7 @@ import {
  * 引导用户完成 OpenAPI 到 MCP 服务的配置过程
  */
 export class OpenAPIWizard {
-  private inquirer: InquirerType | null = null;
-
-  /**
-   * 初始化模块
-   */
-  private async initModules(): Promise<void> {
-    if (!this.inquirer) {
-      const { default: inquirer } = await import('inquirer');
-    this.inquirer = inquirer;
-    }
-  }
+  private inquirer = inquirer;
   private presetUrls: PresetOpenAPIUrl[] = [
     {
       name: 'Swagger Petstore',
@@ -58,7 +45,6 @@ export class OpenAPIWizard {
    * 运行配置向导
    */
   async runWizard(): Promise<SessionConfig | null> {
-    await this.initModules();
     console.log('\n🚀 欢迎使用 OpenAPI 配置向导！\n');
     
     try {
@@ -90,7 +76,7 @@ export class OpenAPIWizard {
       context.data = { ...context.data, ...transportConfig };
 
       // 步骤 4: 高级配置（可选）
-      const wantAdvanced = await this.inquirer!.prompt([
+      const wantAdvanced = await this.inquirer.prompt([
         {
           type: 'confirm',
           name: 'configure',
@@ -129,7 +115,7 @@ export class OpenAPIWizard {
       if (finalConfig.host) console.log(`主机: ${finalConfig.host}`);
       if (finalConfig.auth) console.log(`认证: ${finalConfig.auth.type}`);
 
-      const confirm = await this.inquirer!.prompt([
+      const confirm = await this.inquirer.prompt([
         {
           type: 'confirm',
           name: 'save',
@@ -149,10 +135,9 @@ export class OpenAPIWizard {
    * 编辑现有配置
    */
   async editConfiguration(config: SessionConfig): Promise<SessionConfig | null> {
-    await this.initModules();
     console.log(`\n✏️  编辑配置: ${config.name}\n`);
 
-    const editChoice = await this.inquirer!.prompt([
+    const editChoice = await this.inquirer.prompt([
       {
         type: 'list',
         name: 'section',
@@ -210,8 +195,7 @@ export class OpenAPIWizard {
    * 获取基本信息
    */
   private async getBasicInfo(existing?: SessionConfig): Promise<Partial<SessionConfig> | null> {
-    await this.initModules();
-    const answers = await this.inquirer!.prompt([
+    const answers = await this.inquirer.prompt([
       {
         type: 'input',
         name: 'name',
@@ -242,8 +226,7 @@ export class OpenAPIWizard {
    * 选择 OpenAPI URL 来源
    */
   private async getOpenAPIConfig(existingUrl?: string): Promise<Partial<SessionConfig> | null> {
-    await this.initModules();
-    const sourceChoice = await this.inquirer!.prompt([
+    const sourceChoice = await this.inquirer.prompt([
       {
         type: 'list',
         name: 'source',
@@ -280,7 +263,7 @@ export class OpenAPIWizard {
 
       case 'url':
       default:
-        const urlInput = await this.inquirer!.prompt([
+        const urlInput = await this.inquirer.prompt([
           {
             type: 'input',
             name: 'url',
@@ -330,7 +313,7 @@ export class OpenAPIWizard {
 
     choices.push({ name: '取消', value: '' });
 
-    const answer = await this.inquirer!.prompt([
+    const answer = await this.inquirer.prompt([
       {
         type: 'list',
         name: 'url',
@@ -346,7 +329,7 @@ export class OpenAPIWizard {
    * 获取本地文件路径
    */
   private async getLocalFilePath(): Promise<string | null> {
-    const answer = await this.inquirer!.prompt([
+    const answer = await this.inquirer.prompt([
       {
         type: 'input',
         name: 'path',
@@ -372,7 +355,7 @@ export class OpenAPIWizard {
    * 手动输入 URL
    */
   private async getManualUrl(existing?: string): Promise<string | null> {
-    const answer = await this.inquirer!.prompt([
+    const answer = await this.inquirer.prompt([
       {
         type: 'input',
         name: 'url',
@@ -459,8 +442,7 @@ export class OpenAPIWizard {
    * 获取传输配置
    */
   private async getTransportConfig(existing?: SessionConfig): Promise<Partial<SessionConfig> | null> {
-    await this.initModules();
-    const answers = await this.inquirer!.prompt([
+    const answers = await this.inquirer.prompt([
       {
         type: 'list',
         name: 'transport',
@@ -468,7 +450,7 @@ export class OpenAPIWizard {
         choices: [
           { name: 'STDIO - 标准输入输出', value: 'stdio' },
           { name: 'SSE - Server-Sent Events', value: 'sse' },
-          { name: 'WebSocket - 实时双向通信', value: 'ws' }
+          { name: 'Streamable - 流式传输', value: 'streamable' }
         ],
         default: existing?.transport || 'stdio'
       }
@@ -477,9 +459,9 @@ export class OpenAPIWizard {
     const transport: TransportType = answers.transport;
     let additionalConfig: Partial<SessionConfig> = { transport };
 
-    // 如果选择了 SSE 或 WebSocket，需要配置端口和主机
-    if (transport === 'sse' || transport === 'ws') {
-      const networkConfig = await this.inquirer!.prompt([
+    // 如果选择了 SSE 或 Streamable，需要配置端口和主机
+    if (transport === 'sse' || transport === 'streamable') {
+      const networkConfig = await this.inquirer.prompt([
         {
           type: 'number',
           name: 'port',
@@ -510,7 +492,7 @@ export class OpenAPIWizard {
    * 获取高级配置
    */
   private async getAdvancedConfig(existing?: SessionConfig): Promise<Partial<SessionConfig> | null> {
-    await this.initModules();
+
     const choices = [
       { name: '操作过滤器', value: 'filter' },
       { name: '认证配置', value: 'auth' },
@@ -525,7 +507,7 @@ export class OpenAPIWizard {
     };
 
     while (true) {
-      const choice = await this.inquirer!.prompt([
+      const choice = await this.inquirer.prompt([
         {
           type: 'list',
           name: 'option',
@@ -566,8 +548,7 @@ export class OpenAPIWizard {
    * 获取操作过滤器配置
    */
   private async getOperationFilterConfig(existing?: OperationFilter): Promise<OperationFilter | null> {
-    await this.initModules();
-    const answers = await this.inquirer!.prompt([
+    const answers = await this.inquirer.prompt([
       {
         type: 'checkbox',
         name: 'includeMethods',
@@ -641,8 +622,7 @@ export class OpenAPIWizard {
    * 获取认证配置
    */
   private async getAuthConfig(existing?: AuthConfig): Promise<AuthConfig | null> {
-    await this.initModules();
-    const typeAnswer = await this.inquirer!.prompt([
+    const typeAnswer = await this.inquirer.prompt([
       {
         type: 'list',
         name: 'type',
@@ -665,7 +645,7 @@ export class OpenAPIWizard {
 
     switch (typeAnswer.type) {
       case 'bearer':
-        const bearerAnswer = await this.inquirer!.prompt([
+        const bearerAnswer = await this.inquirer.prompt([
           {
             type: 'password',
             name: 'token',
@@ -677,7 +657,7 @@ export class OpenAPIWizard {
         break;
 
       case 'basic':
-        const basicAnswers = await this.inquirer!.prompt([
+        const basicAnswers = await this.inquirer.prompt([
           {
             type: 'input',
             name: 'username',
@@ -696,7 +676,7 @@ export class OpenAPIWizard {
         break;
 
       case 'apikey':
-        const apikeyAnswers = await this.inquirer!.prompt([
+        const apikeyAnswers = await this.inquirer.prompt([
           {
             type: 'input',
             name: 'headerName',
@@ -722,7 +702,6 @@ export class OpenAPIWizard {
    * 获取自定义请求头配置
    */
   private async getCustomHeadersConfig(existing?: Record<string, string>): Promise<Record<string, string> | null> {
-    await this.initModules();
     let headers = { ...existing };
 
     while (true) {
@@ -743,7 +722,7 @@ export class OpenAPIWizard {
         });
       }
 
-      const choice = await this.inquirer!.prompt([
+      const choice = await this.inquirer.prompt([
         {
           type: 'list',
           name: 'action',
@@ -755,7 +734,7 @@ export class OpenAPIWizard {
       if (choice.action === 'done') {
         break;
       } else if (choice.action === 'add') {
-        const headerInfo = await this.inquirer!.prompt([
+        const headerInfo = await this.inquirer.prompt([
           {
             type: 'input',
             name: 'key',

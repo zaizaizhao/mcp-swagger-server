@@ -247,8 +247,20 @@ export class ConfigManager {
    * 添加最近使用的配置
    */
   async addRecentConfig(configId: string): Promise<void> {
-    const recentConfigs = await this.get('recentConfigs');
+    // 验证输入参数
+    if (typeof configId !== 'string' || !configId.trim()) {
+      throw new Error('配置ID必须是非空字符串');
+    }
+    
+    let recentConfigs = await this.get('recentConfigs');
     const maxRecentConfigs = await this.get('maxRecentConfigs');
+    
+    // 确保recentConfigs是数组，并过滤掉非字符串元素
+    if (!Array.isArray(recentConfigs)) {
+      recentConfigs = [];
+    } else {
+      recentConfigs = recentConfigs.filter(id => typeof id === 'string' && id.trim());
+    }
     
     // 移除已存在的相同配置
     const filteredConfigs = recentConfigs.filter(id => id !== configId);
@@ -266,7 +278,21 @@ export class ConfigManager {
    * 获取最近使用的配置
    */
   async getRecentConfigs(): Promise<string[]> {
-    return await this.get('recentConfigs');
+    let recentConfigs = await this.get('recentConfigs');
+    
+    // 确保返回的是字符串数组，过滤掉非字符串元素
+    if (!Array.isArray(recentConfigs)) {
+      recentConfigs = [];
+      await this.set('recentConfigs', recentConfigs);
+    } else {
+      const cleanedConfigs = recentConfigs.filter(id => typeof id === 'string' && id.trim());
+      if (cleanedConfigs.length !== recentConfigs.length) {
+        await this.set('recentConfigs', cleanedConfigs);
+        recentConfigs = cleanedConfigs;
+      }
+    }
+    
+    return recentConfigs;
   }
 
   /**
