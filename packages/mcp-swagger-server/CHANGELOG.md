@@ -1,5 +1,16 @@
 # mcp-swagger-server
 
+## 1.5.0
+
+### Minor Changes
+
+- add Operation filtering options,make system more safe for mcp use
+
+### Patch Changes
+
+- Updated dependencies []:
+  - mcp-swagger-parser@1.5.0
+
 ## 1.4.0
 
 ### Minor Changes

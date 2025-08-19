@@ -1,6 +1,6 @@
 {
   "name": "mcp-swagger-parser",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Enterprise-grade OpenAPI/Swagger specification parser for Model Context Protocol (MCP) projects",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -83,13 +83,13 @@
   ],
   "author": {
     "name": "MCP Swagger Team",
-    "email": "17761978041",
+    "email": "2534243725@qq.com",
     "url": "https://github.com/zaizaizhao"
   },
   "contributors": [
     {
       "name": "ZhaoYaNan(ZTE)",
-      "email": "17761978041"
+      "email": "2534243725@qq.com"
     }
   ],
   "license": "MIT",

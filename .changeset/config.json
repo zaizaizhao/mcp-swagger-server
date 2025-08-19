@@ -9,7 +9,7 @@
   "access": "public",
   "baseBranch": "dev",
   "updateInternalDependencies": "patch",
-  "ignore": ["@mcp-swagger/api"],
+  "ignore": ["mcp-swagger-api"],
   "privatePackages": {
     "version": false,
     "tag": false
