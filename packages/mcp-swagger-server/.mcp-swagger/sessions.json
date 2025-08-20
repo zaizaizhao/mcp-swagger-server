@@ -31,5 +31,16 @@
     "id": "afdd02aa-34a6-4950-8530-fce5e6bddf66",
     "createdAt": "2025-08-19T13:21:15.752Z",
     "lastUsed": "2025-08-19T13:22:34.493Z"
+  },
+  {
+    "name": "a",
+    "description": "a",
+    "openApiUrl": "https://petstore.swagger.io/v2/swagger.json",
+    "transport": "streamable",
+    "port": 8080,
+    "host": "localhost",
+    "id": "4cecc86e-9779-4353-8a37-378991f629f4",
+    "createdAt": "2025-08-20T14:21:59.514Z",
+    "lastUsed": "2025-08-20T14:22:26.492Z"
   }
 ]
