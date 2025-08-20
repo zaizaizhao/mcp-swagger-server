@@ -33,8 +33,8 @@
     "manager:restart": "ts-node src/tools/mcp-manager.ts restart",
     "manager:status": "ts-node src/tools/mcp-manager.ts status",
     "manager:logs": "ts-node src/tools/mcp-manager.ts logs",
-    "cli:interactive": "ts-node src/cli-interactive.ts",
-    "cli:interactive:dev": "nodemon --exec ts-node src/cli-interactive.ts"
+    "cli:interactive": "tsx src/cli-interactive.ts",
+    "cli:interactive:dev": "nodemon --exec tsx src/cli-interactive.ts"
   },
   "keywords": [
     "mcp",
@@ -104,6 +104,7 @@
     "nodemon": "^3.0.1",
     "rimraf": "^5.0.5",
     "ts-node": "^10.9.2",
+    "tsx": "^4.20.4",
     "typescript": "^5.8.3"
   }
 }
