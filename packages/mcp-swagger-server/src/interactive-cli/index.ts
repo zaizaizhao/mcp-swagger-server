@@ -258,7 +258,7 @@ ${chalk.yellow('主要功能:')}
         ]);
         
         if (startNow) {
-          await this.startServerWithConfig(config);
+          await this.startServerWithConfig(savedConfig);
         }
       }
     } catch (error) {

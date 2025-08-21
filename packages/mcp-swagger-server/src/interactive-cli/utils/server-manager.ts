@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { SessionConfig, OperationFilter } from '../types';
+import { SessionConfig, OperationFilter } from '../types/index';
 import { configManager } from './config-manager';
 import chalk from 'chalk';
 import { runStdioServer, runSseServer, runStreamableServer } from '../../server';
@@ -271,8 +271,23 @@ export class ServerManager extends EventEmitter {
       } : {})
     };
 
-    // 构建操作过滤器
-    const operationFilter = config.operationFilter;
+    // 构建操作过滤器 - 优先使用接口选择配置中的过滤器
+    const operationFilter = config.interfaceSelection?.operationFilter || config.operationFilter;
+
+    // 调试输出：显示传递给服务器的operationFilter
+    console.log(`\n[DEBUG] 服务器启动配置:`);
+    console.log(`- 配置名称: ${config.name}`);
+    console.log(`- 传输协议: ${config.transport}`);
+    console.log(`- 是否有接口选择配置: ${config.interfaceSelection ? 'Yes' : 'No'}`);
+    if (config.interfaceSelection?.operationFilter) {
+      console.log(`- 使用接口选择中的operationFilter`);
+      console.log(`- operationFilter详情:`, JSON.stringify(config.interfaceSelection.operationFilter, null, 2));
+    } else if (config.operationFilter) {
+      console.log(`- 使用默认operationFilter`);
+      console.log(`- operationFilter详情:`, JSON.stringify(config.operationFilter, null, 2));
+    } else {
+      console.log(`- 未设置operationFilter，将转换所有接口`);
+    }
 
     // 启动对应的服务器
     let serverPromise: Promise<void>;
