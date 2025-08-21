@@ -9,7 +9,7 @@ export interface GlobalConfig {
   debugMode: boolean;
   
   // UI 设置
-  theme: 'default' | 'compact' | 'fancy';
+  theme: 'default' | 'dark-red-cyber' | 'compact' | 'fancy';
   showWelcome: boolean;
   confirmOnExit: boolean;
   
@@ -30,13 +30,13 @@ export interface GlobalConfig {
 
 export const DEFAULT_CONFIG: GlobalConfig = {
   // 全局设置
-  defaultTransport: 'stdio',
+  defaultTransport: 'streamable',
   defaultPort: 3000,
   autoSave: true,
   debugMode: false,
   
   // UI 设置
-  theme: 'default',
+  theme: 'dark-red-cyber',
   showWelcome: true,
   confirmOnExit: true,
   
@@ -94,8 +94,8 @@ export class ConfigManager {
         },
         theme: {
           type: 'string',
-          enum: ['default', 'compact', 'fancy'],
-          default: 'default'
+          enum: ['default', 'dark-red-cyber', 'compact', 'fancy'],
+          default: 'dark-red-cyber'
         },
         showWelcome: {
           type: 'boolean',
@@ -328,7 +328,7 @@ export class ConfigManager {
     }
 
     // 验证主题
-    if (config.theme && !['default', 'compact', 'fancy'].includes(config.theme)) {
+    if (config.theme && !['default', 'dark-red-cyber', 'compact', 'fancy'].includes(config.theme)) {
       errors.push('无效的主题设置');
     }
 

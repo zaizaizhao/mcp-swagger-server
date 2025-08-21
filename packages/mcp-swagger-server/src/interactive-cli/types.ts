@@ -250,4 +250,34 @@ export interface CLIOptions {
   verbose?: boolean;
   quiet?: boolean;
   debug?: boolean;
+  
+  // OpenAPI 相关选项
+  openapi?: string;                    // --openapi
+  watch?: boolean;                     // --watch
+  endpoint?: string;                   // --endpoint
+  managed?: boolean;                   // --managed
+  
+  // 认证选项
+  'auth-type'?: string;               // --auth-type
+  'bearer-token'?: string;            // --bearer-token
+  'bearer-env'?: string;              // --bearer-env
+  
+  // 自定义请求头选项
+  'custom-header'?: string[];         // --custom-header
+  'custom-headers-config'?: string;   // --custom-headers-config
+  'custom-header-env'?: string[];     // --custom-header-env
+  'debug-headers'?: boolean;          // --debug-headers
+  
+  // 操作过滤选项
+  'operation-filter-methods'?: string[];        // --operation-filter-methods
+  'operation-filter-paths'?: string[];          // --operation-filter-paths
+  'operation-filter-operation-ids'?: string[];  // --operation-filter-operation-ids
+  'operation-filter-status-codes'?: string[];   // --operation-filter-status-codes
+  'operation-filter-parameters'?: string[];     // --operation-filter-parameters
+  
+  // 高级选项
+  'auto-restart'?: boolean;           // --auto-restart
+  'max-retries'?: string;             // --max-retries
+  'retry-delay'?: string;             // --retry-delay
+  env?: string;                       // --env
 }

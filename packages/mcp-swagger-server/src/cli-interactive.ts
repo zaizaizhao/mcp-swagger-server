@@ -93,6 +93,160 @@ function parseCommandLineArgs(): CLIOptions {
         process.env.LOG_LEVEL = 'debug';
         break;
 
+      // OpenAPI 相关选项
+      case '--openapi':
+        if (nextArg && !nextArg.startsWith('-')) {
+          options.openapi = nextArg;
+          i++;
+        }
+        break;
+
+      case '--watch':
+        options.watch = true;
+        break;
+
+      case '--endpoint':
+        if (nextArg && !nextArg.startsWith('-')) {
+          options.endpoint = nextArg;
+          i++;
+        }
+        break;
+
+      case '--managed':
+        options.managed = true;
+        break;
+
+      // 认证选项
+      case '--auth-type':
+        if (nextArg && !nextArg.startsWith('-')) {
+          options['auth-type'] = nextArg;
+          i++;
+        }
+        break;
+
+      case '--bearer-token':
+        if (nextArg && !nextArg.startsWith('-')) {
+          options['bearer-token'] = nextArg;
+          i++;
+        }
+        break;
+
+      case '--bearer-env':
+        if (nextArg && !nextArg.startsWith('-')) {
+          options['bearer-env'] = nextArg;
+          i++;
+        }
+        break;
+
+      // 自定义请求头选项
+      case '--custom-header':
+        if (nextArg && !nextArg.startsWith('-')) {
+          if (!options['custom-header']) {
+            options['custom-header'] = [];
+          }
+          options['custom-header'].push(nextArg);
+          i++;
+        }
+        break;
+
+      case '--custom-headers-config':
+        if (nextArg && !nextArg.startsWith('-')) {
+          options['custom-headers-config'] = nextArg;
+          i++;
+        }
+        break;
+
+      case '--custom-header-env':
+        if (nextArg && !nextArg.startsWith('-')) {
+          if (!options['custom-header-env']) {
+            options['custom-header-env'] = [];
+          }
+          options['custom-header-env'].push(nextArg);
+          i++;
+        }
+        break;
+
+      case '--debug-headers':
+        options['debug-headers'] = true;
+        break;
+
+      // 操作过滤选项
+      case '--operation-filter-methods':
+        if (nextArg && !nextArg.startsWith('-')) {
+          if (!options['operation-filter-methods']) {
+            options['operation-filter-methods'] = [];
+          }
+          options['operation-filter-methods'].push(...nextArg.split(','));
+          i++;
+        }
+        break;
+
+      case '--operation-filter-paths':
+        if (nextArg && !nextArg.startsWith('-')) {
+          if (!options['operation-filter-paths']) {
+            options['operation-filter-paths'] = [];
+          }
+          options['operation-filter-paths'].push(...nextArg.split(','));
+          i++;
+        }
+        break;
+
+      case '--operation-filter-operation-ids':
+        if (nextArg && !nextArg.startsWith('-')) {
+          if (!options['operation-filter-operation-ids']) {
+            options['operation-filter-operation-ids'] = [];
+          }
+          options['operation-filter-operation-ids'].push(...nextArg.split(','));
+          i++;
+        }
+        break;
+
+      case '--operation-filter-status-codes':
+        if (nextArg && !nextArg.startsWith('-')) {
+          if (!options['operation-filter-status-codes']) {
+            options['operation-filter-status-codes'] = [];
+          }
+          options['operation-filter-status-codes'].push(...nextArg.split(','));
+          i++;
+        }
+        break;
+
+      case '--operation-filter-parameters':
+        if (nextArg && !nextArg.startsWith('-')) {
+          if (!options['operation-filter-parameters']) {
+            options['operation-filter-parameters'] = [];
+          }
+          options['operation-filter-parameters'].push(...nextArg.split(','));
+          i++;
+        }
+        break;
+
+      // 高级选项
+      case '--auto-restart':
+        options['auto-restart'] = true;
+        break;
+
+      case '--max-retries':
+        if (nextArg && !nextArg.startsWith('-')) {
+          options['max-retries'] = nextArg;
+          i++;
+        }
+        break;
+
+      case '--retry-delay':
+        if (nextArg && !nextArg.startsWith('-')) {
+          options['retry-delay'] = nextArg;
+          i++;
+        }
+        break;
+
+      case '--env':
+        if (nextArg && !nextArg.startsWith('-')) {
+          options.env = nextArg;
+          i++;
+        }
+        break;
+
       case '--help':
         showHelp();
         process.exit(0);

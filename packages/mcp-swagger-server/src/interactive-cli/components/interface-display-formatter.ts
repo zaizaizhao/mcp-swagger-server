@@ -40,13 +40,13 @@ export class InterfaceDisplayFormatter {
     let colWidths: number[];
     if (terminalWidth < 100) {
       // 窄终端：紧凑布局
-      colWidths = [6, 4, 8, 25, 30];
+      colWidths = [6, 4, 12, 25, 30];
     } else if (terminalWidth < 140) {
       // 中等终端：标准布局
-      colWidths = [8, 5, 12, 35, 45];
+      colWidths = [8, 5, 16, 35, 45];
     } else {
       // 宽终端：宽松布局
-      colWidths = [10, 6, 14, 45, 60];
+      colWidths = [10, 6, 18, 45, 60];
     }
     
     const baseConfig = {
@@ -54,7 +54,7 @@ export class InterfaceDisplayFormatter {
       colWidths,
       style: {
         head: ['cyan', 'bold'],
-        border: ['grey']
+        border: ['lightgreen']
       },
       chars: {
         'top': '═',
@@ -187,7 +187,7 @@ export class InterfaceDisplayFormatter {
     const baseConfig = {
       style: {
         head: ['cyan', 'bold'],
-        border: ['grey']
+        border: ['lightgreen']
       }
     };
 
@@ -210,11 +210,11 @@ export class InterfaceDisplayFormatter {
         let detailedColWidths: number[];
         
         if (terminalWidth < 100) {
-          detailedColWidths = [4, 8, 25, 30, 15, 8];
+          detailedColWidths = [4, 12, 25, 30, 15, 8];
         } else if (terminalWidth < 140) {
-          detailedColWidths = [5, 10, 30, 35, 18, 10];
+          detailedColWidths = [5, 14, 30, 35, 18, 10];
         } else {
-          detailedColWidths = [6, 12, 40, 45, 22, 12];
+          detailedColWidths = [6, 16, 40, 45, 22, 12];
         }
         
         return {
