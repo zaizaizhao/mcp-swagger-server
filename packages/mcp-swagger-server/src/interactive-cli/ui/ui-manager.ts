@@ -3,6 +3,9 @@ import chalk from 'chalk';
 import boxen from 'boxen';
 import Table from 'cli-table3';
 import ora from 'ora';
+import { themeManager } from '../themes';
+import type { Theme } from '../themes';
+import { configManager } from '../utils/config-manager';
 
 type Ora = any;
 
@@ -21,21 +24,47 @@ export interface TableColumn {
 
 export class UIManager {
   private activeSpinners: Map<string, Ora> = new Map();
+  private theme: Theme;
+
+  constructor() {
+    this.theme = themeManager.getCurrentTheme();
+    this.initializeTheme();
+  }
+
+  private async initializeTheme() {
+    try {
+      const configTheme = await configManager.get('theme');
+      if (configTheme && themeManager.hasTheme(configTheme)) {
+        themeManager.setTheme(configTheme);
+        this.theme = themeManager.getCurrentTheme();
+      }
+    } catch (error) {
+      // 如果配置加载失败，使用默认主题
+      console.warn('Failed to load theme from config, using default theme');
+    }
+  }
+
+  /**
+   * 更新主题
+   */
+  updateTheme(): void {
+    this.theme = themeManager.getCurrentTheme();
+  }
 
   /**
    * 显示成功消息
    */
   async showSuccess(message: string): Promise<void> {
-    console.log(chalk.green('✅ ' + message));
+    console.log(chalk.hex(this.theme.colors.success)(this.theme.icons.success + ' ' + message));
   }
 
   /**
    * 显示错误消息
    */
   async showError(message: string, error?: Error): Promise<void> {
-    console.log(chalk.red('❌ ' + message));
+    console.log(chalk.hex(this.theme.colors.error)(this.theme.icons.error + ' ' + message));
     if (error && process.env.DEBUG) {
-      console.log(chalk.gray(error.stack));
+      console.log(chalk.hex(this.theme.colors.text.muted)(error.stack));
     }
   }
 
@@ -43,14 +72,14 @@ export class UIManager {
    * 显示警告消息
    */
   async showWarning(message: string): Promise<void> {
-    console.log(chalk.yellow('⚠️  ' + message));
+    console.log(chalk.hex(this.theme.colors.warning)(this.theme.icons.warning + '  ' + message));
   }
 
   /**
    * 显示信息消息
    */
   async showInfo(message: string): Promise<void> {
-    console.log(chalk.cyan('ℹ️  ' + message));
+    console.log(chalk.hex(this.theme.colors.info)(this.theme.icons.info + '  ' + message));
   }
 
   /**
@@ -58,7 +87,7 @@ export class UIManager {
    */
   async showDebug(message: string): Promise<void> {
     if (process.env.DEBUG) {
-      console.log(chalk.gray('🐛 ' + message));
+      console.log(chalk.hex(this.theme.colors.text.muted)('🐛 ' + message));
     }
   }
 
@@ -114,22 +143,43 @@ export class UIManager {
     content: string,
     options?: {
       title?: string;
-      padding?: number;
-      margin?: number;
-      borderStyle?: 'single' | 'double' | 'round' | 'bold' | 'singleDouble' | 'doubleSingle' | 'classic';
       borderColor?: string;
-      backgroundColor?: string;
-      align?: 'left' | 'center' | 'right';
+      padding?: number;
+      themeStyle?: 'default' | 'accent' | 'success' | 'error' | 'warning';
     }
   ): Promise<void> {
-    const boxOptions = {
-      padding: options?.padding || 1,
-      margin: options?.margin || 1,
-      borderStyle: options?.borderStyle || 'round' as const,
-      borderColor: options?.borderColor || 'cyan',
-      backgroundColor: options?.backgroundColor,
+    let borderStyleConfig = this.theme.borderStyle.default;
+    let borderColor = options?.borderColor || this.theme.colors.primary;
+    
+    // 根据主题样式选择边框
+    if (options?.themeStyle) {
+      switch (options.themeStyle) {
+        case 'accent':
+          borderStyleConfig = this.theme.borderStyle.accent;
+          borderColor = this.theme.colors.accent;
+          break;
+        case 'success':
+          borderStyleConfig = this.theme.borderStyle.success;
+          borderColor = this.theme.colors.success;
+          break;
+        case 'error':
+          borderStyleConfig = this.theme.borderStyle.error;
+          borderColor = this.theme.colors.error;
+          break;
+        case 'warning':
+          borderStyleConfig = this.theme.borderStyle.warning;
+          borderColor = this.theme.colors.warning;
+          break;
+      }
+    }
+
+    const boxOptions: boxen.Options = {
+      padding: borderStyleConfig.padding || options?.padding || 1,
+      margin: borderStyleConfig.margin || 1,
+      borderStyle: borderStyleConfig.borderStyle as any,
+      borderColor: borderStyleConfig.borderColor || borderColor,
       title: options?.title,
-      titleAlignment: options?.align || 'center' as const
+      titleAlignment: 'center'
     };
 
     console.log(boxen(content, boxOptions));
@@ -152,12 +202,13 @@ export class UIManager {
     }
 
     const tableStyle = this.getTableStyle(options?.style || 'normal');
-    const table = new Table({
-      head: columns.map(col => col.header),
-      colWidths: columns.map(col => col.width || null),
-      colAligns: columns.map(col => col.align || 'left'),
-      ...tableStyle
-    });
+    const tableOptions = {
+      colWidths: columns.map(col => col.width || 20),
+      ...this.theme.tableStyle,
+      head: columns.map(col => col.header)
+    };
+    
+    const table = new Table(tableOptions);
 
     for (const row of data) {
       const tableRow = columns.map(col => {
@@ -168,7 +219,7 @@ export class UIManager {
     }
 
     if (options?.title) {
-      console.log(chalk.cyan.bold('\n' + options.title));
+      console.log(chalk.hex(this.theme.colors.accent).bold('\n' + options.title));
     }
     console.log(table.toString());
   }
@@ -219,7 +270,7 @@ export class UIManager {
       { header: '最后使用', key: 'lastUsed', width: 20, formatter: (value) => this.formatDate(value) }
     ];
 
-    await this.showTable(sessions, columns, { title: '📋 保存的配置' });
+    await this.showTable(sessions, columns, { title: this.theme.icons.session + ' 保存的配置' });
   }
 
   /**
@@ -270,7 +321,7 @@ export class UIManager {
       table.push([key, value]);
     });
 
-    console.log(chalk.cyan.bold(`\n📋 配置详情: ${session.name}`));
+    console.log(chalk.hex(this.theme.colors.accent).bold(`\n${this.theme.icons.session} 配置详情: ${session.name}`));
     console.log(table.toString());
   }
 
@@ -282,7 +333,9 @@ export class UIManager {
     requests: number;
     errors: number;
   }): Promise<void> {
-    const status = isRunning ? chalk.green('🟢 运行中') : chalk.red('🔴 已停止');
+    const statusColor = isRunning ? this.theme.colors.success : this.theme.colors.error;
+    const statusIcon = isRunning ? this.theme.icons.success : this.theme.icons.error;
+    const status = chalk.hex(statusColor)(`${statusIcon} ${isRunning ? '运行中' : '已停止'}`);
     
     let content = `状态: ${status}\n`;
     content += `配置: ${config.name}\n`;
@@ -299,8 +352,9 @@ export class UIManager {
     }
 
     await this.showBox(content, {
-      title: '🖥️  服务器状态',
-      borderColor: isRunning ? 'green' : 'red'
+      title: this.theme.icons.server + '  服务器状态',
+      borderColor: isRunning ? this.theme.colors.success : this.theme.colors.error,
+      themeStyle: isRunning ? 'accent' : 'default'
     });
   }
 
@@ -321,8 +375,9 @@ export class UIManager {
     }
 
     await this.showBox(content.trim(), {
-      title: '📊 统计信息',
-      borderColor: 'blue'
+      title: this.theme.icons.stats + ' 统计信息',
+      borderColor: this.theme.colors.accent,
+      themeStyle: 'accent'
     });
   }
 
@@ -331,33 +386,33 @@ export class UIManager {
    */
   async showHelp(): Promise<void> {
     const helpContent = `
-${chalk.cyan.bold('🚀 MCP Swagger Server - 交互式 CLI')}
+${chalk.hex(this.theme.colors.accent).bold('🚀 MCP Swagger Server - 交互式 CLI')}
 
-${chalk.yellow('主要功能:')}
+${chalk.hex(this.theme.colors.warning)('主要功能:')}
 • 🆕 创建新的 OpenAPI 配置
 • 📋 管理现有配置 (查看、编辑、删除)
 • 🚀 快速启动服务器
 • ⚙️  全局设置
 • 📊 查看状态和统计信息
 
-${chalk.yellow('支持的传输协议:')}
+${chalk.hex(this.theme.colors.warning)('支持的传输协议:')}
 • 📟 STDIO - 标准输入输出 (推荐用于 Claude Desktop)
 • 🌊 SSE - Server-Sent Events (适用于 Web 应用)
 • 🔄 Streamable - 流式传输 (适用于实时应用)
 
-${chalk.yellow('高级功能:')}
+${chalk.hex(this.theme.colors.warning)('高级功能:')}
 • 🔍 操作过滤器 - 控制哪些 API 操作被转换
 • 🔐 认证配置 - Bearer Token 支持
 • 📋 自定义请求头 - 添加额外的 HTTP 头
 • 💾 会话管理 - 保存和重用配置
 
-${chalk.yellow('快捷键:')}
+${chalk.hex(this.theme.colors.warning)('快捷键:')}
 • Ctrl+C - 退出当前操作
 • ↑/↓ - 导航菜单选项
 • Space - 选择/取消选择 (多选)
 • Enter - 确认选择
 
-${chalk.yellow('更多信息:')}
+${chalk.hex(this.theme.colors.warning)('更多信息:')}
 • 项目主页: https://github.com/your-repo/mcp-swagger-server
 • 文档: https://docs.mcp-swagger-server.com
 • 问题反馈: https://github.com/your-repo/mcp-swagger-server/issues

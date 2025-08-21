@@ -307,6 +307,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: 1.17.3
         version: 1.17.3
+      '@types/figlet':
+        specifier: ^1.7.0
+        version: 1.7.0
       axios:
         specifier: ^1.10.0
         version: 1.10.0
@@ -334,6 +337,9 @@ importers:
       express:
         specifier: ^4.18.2
         version: 4.21.2
+      figlet:
+        specifier: ^1.8.2
+        version: 1.8.2
       inquirer:
         specifier: ^8.2.6
         version: 8.2.6
@@ -2119,6 +2125,9 @@ packages:
   '@types/express@5.0.3':
     resolution: {integrity: sha512-wGA0NX93b19/dZC1J18tKWVIYWyyF2ZjT9vin/NRu0qzzvfVzWjs04iq2rQ3H65vCTQYlRqs3YHfY7zjdV+9Kw==}
 
+  '@types/figlet@1.7.0':
+    resolution: {integrity: sha512-KwrT7p/8Eo3Op/HBSIwGXOsTZKYiM9NpWRBJ5sVjWP/SmlS+oxxRvJht/FNAtliJvja44N3ul1yATgohnVBV0Q==}
+
   '@types/graceful-fs@4.1.9':
     resolution: {integrity: sha512-olP3sd1qOEe5dXTSaFvQG+02VdRXcdytWLAZsAq1PecU8uqQAhkrnbli7DagjtXKW/Bl7YJbUsa8MPcuc8LHEQ==}
 
@@ -3406,6 +3415,11 @@ packages:
 
   fflate@0.8.2:
     resolution: {integrity: sha512-cPJU47OaAoCbg0pBvzsgpTPhmhqI5eJjh/JIu8tPj5q+T7iLvW/JAYUqmE7KOB4R1ZyEhzBaIQpQpardBF5z8A==}
+
+  figlet@1.8.2:
+    resolution: {integrity: sha512-iPCpE9B/rOcjewIzDnagP9F2eySzGeHReX8WlrZQJkqFBk2wvq8gY0c6U6Hd2y9HnX1LQcYSeP7aEHoPt6sVKQ==}
+    engines: {node: '>= 0.4.0'}
+    hasBin: true
 
   figures@3.2.0:
     resolution: {integrity: sha512-yaduQFRKLXYOGgEn6AZau90j3ggSOyiqXU0F9JZfeXYhNa+Jk4X+s45A2zg5jns87GAFa34BBm2kXw4XpNcbdg==}
@@ -7554,6 +7568,8 @@ snapshots:
       '@types/express-serve-static-core': 5.0.6
       '@types/serve-static': 1.15.8
 
+  '@types/figlet@1.7.0': {}
+
   '@types/graceful-fs@4.1.9':
     dependencies:
       '@types/node': 20.19.1
@@ -9187,6 +9203,8 @@ snapshots:
       bser: 2.1.1
 
   fflate@0.8.2: {}
+
+  figlet@1.8.2: {}
 
   figures@3.2.0:
     dependencies:

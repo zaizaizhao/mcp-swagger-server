@@ -7,6 +7,16 @@ import { SelectionConverter } from './selection-converter';
 import { EndpointFilter } from '../../utils/endpoint-filter';
 import * as readline from 'readline';
 
+/**
+ * 用户取消操作错误
+ */
+export class UserCancelledError extends Error {
+  constructor(message: string = '用户取消了操作') {
+    super(message);
+    this.name = 'UserCancelledError';
+  }
+}
+
 export interface InterfaceSelectionOptions {
   enableSearch?: boolean;
   enablePagination?: boolean;
@@ -56,61 +66,79 @@ export class InterfaceSelector {
   async selectInterfaces(): Promise<InterfaceSelectionResult> {
     console.log(`\n📋 发现 ${this.endpoints.length} 个 API 接口\n`);
 
-    // 1. 选择选择模式
-    const selectionMode = await this.chooseSelectionMode();
-    
-    // 2. 根据模式执行选择
-    let operationFilter: OperationFilter;
-    let selectedCount: number;
-    let selectedEndpoints: string[] = [];
-    let selectedTags: string[] = [];
-    let pathPatterns: string[] = [];
+    try {
+      // 1. 选择选择模式
+      const selectionMode = await this.chooseSelectionMode();
+      
+      // 2. 根据模式执行选择
+      let operationFilter: OperationFilter;
+      let selectedCount: number;
+      let selectedEndpoints: string[] = [];
+      let selectedTags: string[] = [];
+      let pathPatterns: string[] = [];
 
-    switch (selectionMode) {
-      case 'include':
-        const includeResult = await this.selectByInclusion();
-        operationFilter = includeResult.filter;
-        selectedCount = includeResult.count;
-        selectedEndpoints = includeResult.selectedEndpoints;
-        break;
-        
-      case 'exclude':
-        const excludeResult = await this.selectByExclusion();
-        operationFilter = excludeResult.filter;
-        selectedCount = this.endpoints.length - excludeResult.count;
-        selectedEndpoints = excludeResult.selectedEndpoints;
-        break;
-        
-      case 'tags':
-        const tagsResult = await this.selectByTags();
-        operationFilter = tagsResult.filter;
-        selectedCount = tagsResult.count;
-        selectedTags = tagsResult.selectedTags;
-        break;
-        
-      case 'patterns':
-        const patternsResult = await this.selectByPatterns();
-        operationFilter = patternsResult.filter;
-        selectedCount = patternsResult.count;
-        pathPatterns = patternsResult.pathPatterns;
-        break;
-        
-      default:
-        throw new Error(`Unsupported selection mode: ${selectionMode}`);
+      switch (selectionMode) {
+        case 'include':
+          const includeResult = await this.selectByInclusion();
+          operationFilter = includeResult.filter;
+          selectedCount = includeResult.count;
+          selectedEndpoints = includeResult.selectedEndpoints;
+          break;
+          
+        case 'exclude':
+          const excludeResult = await this.selectByExclusion();
+          operationFilter = excludeResult.filter;
+          selectedCount = this.endpoints.length - excludeResult.count;
+          selectedEndpoints = excludeResult.selectedEndpoints;
+          break;
+          
+        case 'tags':
+          const tagsResult = await this.selectByTags();
+          operationFilter = tagsResult.filter;
+          selectedCount = tagsResult.count;
+          selectedTags = tagsResult.selectedTags;
+          break;
+          
+        case 'patterns':
+          const patternsResult = await this.selectByPatterns();
+          operationFilter = patternsResult.filter;
+          selectedCount = patternsResult.count;
+          pathPatterns = patternsResult.pathPatterns;
+          break;
+          
+        default:
+          throw new Error(`Unsupported selection mode: ${selectionMode}`);
+      }
+
+      // 3. 显示选择结果摘要
+      this.displaySelectionSummary(selectedCount, selectionMode);
+
+      return {
+        operationFilter,
+        selectedCount,
+        totalCount: this.endpoints.length,
+        selectionMode,
+        selectedEndpoints,
+        selectedTags,
+        pathPatterns
+      };
+    } catch (error) {
+      if (error instanceof UserCancelledError) {
+        console.log('\n❌ 操作已取消');
+        // 返回一个表示取消操作的结果
+        return {
+          operationFilter: {},
+          selectedCount: 0,
+          totalCount: this.endpoints.length,
+          selectionMode: 'include',
+          selectedEndpoints: [],
+          selectedTags: [],
+          pathPatterns: []
+        };
+      }
+      // 重新抛出其他类型的错误
+      throw error;
     }
-
-    // 3. 显示选择结果摘要
-    this.displaySelectionSummary(selectedCount, selectionMode);
-
-    return {
-      operationFilter,
-      selectedCount,
-      totalCount: this.endpoints.length,
-      selectionMode,
-      selectedEndpoints,
-      selectedTags,
-      pathPatterns
-    };
   }
 
   /**
@@ -151,7 +179,7 @@ export class InterfaceSelector {
     const selectedIndices = await this.selectInterfacesFromTable('选择要包含的接口');
     
     if (selectedIndices.length === 0) {
-      throw new Error('请至少选择一个接口');
+      throw new UserCancelledError('用户取消了接口选择操作');
     }
 
     const selectedEndpoints = selectedIndices.map(index => this.endpoints[index]);
@@ -578,10 +606,10 @@ export class InterfaceSelector {
     
     const table = new Table({
       head: ['', '序号', '方法', '路径', '描述', '标签', '状态'],
-      colWidths: [3, 6, 8, 30, 40, 20, 8],
+      colWidths: [3, 6, 12, 30, 40, 20, 8],
       style: {
         head: ['cyan'],
-        border: ['grey']
+        border: ['lightgreen']
       }
     });
 
@@ -605,8 +633,8 @@ export class InterfaceSelector {
       ];
       
       if (isCurrent) {
-        // 高亮当前行
-        table.push(rowData.map(cell => `\x1b[43m\x1b[30m${cell}\x1b[0m`));
+        // 高亮当前行 - 使用淡红色字体
+        table.push(rowData.map(cell => `\x1b[91m${cell}\x1b[0m`));
       } else if (isSelected) {
         // 选中的行用绿色背景
         table.push(rowData.map(cell => `\x1b[42m\x1b[30m${cell}\x1b[0m`));

@@ -7,7 +7,7 @@
   "bin": {
     "mcp-swagger-server": "./dist/cli.js",
     "mcp-swagger": "./dist/cli.js",
-    "mcp-swagger-interactive": "./dist/cli-interactive.js"
+    "mss": "./dist/cli-interactive.js"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -34,7 +34,8 @@
     "manager:status": "ts-node src/tools/mcp-manager.ts status",
     "manager:logs": "ts-node src/tools/mcp-manager.ts logs",
     "cli:interactive": "tsx src/cli-interactive.ts",
-    "cli:interactive:dev": "nodemon --exec tsx src/cli-interactive.ts"
+    "cli:interactive:dev": "nodemon --exec tsx src/cli-interactive.ts",
+    "cli:interactive:auto":"tsx src/cli-interactive.ts -- --openapi https://api.example.com/openapi.json --operation-filter-parameters 'userId,email' --transport streamable"
   },
   "keywords": [
     "mcp",
@@ -73,6 +74,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.17.3",
+    "@types/figlet": "^1.7.0",
     "axios": "^1.10.0",
     "blessed": "^0.1.81",
     "boxen": "^5.1.2",
@@ -82,6 +84,7 @@
     "conf": "10.0.2",
     "cors": "^2.8.5",
     "express": "^4.18.2",
+    "figlet": "^1.8.2",
     "inquirer": "^8.2.6",
     "js-yaml": "^4.1.0",
     "mcp-swagger-parser": "workspace:*",

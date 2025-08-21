@@ -5,6 +5,7 @@ import ora from 'ora';
 import boxen from 'boxen';
 import chalk from 'chalk';
 import Table from 'cli-table3';
+import figlet from 'figlet';
 
 type Inquirer = {
   prompt: <T extends Answers = Answers>(questions: QuestionCollection<T>) => Promise<T>;
@@ -12,17 +13,31 @@ type Inquirer = {
 import { SessionManager } from './managers/session-manager';
 import { OpenAPIWizard } from './wizards/openapi-wizard';
 import { UIManager } from './ui/ui-manager';
+import { themeManager } from './themes';
 import { configManager, ConfigManager } from './utils/config-manager';
 import { serverManager, ServerManager } from './utils/server-manager';
 // Server and loadOpenAPIData imports removed - will be implemented later
 import { OperationFilter } from './types';
 import { SessionConfig } from './types';
+import { runStdioServer, runSseServer, runStreamableServer } from '../server';
+import axios from 'axios';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export interface InteractiveCLIOptions {
   port?: number;
   transport?: 'stdio' | 'sse' | 'streamable';
   configFile?: string;
   debug?: boolean;
+  openapi?: string;
+  endpoint?: string;
+  authType?: string;
+  bearerToken?: string;
+  debugHeaders?: boolean;
+  operationFilterParameters?: string;
+  operationFilterTags?: string;
+  operationFilterPaths?: string;
+  customHeaders?: string;
 }
 
 
@@ -62,6 +77,12 @@ export class InteractiveCLI {
     
     this.uiManager.clear();
     
+    // 检查是否提供了 openapi 参数，如果有则直接启动服务
+    if (this.options.openapi) {
+      await this.startDirectMode();
+      return;
+    }
+    
     if (await this.configManager.get('showWelcome')) {
       await this.showWelcome();
     }
@@ -97,20 +118,21 @@ export class InteractiveCLI {
    * 显示欢迎信息
    */
   private async showWelcome(): Promise<void> {
-    const welcomeContent = `${chalk.cyan.bold('🚀 MCP Swagger Server 交互式 CLI')}
+    const theme = themeManager.getCurrentTheme();
+    const welcomeContent = `${chalk.hex(theme.colors.accent).bold.bgBlack(figlet.textSync('MCP Swagger Server (Mss)', { font: 'Small' }))}
 
-${chalk.gray('这个工具可以帮助您轻松配置和管理 OpenAPI 到 MCP 的转换服务')}
+${chalk.hex(theme.colors.muted)('这个工具可以帮助您轻松配置和管理 OpenAPI 到 MCP 的转换服务')}
 
-${chalk.yellow('主要功能:')}
-• 🆕 创建新的 OpenAPI 配置
-• 📋 管理现有配置
-• 🚀 快速启动服务器
-• ⚙️  全局设置
-• 📊 查看状态和统计信息`;
+${chalk.hex(theme.colors.warning)('主要功能:')}
+${theme.icons.create} 创建新的 OpenAPI 配置
+${theme.icons.session} 管理现有配置
+${theme.icons.server} 快速启动服务器
+${theme.icons.settings} 全局设置
+${theme.icons.stats} 查看状态和统计信息`;;
 
     await this.uiManager.showBox(welcomeContent, {
-      title: '欢迎',
-      borderColor: 'cyan',
+      title: theme.icons.welcome + ' 欢迎',
+      themeStyle: 'accent',
       padding: 2
     });
   }
@@ -156,35 +178,36 @@ ${chalk.yellow('主要功能:')}
     }
     
     const sessions = await this.sessionManager.getAllSessions();
+    const theme = themeManager.getCurrentTheme();
     const choices = [
       {
-        name: '🆕 创建新的 OpenAPI 配置',
+        name: theme.icons.create + ' 创建新的 OpenAPI 配置',
         value: 'create-new'
       },
       {
-        name: '📋 管理现有配置',
+        name: theme.icons.session + ' 管理现有配置',
         value: 'manage-sessions',
         disabled: sessions.length === 0 ? '(暂无配置)' : false
       },
       {
-        name: '🚀 快速启动服务器',
+        name: theme.icons.server + ' 快速启动服务器',
         value: 'quick-start',
         disabled: sessions.length === 0 ? '(暂无配置)' : false
       },
       {
-        name: '⚙️  全局设置',
+        name: theme.icons.settings + ' 全局设置',
         value: 'settings'
       },
       {
-        name: '📊 查看状态',
+        name: theme.icons.stats + ' 查看状态',
         value: 'status'
       },
       {
-        name: '❓ 帮助',
+        name: theme.icons.help + ' 帮助',
         value: 'help'
       },
       {
-        name: '🚪 退出',
+        name: theme.icons.exit + ' 退出',
         value: 'exit'
       }
     ];
@@ -238,7 +261,11 @@ ${chalk.yellow('主要功能:')}
    * 创建新配置
    */
   private async createNewConfig(): Promise<void> {
-    await this.uiManager.showBox('🆕 创建新配置', { title: '新建配置', borderColor: 'green' });
+    const theme = themeManager.getCurrentTheme();
+    await this.uiManager.showBox(theme.icons.create + ' 创建新配置', { 
+      title: '新建配置', 
+      themeStyle: 'success' 
+    });
     
     try {
       const config = await this.openApiWizard.runWizard();
@@ -284,7 +311,8 @@ ${chalk.yellow('主要功能:')}
       value: session.id
     }));
 
-    choices.push({ name: '🔙 返回主菜单', value: 'back' });
+    const theme = themeManager.getCurrentTheme();
+    choices.push({ name: theme.icons.back + ' 返回主菜单', value: 'back' });
 
     const { sessionId } = await this.inquirer.prompt([
       {
@@ -315,17 +343,18 @@ ${chalk.yellow('主要功能:')}
 
     await this.uiManager.showSessionDetails(session);
 
+    const theme = themeManager.getCurrentTheme();
     const { action } = await this.inquirer.prompt([
       {
         type: 'list',
         name: 'action',
         message: `管理配置: ${session.name}`,
         choices: [
-          { name: '🚀 启动服务器', value: 'start' },
-          { name: '✏️  编辑配置', value: 'edit' },
-          { name: '📋 查看详情', value: 'view' },
-          { name: '🗑️  删除配置', value: 'delete' },
-          { name: '🔙 返回', value: 'back' }
+          { name: theme.icons.server + ' 启动服务器', value: 'start' },
+          { name: theme.icons.edit + ' 编辑配置', value: 'edit' },
+          { name: theme.icons.view + ' 查看详情', value: 'view' },
+          { name: theme.icons.delete + ' 删除配置', value: 'delete' },
+          { name: theme.icons.back + ' 返回', value: 'back' }
         ]
       }
     ]);
@@ -787,8 +816,9 @@ ${chalk.yellow('主要功能:')}
             message: '选择 UI 主题:',
             choices: [
               { name: '默认', value: 'default' },
-              { name: '暗色', value: 'dark' },
-              { name: '亮色', value: 'light' }
+              { name: '暗红赛博', value: 'dark-red-cyber' },
+              { name: '紧凑', value: 'compact' },
+              { name: '华丽', value: 'fancy' }
             ],
             default: config.theme
           }
@@ -854,5 +884,246 @@ ${chalk.yellow('主要功能:')}
 
     this.isRunning = false;
     await this.uiManager.showSuccess('👋 再见！');
+  }
+
+  /**
+   * 停止交互式 CLI
+   */
+  stop(): void {
+    this.isRunning = false;
+  }
+
+  /**
+   * 直接启动模式 - 兼容cli.ts的命令行参数启动
+   */
+  private async startDirectMode(): Promise<void> {
+    try {
+      console.log(chalk.cyan('🚀 MCP Swagger Server - 直接启动模式'));
+      console.log();
+      
+      // 显示配置信息
+      await this.showDirectModeConfig();
+      
+      // 加载OpenAPI数据
+      let openApiData = null;
+      if (this.options.openapi) {
+        console.log(chalk.blue('📡 加载 OpenAPI 规范'));
+        openApiData = await this.loadOpenAPIData(this.options.openapi);
+        
+        if (openApiData) {
+          console.log();
+          console.log(chalk.gray('  API 信息:'));
+          if (openApiData.info?.title) {
+            console.log(chalk.gray(`  📝 标题: ${openApiData.info.title}`));
+          }
+          if (openApiData.info?.version) {
+            console.log(chalk.gray(`  🔖 版本: ${openApiData.info.version}`));
+          }
+          if (openApiData.paths) {
+            const pathCount = Object.keys(openApiData.paths).length;
+            console.log(chalk.gray(`  🛣️ 路径: ${pathCount} 个端点`));
+          }
+        }
+      }
+      
+      // 构建认证配置
+      const authConfig = this.buildAuthConfig();
+      
+      // 构建操作过滤器
+      const operationFilter = this.buildOperationFilter();
+      
+      // 构建自定义请求头
+      const customHeaders = this.buildCustomHeaders();
+      
+      console.log();
+      console.log(chalk.blue('🚀 启动服务器'));
+      
+      // 根据传输协议启动服务器
+      const transport = this.options.transport || 'stdio';
+      const port = this.options.port || 3322;
+      
+      switch (transport.toLowerCase()) {
+        case 'stdio':
+          console.log(chalk.yellow('正在启动 STDIO 服务器...'));
+          console.log(chalk.gray('  💬 适用于 AI 客户端集成（如 Claude Desktop）'));
+          await runStdioServer(openApiData, authConfig, customHeaders, this.options.debugHeaders, operationFilter);
+          break;
+          
+        case 'streamable':
+          console.log(chalk.yellow('正在启动 Streamable 服务器...'));
+          const streamEndpoint = this.options.endpoint || '/mcp';
+          const streamUrl = `http://localhost:${port}${streamEndpoint}`;
+          console.log(chalk.gray(`  🌐 服务器地址: ${streamUrl}`));
+          console.log(chalk.gray('  🔗 适用于 Web 应用集成'));
+          await runStreamableServer(streamEndpoint, port, openApiData, authConfig, customHeaders, this.options.debugHeaders, operationFilter);
+          break;
+          
+        case 'sse':
+          console.log(chalk.yellow('正在启动 SSE 服务器...'));
+          const sseEndpoint = this.options.endpoint || '/sse';
+          const sseUrl = `http://localhost:${port}${sseEndpoint}`;
+          console.log(chalk.gray(`  📡 SSE 端点: ${sseUrl}`));
+          console.log(chalk.gray('  ⚡ 适用于实时 Web 应用'));
+          await runSseServer(sseEndpoint, port, openApiData, authConfig, customHeaders, this.options.debugHeaders, operationFilter);
+          break;
+          
+        default:
+          throw new Error(`不支持的传输协议: ${transport}，支持的协议: stdio, sse, streamable`);
+      }
+      
+      // 服务器启动成功
+      console.log();
+      console.log('='.repeat(60));
+      console.log(chalk.green('✓ MCP Swagger Server 启动成功！'));
+      
+      if (transport !== 'stdio') {
+        const serverUrl = `http://localhost:${port}${this.options.endpoint || (transport === 'sse' ? '/sse' : '/mcp')}`;
+        console.log(chalk.gray(`  🛑 服务器运行在: ${serverUrl}`));
+      }
+      
+      console.log(chalk.gray('  💡 按 Ctrl+C 停止服务器'));
+      console.log('='.repeat(60));
+      
+    } catch (error: any) {
+      console.log();
+      console.log(chalk.red(`✗ 服务器启动失败: ${error.message}`));
+      process.exit(1);
+    }
+  }
+  
+  /**
+   * 显示直接启动模式的配置信息
+   */
+  private async showDirectModeConfig(): Promise<void> {
+    const transport = this.options.transport || 'stdio';
+    const port = this.options.port || 3322;
+    
+    console.log(chalk.blue('📋 服务器配置'));
+    console.log('-'.repeat(20));
+    console.log(`传输协议: ${chalk.white(transport.toUpperCase())}`);
+    console.log(`端口号: ${chalk.white(port.toString())} ${chalk.gray(transport === 'stdio' ? '(STDIO 模式不使用端口)' : '')}`);
+    console.log(`数据源: ${chalk.white(this.options.openapi || '未指定')} ${chalk.gray(this.options.openapi ? (this.isUrl(this.options.openapi) ? '远程 URL' : '本地文件') : '')}`);
+    
+    // 显示认证配置
+    const authType = this.options.authType || 'none';
+    console.log(`认证类型: ${chalk.white(authType.toUpperCase())}`);
+    
+    if (authType === 'bearer' && this.options.bearerToken) {
+      console.log(`Token 来源: ${chalk.white('静态配置')} ${chalk.gray('✓ 已配置')}`);
+    }
+    
+    console.log();
+  }
+  
+  /**
+   * 加载OpenAPI数据
+   */
+  private async loadOpenAPIData(source: string): Promise<any> {
+    try {
+      if (this.isUrl(source)) {
+        console.log(chalk.yellow(`正在从远程 URL 加载 OpenAPI 规范...`));
+        console.log(chalk.gray(`  📡 ${source}`));
+        const response = await axios.get(source);
+        console.log(chalk.green('✓ 远程 OpenAPI 规范加载成功'));
+        return response.data;
+      } else {
+        console.log(chalk.yellow(`正在从本地文件加载 OpenAPI 规范...`));
+        const filePath = path.resolve(source);
+        console.log(chalk.gray(`  📁 ${filePath}`));
+        const content = fs.readFileSync(filePath, 'utf-8');
+        
+        let data;
+        if (source.endsWith('.yaml') || source.endsWith('.yml')) {
+          console.log(chalk.gray('  🔄 解析 YAML 格式...'));
+          const yaml = await import('js-yaml');
+          data = yaml.load(content);
+        } else {
+          console.log(chalk.gray('  🔄 解析 JSON 格式...'));
+          data = JSON.parse(content);
+        }
+        
+        console.log(chalk.green('✓ 本地 OpenAPI 规范加载成功'));
+        return data;
+      }
+    } catch (error: any) {
+      console.log(chalk.red(`✗ 加载 OpenAPI 规范失败: ${error.message}`));
+      console.log(chalk.gray(`  源: ${source}`));
+      throw error;
+    }
+  }
+  
+  /**
+   * 检查是否为URL
+   */
+  private isUrl(str: string): boolean {
+    try {
+      new URL(str);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  
+  /**
+   * 构建认证配置
+   */
+  private buildAuthConfig(): any {
+    const authType = this.options.authType || 'none';
+    
+    if (authType === 'bearer' && this.options.bearerToken) {
+      return {
+        type: 'bearer',
+        bearer: {
+          source: 'static',
+          token: this.options.bearerToken
+        }
+      };
+    }
+    
+    return { type: 'none' };
+  }
+  
+  /**
+   * 构建操作过滤器
+   */
+  private buildOperationFilter(): any {
+    if (this.options.operationFilterParameters) {
+      return {
+        parameters: this.options.operationFilterParameters.split(',').map(p => p.trim())
+      };
+    }
+    
+    if (this.options.operationFilterTags) {
+      return {
+        tags: this.options.operationFilterTags.split(',').map(t => t.trim())
+      };
+    }
+    
+    if (this.options.operationFilterPaths) {
+      return {
+        paths: this.options.operationFilterPaths.split(',').map(p => p.trim())
+      };
+    }
+    
+    return null;
+  }
+  
+  /**
+   * 构建自定义请求头
+   */
+  private buildCustomHeaders(): any {
+    const headers: any = {};
+    
+    if (this.options.customHeaders) {
+      const headerPairs = this.options.customHeaders.split(',');
+      for (const pair of headerPairs) {
+        const [key, value] = pair.split(':').map(s => s.trim());
+        if (key && value) {
+          headers[key] = value;
+        }
+      }
+    }
+    
+    return Object.keys(headers).length > 0 ? headers : null;
   }
 }
