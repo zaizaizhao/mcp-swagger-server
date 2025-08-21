@@ -4,6 +4,7 @@ import { promises as fs } from 'fs';
 import { join } from 'path';
 import axios from 'axios';
 import yaml from 'js-yaml';
+import { OpenAPIV3 } from 'openapi-types';
 import {
   SessionConfig,
   TransportType,
@@ -11,8 +12,11 @@ import {
   OperationFilter,
   OpenAPIValidationResult,
   PresetOpenAPIUrl,
-  WizardContext
-} from '../types';
+  WizardContext,
+  InterfaceSelectionConfig
+} from '../types/index';
+import { InterfaceSelector } from '../components/interface-selector';
+import { ApiEndpoint, HttpMethod } from 'mcp-swagger-parser';
 
 /**
  * OpenAPI 配置向导
@@ -49,16 +53,24 @@ export class OpenAPIWizard {
     
     try {
       const context: WizardContext = {
+      sessionConfig: {},
+      wizardState: {
         currentStep: 0,
-        steps: [
-          { id: 'basic', title: '基本信息', required: true, completed: false },
-          { id: 'openapi', title: 'OpenAPI 配置', required: true, completed: false },
-          { id: 'transport', title: '传输配置', required: true, completed: false },
-          { id: 'advanced', title: '高级配置', required: false, completed: false }
-        ],
-        data: {},
-        isEditing: false
-      };
+        totalSteps: 4,
+        stepStates: {},
+        canGoBack: false,
+        canGoForward: false
+      },
+      currentStep: 0,
+      steps: [
+        { id: 'basic', title: '基本信息', required: true, completed: false },
+        { id: 'openapi', title: 'OpenAPI 配置', required: true, completed: false },
+        { id: 'transport', title: '传输配置', required: true, completed: false },
+        { id: 'advanced', title: '高级配置', required: false, completed: false }
+      ],
+      data: {},
+      isEditing: false
+    };
 
       // 步骤 1: 获取基本信息
       const basicInfo = await this.getBasicInfo();
@@ -69,6 +81,11 @@ export class OpenAPIWizard {
       const openApiConfig = await this.getOpenAPIConfig();
       if (!openApiConfig) return null;
       context.data = { ...context.data, ...openApiConfig };
+      
+      // 如果有接口选择配置，提取operationFilter
+      if (openApiConfig.interfaceSelection?.operationFilter) {
+        context.data.operationFilter = openApiConfig.interfaceSelection.operationFilter;
+      }
 
       // 步骤 3: 配置传输
       const transportConfig = await this.getTransportConfig();
@@ -170,6 +187,10 @@ export class OpenAPIWizard {
         const openApiConfig = await this.getOpenAPIConfig(config.openApiUrl);
         if (openApiConfig) {
           updatedConfig = { ...updatedConfig, ...openApiConfig };
+          // 如果有接口选择配置，提取operationFilter
+          if (openApiConfig.interfaceSelection?.operationFilter) {
+            updatedConfig.operationFilter = openApiConfig.interfaceSelection.operationFilter;
+          }
         }
         break;
 
@@ -290,7 +311,7 @@ export class OpenAPIWizard {
     const validation = await this.validateOpenAPIDocument(openApiUrl);
     if (!validation.valid) {
       console.error('❌ OpenAPI 文档验证失败:');
-      validation.errors?.forEach(error => console.error(`  - ${error}`));
+      validation.errors?.forEach((error: any) => console.error(`  - ${error}`));
       return null;
     }
 
@@ -299,7 +320,37 @@ export class OpenAPIWizard {
     if (validation.version) console.log(`  版本: ${validation.version}`);
     if (validation.operationCount) console.log(`  操作数量: ${validation.operationCount}`);
 
-    return { openApiUrl };
+    // 询问是否进行接口选择
+    const wantInterfaceSelection = await this.inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'enable',
+        message: '是否要选择特定的接口转换为 MCP tools？',
+        default: false
+      }
+    ]);
+
+    let interfaceSelection: InterfaceSelectionConfig | undefined;
+    if (wantInterfaceSelection.enable) {
+      // 解析 OpenAPI 规范以获取接口列表
+      const spec = await this.parseOpenAPISpec(openApiUrl);
+      if (spec) {
+        const endpoints = this.extractEndpoints(spec);
+        if (endpoints.length > 0) {
+          const selector = new InterfaceSelector(spec as any, {});
+          const selectionResult = await selector.selectInterfaces();
+          interfaceSelection = {
+            mode: selectionResult.selectionMode as any,
+            selectedEndpoints: selectionResult.selectedEndpoints,
+            selectedTags: selectionResult.selectedTags,
+            pathPatterns: selectionResult.pathPatterns,
+            operationFilter: selectionResult.operationFilter
+          };
+        }
+      }
+    }
+
+    return { openApiUrl, interfaceSelection } as Partial<SessionConfig>;
   }
 
   /**
@@ -769,5 +820,69 @@ export class OpenAPIWizard {
     }
 
     return Object.keys(headers).length > 0 ? headers : null;
+  }
+
+  /**
+   * 解析 OpenAPI 规范
+   */
+  private async parseOpenAPISpec(url: string): Promise<OpenAPIV3.Document | null> {
+    try {
+      let content: any;
+
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        // 从 URL 获取
+        const response = await axios.get(url, { timeout: 10000 });
+        content = response.data;
+      } else {
+        // 从本地文件获取
+        const fileContent = await fs.readFile(url, 'utf-8');
+        if (url.endsWith('.yaml') || url.endsWith('.yml')) {
+          content = yaml.load(fileContent);
+        } else {
+          content = JSON.parse(fileContent);
+        }
+      }
+
+      return content as OpenAPIV3.Document;
+    } catch (error) {
+      console.error('解析 OpenAPI 规范失败:', error);
+      return null;
+    }
+  }
+
+  /**
+   * 从 OpenAPI 规范中提取接口信息
+   */
+  private extractEndpoints(spec: OpenAPIV3.Document): ApiEndpoint[] {
+    const endpoints: ApiEndpoint[] = [];
+
+    if (!spec.paths) {
+      return endpoints;
+    }
+
+    Object.entries(spec.paths).forEach(([path, pathItem]) => {
+      if (!pathItem) return;
+
+      const methods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'] as const;
+      
+      methods.forEach(method => {
+        const operation = (pathItem as any)[method] as OpenAPIV3.OperationObject;
+        if (operation) {
+          endpoints.push({
+            path,
+            method: method.toUpperCase() as HttpMethod,
+            operationId: operation.operationId,
+            summary: operation.summary,
+            description: operation.description,
+            parameters: [],
+            responses: {},
+            tags: operation.tags,
+            deprecated: operation.deprecated || false
+          });
+        }
+      });
+    });
+
+    return endpoints;
   }
 }

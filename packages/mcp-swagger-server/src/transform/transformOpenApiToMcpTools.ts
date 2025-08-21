@@ -51,6 +51,29 @@ export async function transformOpenApiToMcpTools(
     console.log(`✅ Loaded OpenAPI spec: ${parseResult.spec.info.title} v${parseResult.spec.info.version}`);
     console.log(`📊 Found ${Object.keys(parseResult.spec.paths).length} API paths`);
     
+    // 调试输出：显示operationFilter信息
+    console.log(`\n[DEBUG] MCP工具转换配置:`);
+    if (operationFilter) {
+      console.log(`- 使用operationFilter进行接口过滤`);
+      console.log(`- operationFilter详情:`, JSON.stringify(operationFilter, null, 2));
+      
+      // 显示过滤器的具体配置
+      if (operationFilter.methods) {
+        console.log(`- 方法过滤: include=${operationFilter.methods.include?.join(', ') || 'N/A'}, exclude=${operationFilter.methods.exclude?.join(', ') || 'N/A'}`);
+      }
+      if (operationFilter.paths) {
+        console.log(`- 路径过滤: include=${operationFilter.paths.include?.length || 0}个路径, exclude=${operationFilter.paths.exclude?.length || 0}个路径`);
+      }
+      if (operationFilter.operationIds) {
+        console.log(`- 操作ID过滤: include=${operationFilter.operationIds.include?.length || 0}个ID, exclude=${operationFilter.operationIds.exclude?.length || 0}个ID`);
+      }
+      if (operationFilter.customFilter) {
+        console.log(`- 使用自定义过滤函数`);
+      }
+    } else {
+      console.log(`- 未设置operationFilter，将转换所有接口`);
+    }
+    
     // 转换为 MCP 工具
     const tools = transformToMCPTools(parseResult.spec, {
       baseUrl,
@@ -63,7 +86,17 @@ export async function transformOpenApiToMcpTools(
       operationFilter // 传递操作过滤配置
     });
 
+    // 调试输出：显示最终转换结果
+    console.log(`\n[DEBUG] MCP工具转换结果:`);
+    console.log(`- 原始API路径数量: ${Object.keys(parseResult.spec.paths).length}`);
+    console.log(`- 最终生成的MCP工具数量: ${tools.length}`);
     
+    if (operationFilter && tools.length > 0) {
+      console.log(`- 转换后的工具列表:`);
+      tools.forEach((tool, index) => {
+        console.log(`  ${index + 1}. ${tool.name} (${tool.description || 'No description'})`);
+      });
+    }
     
     console.log(`🎉 Generated ${tools.length} MCP tools`);
     

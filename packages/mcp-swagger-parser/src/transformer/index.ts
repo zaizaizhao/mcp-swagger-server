@@ -1000,7 +1000,7 @@ export class OpenAPIToMCPTransformer {
         }
         
         // 处理多个命名示例
-        if (jsonContent.examples) {
+        if (jsonContent && jsonContent.examples) {
           Object.values(jsonContent.examples).forEach((exampleObj: ExampleObject | ReferenceObject) => {
             if (!this.isReferenceObject(exampleObj) && exampleObj.value !== undefined) {
               const fullExample = { ...exampleObj.value };
