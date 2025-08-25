@@ -23,6 +23,7 @@ import { runStdioServer, runSseServer, runStreamableServer } from '../server';
 import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as yaml from 'js-yaml';
 
 export interface InteractiveCLIOptions {
   port?: number;
@@ -1035,7 +1036,6 @@ ${theme.icons.stats} 查看状态和统计信息`;;
         let data;
         if (source.endsWith('.yaml') || source.endsWith('.yml')) {
           console.log(chalk.gray('  🔄 解析 YAML 格式...'));
-          const yaml = await import('js-yaml');
           data = yaml.load(content);
         } else {
           console.log(chalk.gray('  🔄 解析 JSON 格式...'));
