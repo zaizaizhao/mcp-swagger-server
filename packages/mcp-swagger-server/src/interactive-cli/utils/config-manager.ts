@@ -1,5 +1,8 @@
 import { homedir } from 'os';
 import { join } from 'path';
+import Conf from 'conf';
+import * as fs from 'fs';
+import * as chokidar from 'chokidar';
 
 export interface GlobalConfig {
   // 全局设置
@@ -67,7 +70,7 @@ export class ConfigManager {
   private async initConfig() {
     if (this.initialized) return;
     
-    const { default: Conf } = await import('conf' as any);
+    // Conf is now statically imported
     this.config = new Conf({
       configName: 'config',
       cwd: this.configPath,
@@ -407,7 +410,7 @@ export class ConfigManager {
     recentConfigsCount: number;
   }> {
     await this.initConfig();
-    const fs = await import('fs');
+    // fs is now statically imported
     const stats = fs.statSync(this.config.path);
     
     return {
@@ -425,7 +428,7 @@ export class ConfigManager {
     await this.initConfig();
     let oldConfig = { ...await this.getConfig() };
     
-    const chokidar = await import('chokidar');
+    // chokidar is now statically imported
     const watcher = chokidar.watch(this.config.path);
     
     watcher.on('change', async () => {

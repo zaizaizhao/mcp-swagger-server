@@ -5,6 +5,8 @@ import chalk from 'chalk';
 import { runStdioServer, runSseServer, runStreamableServer } from '../../server';
 import { AuthConfig } from 'mcp-swagger-parser';
 import axios from 'axios';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export interface ServerStats {
   uptime: number;
@@ -249,8 +251,6 @@ export class ServerManager extends EventEmitter {
           openApiData = response.data;
         } else {
           // 本地文件处理
-          const fs = await import('fs');
-          const path = await import('path');
           const filePath = path.resolve(config.openApiUrl);
           const fileContent = fs.readFileSync(filePath, 'utf8');
           openApiData = JSON.parse(fileContent);

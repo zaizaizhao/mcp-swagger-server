@@ -164,5 +164,29 @@
     "id": "4fc8b6a6-59da-48b5-9136-5c378eeb1e7e",
     "createdAt": "2025-08-21T13:11:32.454Z",
     "lastUsed": "2025-08-21T13:11:34.710Z"
+  },
+  {
+    "name": "a",
+    "description": "a",
+    "openApiUrl": "https://petstore.swagger.io/v2/swagger.json",
+    "transport": "streamable",
+    "port": 8080,
+    "host": "localhost",
+    "operationFilter": {},
+    "id": "ce0ca0b1-ae79-4146-b788-d393b8e44d11",
+    "createdAt": "2025-08-25T05:03:59.349Z",
+    "lastUsed": "2025-08-25T05:04:01.364Z"
+  },
+  {
+    "name": "b",
+    "description": "bb",
+    "openApiUrl": "http://localhost:4000/api/docs-json",
+    "transport": "streamable",
+    "port": 8080,
+    "host": "localhost",
+    "operationFilter": {},
+    "id": "8b1a6305-aa97-498a-9650-c86aa8523576",
+    "createdAt": "2025-08-25T13:51:23.917Z",
+    "lastUsed": "2025-08-25T13:51:24.654Z"
   }
 ]
