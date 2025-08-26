@@ -1,5 +1,11 @@
 # mcp-swagger-parser
 
+## 1.6.0
+
+### Minor Changes
+
+- "渐进式 cli 实现"
+
 ## 1.5.0
 
 ### Minor Changes
@@ -10,7 +16,7 @@
 
 ### Minor Changes
 
-- "解决mcp调用不准确问题"
+- "解决 mcp 调用不准确问题"
 
 ## 1.3.0
 
