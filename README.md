@@ -8,7 +8,6 @@
 [![Trust Score](https://archestra.ai/mcp-catalog/api/badge/quality/zaizaizhao/mcp-swagger-server)](https://archestra.ai/mcp-catalog/zaizaizhao__mcp-swagger-server)
 
 **一个将 OpenAPI/Swagger 规范转换为 Model Context Protocol (MCP) 格式的工具**
-**将 OpenAPI/Swagger 规范转换为 Model Context Protocol (MCP) 格式的服务器**
 
 零配置将您的 REST API 转换为 AI 可调用的工具
 
