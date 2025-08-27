@@ -1,4 +1,4 @@
-# MCP Swagger Server 🚀
+# MCP Swagger Server(mss)
 
 <div align="center">
 
@@ -6,19 +6,20 @@
 [![Node.js](https://img.shields.io/badge/Node.js-16+-green.svg)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**Convert OpenAPI/Swagger specifications to Model Context Protocol (MCP) format server**
+**A tool that converts OpenAPI/Swagger specifications to Model Context Protocol (MCP) format**
 
-Transform your REST APIs into AI-callable tools with zero configuration
-
-[🚀 Quick Start](#quick-start) • [📖 Usage Guide](#usage-guide) • [🛠️ Development](#development)
+**Languages**: English | [中文](README.md)
 
 </div>
 
 ---
+## 🎯 Project Screenshots
 
+![Project Screenshot](./docs/img/mss.png)
+![Project Screenshot](./docs/img/ui.png)
 ## 🎯 Project Overview
 
-MCP Swagger Server is a **Monorepo** project that converts any OpenAPI/Swagger-compliant REST API into Model Context Protocol (MCP) format, enabling AI assistants to understand and call your APIs.
+MCP Swagger Server is a tool that converts OpenAPI/Swagger specifications to Model Context Protocol (MCP) format.
 
 ### 📦 Project Structure
 
@@ -26,19 +27,18 @@ MCP Swagger Server is a **Monorepo** project that converts any OpenAPI/Swagger-c
 mcp-swagger-server/
 ├── packages/
 │   ├── mcp-swagger-server/     # 🔧 Core MCP Server (Available)
-│   ├── mcp-swagger-parser/     # 📝 OpenAPI Parser (In Development)
-│   ├── mcp-swagger-ui/         # � Web Interface (In Development)
-│   └── mcp-swagger-api/        # 🔗 REST API Backend (In Development)
-└── scripts/                    # 🔨 Build Tools
+│   ├── mcp-swagger-parser/     # 📝 OpenAPI Parser (Available)
+│   ├── mcp-swagger-ui/         # 🎨 Web Interface (In Development)
+│   └── mcp-swagger-api/        # 🔗 REST API Backend (Available)
+└── scripts/                    # 🔨 Build Scripts
 ```
 
 ### ✨ Core Features
 
 - **🔄 Zero Configuration**: Input OpenAPI spec, get MCP tools instantly
-- **🎯 AI-Native Design**: Optimized for Claude, ChatGPT, and other AI assistants
+- **🎯 Progressive Command Line**: Provides step-by-step guided command line interface for easy user configuration
 - **🔌 Multi-Transport**: Support for SSE, Streamable, and Stdio transports
-- **� Secure Authentication**: Bearer Token authentication to protect API access
-- **⚡ High Performance**: Built with TypeScript for complete type safety
+- **🔐 Secure Authentication**: Bearer Token authentication to protect API access
 
 ## 🚀 Quick Start
 
@@ -50,22 +50,20 @@ mcp-swagger-server/
 ### Installation
 
 ```bash
-# Clone the project
-git clone https://github.com/zaizaizhao/mcp-swagger-server.git
-cd mcp-swagger-server
-
-# Install dependencies
-pnpm install
-
-# Build the project
-pnpm build
+npm i mcp-swagger-server -g
 ```
 
 ### Quick Launch
+#### Custom Launch
+```bash 
+mss
+```
+#### One-Click Launch
+```bash 
+mss --openapi https://api.example.com/openapi.json --operation-filter-methods GET,POST --transport streamable --auth-type bearer --bearer-token "your-token-here"
 
-```bash
-# Start the server with example configuration
-node packages/mcp-swagger-server/dist/index.js -openapi https://api.example.com/openapi.json --operation-filter-methods GET,POST --transport streamable -auth-type bearer --bearer-token "your-token-here"
+# Using configuration file
+mss --config config.json
 ```
 
 ## � Usage Guide
@@ -81,7 +79,7 @@ This is the core package of the project, providing complete MCP server functiona
 npm install -g mcp-swagger-server
 
 # Command line usage
-mcp-swagger-server --openapi https://petstore.swagger.io/v2/swagger.json --transport streamable --port 3322
+mss --openapi https://petstore.swagger.io/v2/swagger.json --transport streamable --port 3322
 ```
 
 #### Supported Transport Protocols
@@ -94,7 +92,7 @@ mcp-swagger-server --openapi https://petstore.swagger.io/v2/swagger.json --trans
 
 ```bash
 # Basic usage
-mcp-swagger-server [options]
+mss [options]
 
 # Options:
 --openapi, -o       OpenAPI specification URL or file path
@@ -121,39 +119,39 @@ mcp-swagger-server [options]
 
 ```bash
 # Use local OpenAPI file
-mcp-swagger-server --openapi ./swagger.json --transport sse --port 3322
+mss --openapi ./swagger.json --transport sse --port 3322
 
 # Use remote OpenAPI URL
-mcp-swagger-server --openapi https://api.example.com/openapi.json --transport streamable --port 3323
+mss --openapi https://api.example.com/openapi.json --transport streamable --port 3323
 
 # Monitor file changes
-mcp-swagger-server --openapi ./api.yaml --transport stdio --watch
+mss --openapi ./api.yaml --transport stdio --watch
 
 # Use Bearer Token authentication
-mcp-swagger-server --openapi https://api.example.com/openapi.json --auth-type bearer --bearer-token "your-token-here" --transport sse --port 3322
+mss --openapi https://api.example.com/openapi.json --auth-type bearer --bearer-token "your-token-here" --transport sse --port 3322
 
 # Read token from environment variable
 export API_TOKEN="your-token-here"
-mcp-swagger-server --openapi https://api.example.com/openapi.json --auth-type bearer --bearer-env API_TOKEN --transport stdio
+mss --openapi https://api.example.com/openapi.json --auth-type bearer --bearer-env API_TOKEN --transport stdio
 
 # Using operation filtering options
 # Include only GET and POST method endpoints
-mcp-swagger-server --openapi https://api.example.com/openapi.json --operation-filter-methods GET,POST --transport streamable
+mss --openapi https://api.example.com/openapi.json --operation-filter-methods GET,POST --transport streamable
 
 # Include only specific path endpoints
-mcp-swagger-server --openapi https://api.example.com/openapi.json --operation-filter-paths "/api/users/*,/api/orders/*" --transport streamable
+mss --openapi https://api.example.com/openapi.json --operation-filter-paths "/api/users/*,/api/orders/*" --transport streamable
 
 # Include only specific operation ID endpoints
-mcp-swagger-server --openapi https://api.example.com/openapi.json --operation-filter-operation-ids "getUserById,createUser" --transport streamable
+mss --openapi https://api.example.com/openapi.json --operation-filter-operation-ids "getUserById,createUser" --transport streamable
 
 # Include only specific status code endpoints
-mcp-swagger-server --openapi https://api.example.com/openapi.json --operation-filter-status-codes "200,201,204" --transport streamable
+mss --openapi https://api.example.com/openapi.json --operation-filter-status-codes "200,201,204" --transport streamable
 
 # Include only endpoints with specific parameters
-mcp-swagger-server --openapi https://api.example.com/openapi.json --operation-filter-parameters "userId,email" --transport streamable
+mss --openapi https://api.example.com/openapi.json --operation-filter-parameters "userId,email" --transport streamable
 
 # Combine multiple filtering options
-mcp-swagger-server --openapi https://api.example.com/openapi.json \
+mss --openapi https://api.example.com/openapi.json \
   --operation-filter-methods GET,POST \
   --operation-filter-paths "/api/users/*" \
   --operation-filter-status-codes "200,201" \
@@ -168,7 +166,7 @@ mcp-swagger-server --openapi https://api.example.com/openapi.json \
 
 **1. Direct Token Specification**
 ```bash
-mcp-swagger-server --auth-type bearer --bearer-token "your-token-here" --openapi https://api.example.com/openapi.json
+mss --auth-type bearer --bearer-token "your-token-here" --openapi https://api.example.com/openapi.json --transport streamable
 ```
 
 **2. Environment Variable Method**
@@ -177,7 +175,7 @@ mcp-swagger-server --auth-type bearer --bearer-token "your-token-here" --openapi
 export API_TOKEN="your-token-here"
 
 # Use environment variable
-mcp-swagger-server --auth-type bearer --bearer-env API_TOKEN --openapi https://api.example.com/openapi.json
+mss --auth-type bearer --bearer-env API_TOKEN --openapi https://api.example.com/openapi.json
 ```
 
 **3. Configuration File Method**
@@ -198,7 +196,7 @@ mcp-swagger-server --auth-type bearer --bearer-env API_TOKEN --openapi https://a
 
 ```bash
 # Use configuration file
-mcp-swagger-server --config config.json
+mss --config config.json
 ```
 
 #### Environment Variable Configuration
@@ -223,14 +221,14 @@ API_TOKEN=your-bearer-token-here
 {
   "mcpServers": {
     "swagger-converter": {
-      "command": "mcp-swagger-server",
+      "command": "mss",
       "args": [
         "--openapi", "https://petstore.swagger.io/v2/swagger.json",
         "--transport", "stdio"
       ]
     },
     "secured-api": {
-      "command": "mcp-swagger-server",
+      "command": "mss",
       "args": [
         "--openapi", "https://api.example.com/openapi.json",
         "--transport", "stdio",
@@ -328,9 +326,9 @@ npx @modelcontextprotocol/inspector node dist/index.js
 | Package | Status | Description |
 |---------|--------|-------------|
 | `mcp-swagger-server` | ✅ Available | Core MCP server with multi-transport support |
-| `mcp-swagger-parser` | � In Development | OpenAPI parser and conversion tools |
-| `mcp-swagger-ui` | � In Development | Vue.js web interface |
-| `mcp-swagger-api` | 🚧 In Development | NestJS REST API backend |
+| `mcp-swagger-parser` | ✅ Available | OpenAPI parser and conversion tools |
+| `mcp-swagger-ui` | 🚧 In Development | Vue.js web interface |
+| `mcp-swagger-api` | ✅ Available | NestJS REST API backend |
 
 ## 🤝 Contributing
 
