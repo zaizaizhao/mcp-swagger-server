@@ -24,7 +24,7 @@
 ![项目截图](./docs/img/ui.png)
 ## 🎯 项目简介
 
-MCP Swagger Server 是一个将 OpenAPI/Swagger 规范转换为 Model Context Protocol (MCP) 格式的。
+MCP Swagger Server 是一个将 OpenAPI/Swagger 规范转换为 Model Context Protocol (MCP) 格式的工具。
 
 ### 📦 项目结构
 
