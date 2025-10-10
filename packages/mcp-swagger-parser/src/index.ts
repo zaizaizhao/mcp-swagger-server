@@ -129,7 +129,7 @@ export const DEFAULT_PARSER_CONFIG: ParserConfig = {
   swagger2Options: {
     patch: true,
     warnOnly: false,
-    resolveInternal: false,
+    resolveInternal: true,  // 启用内部引用解析
     targetVersion: '3.0.0',
     preserveRefs: true,
     warnProperty: 'x-s2o-warning',
