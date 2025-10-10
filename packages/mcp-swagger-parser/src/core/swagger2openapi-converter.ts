@@ -75,7 +75,7 @@ export class Swagger2OpenAPIConverter {
     this.options = {
       patch: options.patch ?? true,
       warnOnly: options.warnOnly ?? false,
-      resolveInternal: options.resolveInternal ?? false,
+      resolveInternal: options.resolveInternal ?? true, // 启用内部引用解析
       targetVersion: options.targetVersion ?? '3.0.0',
       warnProperty: options.warnProperty ?? 'x-s2o-warning',
       url: options.url,
