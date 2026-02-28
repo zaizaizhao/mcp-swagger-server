@@ -44,6 +44,7 @@ cp .env.example .env
 MCP_PORT=3322
 MCP_TRANSPORT=stdio
 MCP_OPENAPI_URL=https://petstore.swagger.io/v2/swagger.json
+MCP_ENDPOINT=/mcp
 
 # 认证配置
 MCP_AUTH_TYPE=bearer
@@ -191,7 +192,6 @@ mcp-swagger-server --config production.json
       "envName": "PROD_API_TOKEN"
     }
   },
-  "managed": true,
   "autoRestart": true,
   "maxRetries": 5,
   "retryDelay": 5000

@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import { McpServerConfig, ServerStatus, MCPTool, IMCPRegistry } from '../types/core';
@@ -106,12 +107,10 @@ export class MCPRegistry implements IMCPRegistry {
         server.registerTool(
           tool.name,
           {
+            title: tool.metadata ? `${tool.metadata.httpMethod || 'API'} ${tool.metadata.endpoint || ''}` : undefined,
             description: tool.description,
             inputSchema: this.convertInputSchemaToZod(tool.inputSchema),
-            annotations: tool.metadata ? {
-              title: `${tool.metadata.httpMethod || 'API'} ${tool.metadata.endpoint || ''}`,
-              ...(tool.metadata.deprecated && { deprecated: true })
-            } : undefined
+            annotations: this.buildToolAnnotations(tool.metadata)
           },
           // 包装handler以适配MCP Server的签名
           async (args: any) => {
@@ -221,6 +220,24 @@ export class MCPRegistry implements IMCPRegistry {
     }
     
     return zodSchema;
+  }
+
+  private buildToolAnnotations(metadata?: MCPTool['metadata']): ToolAnnotations | undefined {
+    if (!metadata?.httpMethod) {
+      return undefined;
+    }
+
+    const method = metadata.httpMethod.toUpperCase();
+    const readOnlyHint = method === 'GET' || method === 'HEAD' || method === 'OPTIONS';
+    const destructiveHint = method === 'DELETE';
+    const idempotentHint = readOnlyHint || method === 'PUT' || method === 'DELETE';
+
+    return {
+      readOnlyHint,
+      destructiveHint,
+      idempotentHint,
+      openWorldHint: true
+    };
   }
 
   getServerStatus(serverId: string): ServerStatus | undefined {

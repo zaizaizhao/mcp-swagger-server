@@ -49,6 +49,13 @@ function parseCommandLineArgs(): CLIOptions {
         }
         break;
 
+      case '--env':
+        if (nextArg && !nextArg.startsWith('-')) {
+          options.env = nextArg;
+          i++;
+        }
+        break;
+
       case '--port':
       case '-p':
         if (nextArg && !nextArg.startsWith('-')) {
@@ -61,7 +68,7 @@ function parseCommandLineArgs(): CLIOptions {
         break;
 
       case '--host':
-      case '-h':
+      case '-H':
         if (nextArg && !nextArg.startsWith('-')) {
           options.host = nextArg;
           i++;
@@ -92,6 +99,11 @@ function parseCommandLineArgs(): CLIOptions {
         process.env.DEBUG = 'mcp-swagger:*';
         process.env.LOG_LEVEL = 'debug';
         break;
+      case '--help':
+      case '-h':
+        showHelp();
+        process.exit(0);
+        break;
 
       // OpenAPI 相关选项
       case '--openapi':
@@ -110,10 +122,6 @@ function parseCommandLineArgs(): CLIOptions {
           options.endpoint = nextArg;
           i++;
         }
-        break;
-
-      case '--managed':
-        options.managed = true;
         break;
 
       // 认证选项
@@ -240,16 +248,28 @@ function parseCommandLineArgs(): CLIOptions {
         }
         break;
 
-      case '--env':
+      case '--allowed-host':
         if (nextArg && !nextArg.startsWith('-')) {
-          options.env = nextArg;
+          if (!options['allowed-host']) {
+            options['allowed-host'] = [];
+          }
+          options['allowed-host'].push(...nextArg.split(',').map((item) => item.trim()).filter(Boolean));
           i++;
         }
         break;
 
-      case '--help':
-        showHelp();
-        process.exit(0);
+      case '--allowed-origin':
+        if (nextArg && !nextArg.startsWith('-')) {
+          if (!options['allowed-origin']) {
+            options['allowed-origin'] = [];
+          }
+          options['allowed-origin'].push(...nextArg.split(',').map((item) => item.trim()).filter(Boolean));
+          i++;
+        }
+        break;
+
+      case '--disable-dns-rebinding-protection':
+        options['disable-dns-rebinding-protection'] = true;
         break;
 
       case '--version':
@@ -270,13 +290,17 @@ function showHelp() {
 🚀 MCP Swagger Server - 交互式 CLI
 
 用法:
-  mcp-swagger-interactive [选项]
+  mss [选项]
 
 选项:
   -c, --config <path>     指定配置文件路径
+  --env <path>            指定环境变量文件路径 (.env)
   -p, --port <number>     指定服务器端口 (1-65535)
-  -h, --host <address>    指定服务器主机地址
+  -H, --host <address>    指定服务器主机地址
   -t, --transport <type>  指定传输协议 (stdio|sse|streamable)
+  --allowed-host <host>   允许的 Host 头（可重复）
+  --allowed-origin <url>  允许的 Origin 头（可重复）
+  --disable-dns-rebinding-protection  禁用 Host/Origin 安全校验
   -v, --verbose           启用详细输出
   -q, --quiet             启用静默模式
   -d, --debug             启用调试模式
@@ -284,11 +308,12 @@ function showHelp() {
   --version               显示版本信息
 
 示例:
-  mcp-swagger-interactive
-  mcp-swagger-interactive --port 3000 --transport sse
-  mcp-swagger-interactive --config ./my-config.json --debug
+  mss                           # 进入交互式模式
+  mss --openapi ./api.json --transport streamable --port 3322
+  mss --config ./config.json    # 一次性直启（读取配置）
+  mss --config ./my-config.json --debug
 
-更多信息请访问: https://github.com/your-repo/mcp-swagger-server
+更多信息请访问: https://github.com/zaizaizhao/mcp-swagger-server
 `);
 }
 

@@ -1,6 +1,5 @@
 import { ApiEndpoint } from 'mcp-swagger-parser';
-import { OperationFilter } from 'mcp-swagger-parser/dist/transformer/types';
-import { OperationObject } from 'mcp-swagger-parser/dist/types/openapi';
+import type { OperationFilter, OperationObject } from 'mcp-swagger-parser';
 
 /**
  * 接口过滤器工具类

@@ -45,11 +45,6 @@ export class CLIAdapter {
           short: "e",
           default: "",
         },
-        managed: {
-          type: "boolean",
-          short: "m",
-          default: false,
-        },
         "auto-restart": {
           type: "boolean",
           default: false,
@@ -70,7 +65,6 @@ export class CLIAdapter {
       transport: values.transport as 'stdio' | 'sse' | 'streamable',
       port: parseInt(values.port || '3322', 10),
       endpoint: values.endpoint || this.getDefaultEndpoint(values.transport as string),
-      managed: values.managed || false,
       autoRestart: values['auto-restart'] || false,
       maxRetries: parseInt(values['max-retries'] || '5', 10),
       help: values.help || false,
@@ -141,7 +135,6 @@ Options:
   -t, --transport <type>     Transport type (stdio, sse, streamable) [default: stdio]
   -p, --port <port>         Port number for HTTP transports [default: 3322]
   -e, --endpoint <path>     Endpoint path for HTTP transports [default: /sse or /mcp]
-  -m, --managed             Run in managed mode
   --auto-restart            Auto restart on error
   --max-retries <num>       Maximum retry attempts [default: 5]
   -h, --help                Show this help message

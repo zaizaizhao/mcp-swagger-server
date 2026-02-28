@@ -5,7 +5,6 @@ export interface CLIOptions {
   endpoint: string;
   swaggerFile?: string;
   baseUrl?: string;
-  managed?: boolean;
   autoRestart?: boolean;
   maxRetries?: number;
   verbose?: boolean;

@@ -91,6 +91,7 @@ export class ServerLifecycleService {
         env: {
           ...process.env,
           NODE_ENV: this.configService.get('NODE_ENV', 'development'),
+          MCP_MANAGED: 'true',
         },
         restartPolicy: serverEntity.config?.restartPolicy || {
           maxRetries: DEFAULT_PROCESS_CONFIG.defaultMaxRetries,
@@ -113,7 +114,9 @@ export class ServerLifecycleService {
         mcpConfig: {
           transport: serverEntity.transport.toLowerCase() as 'sse' | 'streamable',
           port: serverEntity.port,
-          endpoint: serverEntity.config?.endpoint || '/mcp',
+          endpoint:
+            serverEntity.config?.endpoint ||
+            (serverEntity.transport === TransportType.SSE ? '/sse' : '/mcp'),
           openApiSource: 'env', // 从环境变量读取
           authConfig: serverEntity.authConfig ? {
             type: serverEntity.authConfig.type as 'none' | 'bearer',
@@ -203,14 +206,13 @@ export class ServerLifecycleService {
     }
 
     // 自定义头部
-    if (serverEntity.config?.customHeaders) {
+    if (serverEntity.config?.customHeaders && typeof serverEntity.config.customHeaders === 'object') {
       for (const [key, value] of Object.entries(serverEntity.config.customHeaders)) {
-        args.push('--header', `${key}:${value}`);
+        if (typeof value === 'string') {
+          args.push('--custom-header', `${key}=${value}`);
+        }
       }
     }
-
-    // 托管模式
-    args.push('--managed');
 
     // 自动重启
     if (serverEntity.config?.autoRestart !== false) {
@@ -238,9 +240,12 @@ export class ServerLifecycleService {
   private getServerEndpoint(serverEntity: MCPServerEntity): string {
     switch (serverEntity.transport) {
       case TransportType.STREAMABLE:
-      case TransportType.SSE:
-        const endpoint = serverEntity.config?.endpoint || '/mcp';
+      case TransportType.SSE: {
+        const endpoint =
+          serverEntity.config?.endpoint ||
+          (serverEntity.transport === TransportType.SSE ? '/sse' : '/mcp');
         return `http://localhost:${serverEntity.port}${endpoint}`;
+      }
       
       case TransportType.WEBSOCKET:
         return `ws://localhost:${serverEntity.port}`;
@@ -354,7 +359,7 @@ export class ServerLifecycleService {
       });
 
       // 启动SSE传输
-      const endpoint = config.config?.endpoint || '/mcp';
+      const endpoint = config.config?.endpoint || '/sse';
       const httpServer = await startSseMcpServer(mcpServer, endpoint, config.port);
 
       return {

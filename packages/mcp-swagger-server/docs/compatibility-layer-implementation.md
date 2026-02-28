@@ -552,7 +552,7 @@ async function showUpgradePath() {
     name: 'my-api-server',
     version: '1.0.0'
   });
-  console.log(`✅ Created managed server: ${serverId}`);
+  console.log(`✅ Created server: ${serverId}`);
 }
 
 // 展示新功能

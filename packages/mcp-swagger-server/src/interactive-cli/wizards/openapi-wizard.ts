@@ -1,7 +1,5 @@
-import type { QuestionCollection, Answers } from 'inquirer';
 import inquirer from 'inquirer';
 import { promises as fs } from 'fs';
-import { join } from 'path';
 import axios from 'axios';
 import yaml from 'js-yaml';
 import { OpenAPIV3 } from 'openapi-types';
@@ -16,7 +14,7 @@ import {
   InterfaceSelectionConfig
 } from '../types/index';
 import { InterfaceSelector } from '../components/interface-selector';
-import { ApiEndpoint, HttpMethod } from 'mcp-swagger-parser';
+import type { CustomHeaders } from 'mcp-swagger-parser';
 
 /**
  * OpenAPI 配置向导
@@ -29,12 +27,6 @@ export class OpenAPIWizard {
       name: 'Swagger Petstore',
       url: 'https://petstore.swagger.io/v2/swagger.json',
       description: 'Swagger Petstore API 示例',
-      category: 'example'
-    },
-    {
-      name: 'JSONPlaceholder',
-      url: 'https://jsonplaceholder.typicode.com/posts',
-      description: 'JSONPlaceholder REST API',
       category: 'example'
     },
     {
@@ -82,11 +74,6 @@ export class OpenAPIWizard {
       if (!openApiConfig) return null;
       context.data = { ...context.data, ...openApiConfig };
       
-      // 如果有接口选择配置，提取operationFilter
-      if (openApiConfig.interfaceSelection?.operationFilter) {
-        context.data.operationFilter = openApiConfig.interfaceSelection.operationFilter;
-      }
-
       // 步骤 3: 配置传输
       const transportConfig = await this.getTransportConfig();
       if (!transportConfig) return null;
@@ -119,7 +106,8 @@ export class OpenAPIWizard {
         host: context.data.host,
         auth: context.data.auth,
         customHeaders: context.data.customHeaders,
-        operationFilter: context.data.operationFilter
+        operationFilter: context.data.operationFilter,
+        interfaceSelection: context.data.interfaceSelection
       };
 
       // 显示配置摘要
@@ -187,10 +175,6 @@ export class OpenAPIWizard {
         const openApiConfig = await this.getOpenAPIConfig(config.openApiUrl);
         if (openApiConfig) {
           updatedConfig = { ...updatedConfig, ...openApiConfig };
-          // 如果有接口选择配置，提取operationFilter
-          if (openApiConfig.interfaceSelection?.operationFilter) {
-            updatedConfig.operationFilter = openApiConfig.interfaceSelection.operationFilter;
-          }
         }
         break;
 
@@ -335,18 +319,14 @@ export class OpenAPIWizard {
       // 解析 OpenAPI 规范以获取接口列表
       const spec = await this.parseOpenAPISpec(openApiUrl);
       if (spec) {
-        const endpoints = this.extractEndpoints(spec);
-        if (endpoints.length > 0) {
-          const selector = new InterfaceSelector(spec as any, {});
-          const selectionResult = await selector.selectInterfaces();
-          interfaceSelection = {
-            mode: selectionResult.selectionMode as any,
-            selectedEndpoints: selectionResult.selectedEndpoints,
-            selectedTags: selectionResult.selectedTags,
-            pathPatterns: selectionResult.pathPatterns,
-            operationFilter: selectionResult.operationFilter
-          };
-        }
+        const selector = new InterfaceSelector(spec as any, {});
+        const selectionResult = await selector.selectInterfaces();
+        interfaceSelection = {
+          mode: selectionResult.selectionMode as any,
+          selectedEndpoints: selectionResult.selectedEndpoints,
+          selectedTags: selectionResult.selectedTags,
+          pathPatterns: selectionResult.pathPatterns
+        };
       }
     }
 
@@ -429,21 +409,7 @@ export class OpenAPIWizard {
    */
   private async validateOpenAPIDocument(url: string): Promise<OpenAPIValidationResult> {
     try {
-      let content: any;
-
-      if (url.startsWith('http://') || url.startsWith('https://')) {
-        // 从 URL 获取
-        const response = await axios.get(url, { timeout: 10000 });
-        content = response.data;
-      } else {
-        // 从本地文件获取
-        const fileContent = await fs.readFile(url, 'utf-8');
-        if (url.endsWith('.yaml') || url.endsWith('.yml')) {
-          content = yaml.load(fileContent);
-        } else {
-          content = JSON.parse(fileContent);
-        }
-      }
+      const content = await this.loadOpenApiSource(url);
 
       // 基本验证
       if (!content || typeof content !== 'object') {
@@ -499,11 +465,15 @@ export class OpenAPIWizard {
         name: 'transport',
         message: '选择传输协议:',
         choices: [
-          { name: 'STDIO - 标准输入输出', value: 'stdio' },
+          {
+            name: 'STDIO - 标准输入输出',
+            value: 'stdio',
+            disabled: '交互式会话模式不支持，请使用 --openapi 直接启动'
+          },
           { name: 'SSE - Server-Sent Events', value: 'sse' },
           { name: 'Streamable - 流式传输', value: 'streamable' }
         ],
-        default: existing?.transport || 'stdio'
+        default: existing?.transport && existing.transport !== 'stdio' ? existing.transport : 'streamable'
       }
     ]);
 
@@ -680,8 +650,6 @@ export class OpenAPIWizard {
         message: '选择认证类型:',
         choices: [
           { name: 'Bearer Token', value: 'bearer' },
-          { name: 'Basic Auth', value: 'basic' },
-          { name: 'API Key', value: 'apikey' },
           { name: '无认证', value: 'none' }
         ],
         default: existing?.type || 'none'
@@ -707,43 +675,6 @@ export class OpenAPIWizard {
         authConfig.token = bearerAnswer.token;
         break;
 
-      case 'basic':
-        const basicAnswers = await this.inquirer.prompt([
-          {
-            type: 'input',
-            name: 'username',
-            message: '用户名:',
-            default: existing?.username
-          },
-          {
-            type: 'password',
-            name: 'password',
-            message: '密码:',
-            default: existing?.password
-          }
-        ]);
-        authConfig.username = basicAnswers.username;
-        authConfig.password = basicAnswers.password;
-        break;
-
-      case 'apikey':
-        const apikeyAnswers = await this.inquirer.prompt([
-          {
-            type: 'input',
-            name: 'headerName',
-            message: 'API Key 请求头名称:',
-            default: existing?.headerName || 'X-API-Key'
-          },
-          {
-            type: 'password',
-            name: 'apiKey',
-            message: 'API Key:',
-            default: existing?.apiKey
-          }
-        ]);
-        authConfig.headerName = apikeyAnswers.headerName;
-        authConfig.apiKey = apikeyAnswers.apiKey;
-        break;
     }
 
     return authConfig;
@@ -752,8 +683,13 @@ export class OpenAPIWizard {
   /**
    * 获取自定义请求头配置
    */
-  private async getCustomHeadersConfig(existing?: Record<string, string>): Promise<Record<string, string> | null> {
-    let headers = { ...existing };
+  private async getCustomHeadersConfig(existing?: CustomHeaders): Promise<CustomHeaders | null> {
+    const normalizedExisting: CustomHeaders | undefined =
+      existing && !('static' in existing) && !('env' in existing) && !('dynamic' in existing) && !('conditional' in existing)
+        ? { static: existing as Record<string, string> }
+        : existing;
+
+    let headers = { ...(normalizedExisting?.static || {}) };
 
     while (true) {
       const currentHeaders = Object.entries(headers);
@@ -819,7 +755,20 @@ export class OpenAPIWizard {
       }
     }
 
-    return Object.keys(headers).length > 0 ? headers : null;
+    const hasStatic = Object.keys(headers).length > 0;
+    const hasOther =
+      !!normalizedExisting?.env ||
+      !!normalizedExisting?.dynamic ||
+      !!normalizedExisting?.conditional;
+
+    if (!hasStatic && !hasOther) {
+      return null;
+    }
+
+    return {
+      ...normalizedExisting,
+      static: headers
+    };
   }
 
   /**
@@ -827,22 +776,7 @@ export class OpenAPIWizard {
    */
   private async parseOpenAPISpec(url: string): Promise<OpenAPIV3.Document | null> {
     try {
-      let content: any;
-
-      if (url.startsWith('http://') || url.startsWith('https://')) {
-        // 从 URL 获取
-        const response = await axios.get(url, { timeout: 10000 });
-        content = response.data;
-      } else {
-        // 从本地文件获取
-        const fileContent = await fs.readFile(url, 'utf-8');
-        if (url.endsWith('.yaml') || url.endsWith('.yml')) {
-          content = yaml.load(fileContent);
-        } else {
-          content = JSON.parse(fileContent);
-        }
-      }
-
+      const content = await this.loadOpenApiSource(url);
       return content as OpenAPIV3.Document;
     } catch (error) {
       console.error('解析 OpenAPI 规范失败:', error);
@@ -851,38 +785,34 @@ export class OpenAPIWizard {
   }
 
   /**
-   * 从 OpenAPI 规范中提取接口信息
+   * 加载 OpenAPI 数据（支持 JSON/YAML）
    */
-  private extractEndpoints(spec: OpenAPIV3.Document): ApiEndpoint[] {
-    const endpoints: ApiEndpoint[] = [];
-
-    if (!spec.paths) {
-      return endpoints;
+  private async loadOpenApiSource(source: string): Promise<any> {
+    if (source.startsWith('http://') || source.startsWith('https://')) {
+      const response = await axios.get(source, { timeout: 10000 });
+      const data = response.data;
+      if (typeof data === 'string') {
+        return this.parseOpenApiContent(data, source);
+      }
+      return data;
     }
 
-    Object.entries(spec.paths).forEach(([path, pathItem]) => {
-      if (!pathItem) return;
-
-      const methods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'] as const;
-      
-      methods.forEach(method => {
-        const operation = (pathItem as any)[method] as OpenAPIV3.OperationObject;
-        if (operation) {
-          endpoints.push({
-            path,
-            method: method.toUpperCase() as HttpMethod,
-            operationId: operation.operationId,
-            summary: operation.summary,
-            description: operation.description,
-            parameters: [],
-            responses: {},
-            tags: operation.tags,
-            deprecated: operation.deprecated || false
-          });
-        }
-      });
-    });
-
-    return endpoints;
+    const fileContent = await fs.readFile(source, 'utf-8');
+    return this.parseOpenApiContent(fileContent, source);
   }
+
+  private parseOpenApiContent(raw: string, source: string): any {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      throw new Error(`OpenAPI 内容为空: ${source}`);
+    }
+
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      return yaml.load(trimmed);
+    }
+  }
+
+  // extractEndpoints 已由 InterfaceSelector 内部处理
 }

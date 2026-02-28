@@ -12,7 +12,17 @@ export interface ServerOptions {
   operationFilter?: any;
 }
 
-export async function createMcpServer(options: ServerOptions = {}) {
+export interface HttpTransportSecurityOptions {
+  host?: string;
+  allowedHosts?: string[];
+  allowedOrigins?: string[];
+  enableDnsRebindingProtection?: boolean;
+}
+
+export async function createMcpServer(
+  options: ServerOptions = {},
+  lifecycle: { registerSignalHandlers?: boolean } = {}
+) {
   const server = new McpServer(
     {
       name: "mcp-swagger-server",
@@ -29,10 +39,16 @@ export async function createMcpServer(options: ServerOptions = {}) {
   // 先初始化工具，确保在连接传输层前完成
   await initTools(server, options.openApiData, options.authConfig, options.customHeaders, options.debugHeaders, options.operationFilter);
 
-  process.on("SIGINT", async () => {
-    await server.close();
-    process.exit(0);
-  });
+  if (lifecycle.registerSignalHandlers !== false) {
+    process.on("SIGINT", async () => {
+      await server.close();
+      process.exit(0);
+    });
+    process.on("SIGTERM", async () => {
+      await server.close();
+      process.exit(0);
+    });
+  }
 
   return server;
 }
@@ -55,10 +71,19 @@ export async function runSseServer(
   authConfig?: AuthConfig,
   customHeaders?: any,
   debugHeaders?: boolean,
-  operationFilter?: any
+  operationFilter?: any,
+  host?: string,
+  securityOptions: Omit<HttpTransportSecurityOptions, "host"> = {}
 ): Promise<void> {
-  const server = await createMcpServer({ openApiData, authConfig, customHeaders, debugHeaders, operationFilter });
-  await startSseMcpServer(server, endpoint, port);
+  const createSessionServer = () =>
+    createMcpServer(
+      { openApiData, authConfig, customHeaders, debugHeaders, operationFilter },
+      { registerSignalHandlers: false }
+    );
+  await startSseMcpServer(createSessionServer, endpoint, port, {
+    host,
+    ...securityOptions,
+  });
 }
 
 export async function runStreamableServer(
@@ -68,8 +93,17 @@ export async function runStreamableServer(
   authConfig?: AuthConfig,
   customHeaders?: any,
   debugHeaders?: boolean,
-  operationFilter?: any
+  operationFilter?: any,
+  host?: string,
+  securityOptions: Omit<HttpTransportSecurityOptions, "host"> = {}
 ): Promise<void> {
-  const server = await createMcpServer({ openApiData, authConfig, customHeaders, debugHeaders, operationFilter });
-  await startStreamableMcpServer(server, endpoint, port);
+  const createSessionServer = () =>
+    createMcpServer(
+      { openApiData, authConfig, customHeaders, debugHeaders, operationFilter },
+      { registerSignalHandlers: false }
+    );
+  await startStreamableMcpServer(createSessionServer, endpoint, port, {
+    host,
+    ...securityOptions,
+  });
 }

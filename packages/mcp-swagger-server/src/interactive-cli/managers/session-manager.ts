@@ -1,7 +1,8 @@
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { SessionConfig, SessionStats } from '../types';
+import { homedir } from 'os';
+import { SessionConfig, SessionStats } from '../types/index';
 
 /**
  * 会话管理器
@@ -13,7 +14,7 @@ export class SessionManager {
   private initialized = false;
 
   constructor(configDir: string = '.mcp-swagger') {
-    this.sessionsFile = join(process.cwd(), configDir, 'sessions.json');
+    this.sessionsFile = join(homedir(), configDir, 'sessions.json');
   }
 
   /**

@@ -3,6 +3,7 @@ import { join } from 'path';
 import Conf from 'conf';
 import * as fs from 'fs';
 import * as chokidar from 'chokidar';
+import { CLI_DEFAULTS } from '../../cli/defaults';
 
 export interface GlobalConfig {
   // 全局设置
@@ -32,28 +33,23 @@ export interface GlobalConfig {
 }
 
 export const DEFAULT_CONFIG: GlobalConfig = {
-  // 全局设置
-  defaultTransport: 'streamable',
-  defaultPort: 3000,
+  defaultTransport: CLI_DEFAULTS.transport,
+  defaultPort: CLI_DEFAULTS.port,
   autoSave: true,
   debugMode: false,
   
-  // UI 设置
   theme: 'dark-red-cyber',
   showWelcome: true,
   confirmOnExit: true,
   
-  // 服务器设置
-  serverTimeout: 30000,
-  maxRetries: 3,
-  retryDelay: 1000,
+  serverTimeout: CLI_DEFAULTS.serverTimeout,
+  maxRetries: CLI_DEFAULTS.maxRetries,
+  retryDelay: CLI_DEFAULTS.retryDelay,
   
-  // 开发设置
   watchFiles: false,
   hotReload: false,
-  logLevel: 'info',
+  logLevel: CLI_DEFAULTS.logLevel,
   
-  // 最近使用
   recentConfigs: [],
   maxRecentConfigs: 10
 };
@@ -79,13 +75,13 @@ export class ConfigManager {
         defaultTransport: {
           type: 'string',
           enum: ['stdio', 'sse', 'streamable'],
-          default: 'stdio'
+          default: CLI_DEFAULTS.transport
         },
         defaultPort: {
           type: 'number',
           minimum: 1024,
           maximum: 65535,
-          default: 3000
+          default: CLI_DEFAULTS.port
         },
         autoSave: {
           type: 'boolean',
@@ -112,19 +108,19 @@ export class ConfigManager {
           type: 'number',
           minimum: 5000,
           maximum: 300000,
-          default: 30000
+          default: CLI_DEFAULTS.serverTimeout
         },
         maxRetries: {
           type: 'number',
           minimum: 0,
           maximum: 10,
-          default: 3
+          default: CLI_DEFAULTS.maxRetries
         },
         retryDelay: {
           type: 'number',
           minimum: 100,
           maximum: 10000,
-          default: 1000
+          default: CLI_DEFAULTS.retryDelay
         },
         watchFiles: {
           type: 'boolean',
@@ -137,7 +133,7 @@ export class ConfigManager {
         logLevel: {
           type: 'string',
           enum: ['error', 'warn', 'info', 'debug'],
-          default: 'info'
+          default: CLI_DEFAULTS.logLevel
         },
         recentConfigs: {
           type: 'array',
@@ -326,7 +322,7 @@ export class ConfigManager {
     }
 
     // 验证端口
-    if (config.defaultPort && (config.defaultPort < 1024 || config.defaultPort > 65535)) {
+    if (config.defaultPort !== undefined && (config.defaultPort < 1024 || config.defaultPort > 65535)) {
       errors.push('端口必须在 1024-65535 范围内');
     }
 
@@ -336,17 +332,17 @@ export class ConfigManager {
     }
 
     // 验证超时时间
-    if (config.serverTimeout && (config.serverTimeout < 5000 || config.serverTimeout > 300000)) {
+    if (config.serverTimeout !== undefined && (config.serverTimeout < 5000 || config.serverTimeout > 300000)) {
       errors.push('服务器超时时间必须在 5-300 秒范围内');
     }
 
     // 验证重试次数
-    if (config.maxRetries && (config.maxRetries < 0 || config.maxRetries > 10)) {
+    if (config.maxRetries !== undefined && (config.maxRetries < 0 || config.maxRetries > 10)) {
       errors.push('最大重试次数必须在 0-10 范围内');
     }
 
     // 验证重试延迟
-    if (config.retryDelay && (config.retryDelay < 100 || config.retryDelay > 10000)) {
+    if (config.retryDelay !== undefined && (config.retryDelay < 100 || config.retryDelay > 10000)) {
       errors.push('重试延迟必须在 100-10000 毫秒范围内');
     }
 
@@ -356,7 +352,7 @@ export class ConfigManager {
     }
 
     // 验证最大最近配置数
-    if (config.maxRecentConfigs && (config.maxRecentConfigs < 1 || config.maxRecentConfigs > 50)) {
+    if (config.maxRecentConfigs !== undefined && (config.maxRecentConfigs < 1 || config.maxRecentConfigs > 50)) {
       errors.push('最大最近配置数必须在 1-50 范围内');
     }
 

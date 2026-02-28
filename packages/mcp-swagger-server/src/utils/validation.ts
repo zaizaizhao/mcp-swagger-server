@@ -29,8 +29,16 @@ export function validateOperationFilter(operationFilter: any): ValidationResult 
 
   // 验证 methods 字段
   if (operationFilter.methods !== undefined) {
-    if (typeof operationFilter.methods !== 'object') {
-      result.errors.push('methods 字段必须是一个对象');
+    if (Array.isArray(operationFilter.methods)) {
+      const validMethods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS', 'TRACE'];
+      const invalidMethods = operationFilter.methods.filter((method: string) => 
+        !validMethods.includes(String(method).toUpperCase())
+      );
+      if (invalidMethods.length > 0) {
+        result.warnings.push(`无效的 HTTP 方法 (methods): ${invalidMethods.join(', ')}`);
+      }
+    } else if (typeof operationFilter.methods !== 'object') {
+      result.errors.push('methods 字段必须是对象或字符串数组');
       result.valid = false;
     } else {
       const validMethods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS', 'TRACE'];
@@ -63,8 +71,10 @@ export function validateOperationFilter(operationFilter: any): ValidationResult 
 
   // 验证 paths 字段
   if (operationFilter.paths !== undefined) {
-    if (typeof operationFilter.paths !== 'object') {
-      result.errors.push('paths 字段必须是一个对象');
+    if (Array.isArray(operationFilter.paths)) {
+      // 兼容旧格式: string[]
+    } else if (typeof operationFilter.paths !== 'object') {
+      result.errors.push('paths 字段必须是对象或字符串数组');
       result.valid = false;
     } else {
       if (operationFilter.paths.include && !Array.isArray(operationFilter.paths.include)) {
@@ -80,8 +90,10 @@ export function validateOperationFilter(operationFilter: any): ValidationResult 
 
   // 验证 operationIds 字段
   if (operationFilter.operationIds !== undefined) {
-    if (typeof operationFilter.operationIds !== 'object') {
-      result.errors.push('operationIds 字段必须是一个对象');
+    if (Array.isArray(operationFilter.operationIds)) {
+      // 兼容旧格式: string[]
+    } else if (typeof operationFilter.operationIds !== 'object') {
+      result.errors.push('operationIds 字段必须是对象或字符串数组');
       result.valid = false;
     } else {
       if (operationFilter.operationIds.include && !Array.isArray(operationFilter.operationIds.include)) {
@@ -97,8 +109,10 @@ export function validateOperationFilter(operationFilter: any): ValidationResult 
 
   // 验证 statusCodes 字段
   if (operationFilter.statusCodes !== undefined) {
-    if (typeof operationFilter.statusCodes !== 'object') {
-      result.errors.push('statusCodes 字段必须是一个对象');
+    if (Array.isArray(operationFilter.statusCodes)) {
+      // 兼容旧格式: number[]
+    } else if (typeof operationFilter.statusCodes !== 'object') {
+      result.errors.push('statusCodes 字段必须是对象或数字数组');
       result.valid = false;
     } else {
       if (operationFilter.statusCodes.include && !Array.isArray(operationFilter.statusCodes.include)) {
@@ -114,8 +128,10 @@ export function validateOperationFilter(operationFilter: any): ValidationResult 
 
   // 验证 parameters 字段
   if (operationFilter.parameters !== undefined) {
-    if (typeof operationFilter.parameters !== 'object') {
-      result.errors.push('parameters 字段必须是一个对象');
+    if (Array.isArray(operationFilter.parameters)) {
+      // 兼容旧格式: string[]
+    } else if (typeof operationFilter.parameters !== 'object') {
+      result.errors.push('parameters 字段必须是对象或字符串数组');
       result.valid = false;
     } else {
       if (operationFilter.parameters.required && !Array.isArray(operationFilter.parameters.required)) {
@@ -151,7 +167,13 @@ export function normalizeOperationFilter(operationFilter: any): OperationFilter 
   const normalized: OperationFilter = {};
 
   // 规范化 methods
-  if (operationFilter.methods && typeof operationFilter.methods === 'object') {
+  if (operationFilter.methods && Array.isArray(operationFilter.methods)) {
+    normalized.methods = {
+      include: operationFilter.methods
+        .map((method: any) => typeof method === 'string' ? method.toUpperCase() : '')
+        .filter((method: string) => method !== '')
+    };
+  } else if (operationFilter.methods && typeof operationFilter.methods === 'object') {
     normalized.methods = {};
     if (operationFilter.methods.include && Array.isArray(operationFilter.methods.include)) {
       normalized.methods.include = operationFilter.methods.include
@@ -166,7 +188,13 @@ export function normalizeOperationFilter(operationFilter: any): OperationFilter 
   }
 
   // 规范化 paths
-  if (operationFilter.paths && typeof operationFilter.paths === 'object') {
+  if (operationFilter.paths && Array.isArray(operationFilter.paths)) {
+    normalized.paths = {
+      include: operationFilter.paths
+        .map((path: any) => typeof path === 'string' ? path.trim() : '')
+        .filter((path: string) => path !== '')
+    };
+  } else if (operationFilter.paths && typeof operationFilter.paths === 'object') {
     normalized.paths = {};
     if (operationFilter.paths.include && Array.isArray(operationFilter.paths.include)) {
       normalized.paths.include = operationFilter.paths.include
@@ -181,7 +209,13 @@ export function normalizeOperationFilter(operationFilter: any): OperationFilter 
   }
 
   // 规范化 operationIds
-  if (operationFilter.operationIds && typeof operationFilter.operationIds === 'object') {
+  if (operationFilter.operationIds && Array.isArray(operationFilter.operationIds)) {
+    normalized.operationIds = {
+      include: operationFilter.operationIds
+        .map((id: any) => typeof id === 'string' ? id.trim() : '')
+        .filter((id: string) => id !== '')
+    };
+  } else if (operationFilter.operationIds && typeof operationFilter.operationIds === 'object') {
     normalized.operationIds = {};
     if (operationFilter.operationIds.include && Array.isArray(operationFilter.operationIds.include)) {
       normalized.operationIds.include = operationFilter.operationIds.include
@@ -196,7 +230,16 @@ export function normalizeOperationFilter(operationFilter: any): OperationFilter 
   }
 
   // 规范化 statusCodes
-  if (operationFilter.statusCodes && typeof operationFilter.statusCodes === 'object') {
+  if (operationFilter.statusCodes && Array.isArray(operationFilter.statusCodes)) {
+    normalized.statusCodes = {
+      include: operationFilter.statusCodes
+        .map((code: any) => {
+          const num = Number(code);
+          return Number.isInteger(num) && num >= 100 && num <= 599 ? num : null;
+        })
+        .filter((code: number | null) => code !== null) as number[]
+    };
+  } else if (operationFilter.statusCodes && typeof operationFilter.statusCodes === 'object') {
     normalized.statusCodes = {};
     if (operationFilter.statusCodes.include && Array.isArray(operationFilter.statusCodes.include)) {
       normalized.statusCodes.include = operationFilter.statusCodes.include
@@ -217,7 +260,13 @@ export function normalizeOperationFilter(operationFilter: any): OperationFilter 
   }
 
   // 规范化 parameters
-  if (operationFilter.parameters && typeof operationFilter.parameters === 'object') {
+  if (operationFilter.parameters && Array.isArray(operationFilter.parameters)) {
+    normalized.parameters = {
+      required: operationFilter.parameters
+        .map((param: any) => typeof param === 'string' ? param.trim() : '')
+        .filter((param: string) => param !== '')
+    };
+  } else if (operationFilter.parameters && typeof operationFilter.parameters === 'object') {
     normalized.parameters = {};
     if (operationFilter.parameters.required && Array.isArray(operationFilter.parameters.required)) {
       normalized.parameters.required = operationFilter.parameters.required

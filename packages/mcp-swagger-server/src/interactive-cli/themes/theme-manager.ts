@@ -17,6 +17,20 @@ export class ThemeManager implements IThemeManager {
     
     // 注册暗红色赛博朋克主题
     this.registerTheme('dark-red-cyber', darkRedCyberTheme);
+
+    // 兼容配置中的扩展主题选项
+    this.registerTheme('compact', {
+      ...defaultTheme,
+      name: 'compact',
+      displayName: '紧凑',
+      description: '紧凑布局主题'
+    });
+    this.registerTheme('fancy', {
+      ...darkRedCyberTheme,
+      name: 'fancy',
+      displayName: '华丽',
+      description: '华丽展示主题'
+    });
     
     // 设置默认主题为暗红色
     this.currentThemeName = 'dark-red-cyber';

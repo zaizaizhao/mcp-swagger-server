@@ -1,4 +1,4 @@
-import { SessionConfig } from '../types';
+import { SessionConfig } from '../types/index';
 import chalk from 'chalk';
 import boxen from 'boxen';
 import Table from 'cli-table3';
@@ -293,7 +293,10 @@ export class UIManager {
     }
 
     if (session.customHeaders && Object.keys(session.customHeaders).length > 0) {
-      details.push(['自定义请求头', Object.keys(session.customHeaders).join(', ')]);
+      const headerNames = this.collectCustomHeaderNames(session.customHeaders);
+      if (headerNames.length > 0) {
+        details.push(['自定义请求头', headerNames.join(', ')]);
+      }
     }
 
     if (session.operationFilter) {
@@ -309,6 +312,20 @@ export class UIManager {
           ? `包含: ${filter.paths.include.join(', ')}`
           : `排除: ${filter.paths.exclude?.join(', ') || ''}`;
         details.push(['路径过滤', pathInfo]);
+      }
+    }
+
+    if (session.interfaceSelection) {
+      const selection = session.interfaceSelection;
+      details.push(['接口选择模式', selection.mode]);
+      if (selection.selectedEndpoints && selection.selectedEndpoints.length > 0) {
+        details.push(['选择接口数', `${selection.selectedEndpoints.length} 个`]);
+      }
+      if (selection.selectedTags && selection.selectedTags.length > 0) {
+        details.push(['选择标签', selection.selectedTags.join(', ')]);
+      }
+      if (selection.pathPatterns && selection.pathPatterns.length > 0) {
+        details.push(['路径模式', selection.pathPatterns.join(', ')]);
       }
     }
 
@@ -484,5 +501,39 @@ ${chalk.hex(this.theme.colors.warning)('更多信息:')}
     } else {
       return `${secs}s`;
     }
+  }
+
+  private collectCustomHeaderNames(customHeaders: any): string[] {
+    if (!customHeaders || typeof customHeaders !== 'object') {
+      return [];
+    }
+
+    // 兼容旧结构（直接是 key/value）
+    if (!customHeaders.static && !customHeaders.env && !customHeaders.dynamic && !customHeaders.conditional) {
+      return Object.keys(customHeaders);
+    }
+
+    const names = new Set<string>();
+    const addNames = (headers?: Record<string, string>) => {
+      if (!headers) return;
+      Object.keys(headers).forEach(name => names.add(name));
+    };
+
+    addNames(customHeaders.static);
+    addNames(customHeaders.env);
+
+    if (customHeaders.dynamic) {
+      Object.keys(customHeaders.dynamic).forEach(name => names.add(name));
+    }
+
+    if (Array.isArray(customHeaders.conditional)) {
+      customHeaders.conditional.forEach((rule: any) => {
+        if (rule?.headers) {
+          Object.keys(rule.headers).forEach((name: string) => names.add(name));
+        }
+      });
+    }
+
+    return Array.from(names);
   }
 }

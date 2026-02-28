@@ -3,14 +3,13 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 // 通过 workspace 包导入 mcp-swagger-server 的功能
 import { 
   createMcpServer, 
-  runStreamableServer, 
-  runSseServer,
   transformOpenApiToMcpTools,
   startStreamableMcpServer,
   startSseMcpServer
 } from 'mcp-swagger-server';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Server } from 'http';
+
+type ManagedMcpServer = Awaited<ReturnType<typeof createMcpServer>>;
 
 export interface MCPServerConfig {
   name?: string;
@@ -49,7 +48,7 @@ export interface CreateServerResult {
 @Injectable()
 export class MCPService implements OnModuleDestroy {
   private readonly logger = new Logger(MCPService.name);
-  private currentServer: McpServer | null = null;
+  private currentServer: ManagedMcpServer | null = null;
   private httpServer: Server | null = null;  // 添加 HTTP 服务器实例管理
   private currentTools: any[] = [];
   private currentOpenApiData: any = null;

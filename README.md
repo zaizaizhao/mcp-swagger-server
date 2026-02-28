@@ -3,12 +3,11 @@
 <div align="center">
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5+-blue.svg)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-16+-green.svg)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Trust Score](https://archestra.ai/mcp-catalog/api/badge/quality/zaizaizhao/mcp-swagger-server)](https://archestra.ai/mcp-catalog/zaizaizhao__mcp-swagger-server)
 
-**一个将 OpenAPI/Swagger 规范转换为 Model Context Protocol (MCP) 格式的工具**
-**将 OpenAPI/Swagger 规范转换为 Model Context Protocol (MCP) 格式的服务器**
+**将 OpenAPI/Swagger 规范转换为 Model Context Protocol (MCP) 格式的工具**
 
 零配置将您的 REST API 转换为 AI 可调用的工具
 
@@ -19,13 +18,17 @@
 </div>
 
 ---
+## 🎬 快速演示
+
+![Demo GIF](./docs/img/demo.gif)
+
 ## 🎯 项目截图
 
 ![项目截图](./docs/img/mss.png)
 ![项目截图](./docs/img/ui.png)
 ## 🎯 项目简介
 
-MCP Swagger Server 是一个将 OpenAPI/Swagger 规范转换为 Model Context Protocol (MCP) 格式的。
+MCP Swagger Server 是一个将 OpenAPI/Swagger 规范转换为 Model Context Protocol (MCP) 格式的工具。
 
 ### 📦 项目结构
 
@@ -59,18 +62,33 @@ mcp-swagger-server/
 npm i mcp-swagger-server -g
 ```
 
+### 命令说明
+
+- `mss`：交互式终端界面（默认）
+- `mcp-swagger-server` / `mcp-swagger`：标准命令行（适合脚本和 AI 客户端集成）
+- `mss --openapi ...`：直接启动模式（跳过交互界面）
+
+> 说明：交互式会话模式下不支持 STDIO 启动；如需 STDIO，请使用 `mss --openapi ... --transport stdio`（兼容别名：`mcp-swagger-server --transport stdio ...`）。
+
 ### 快速启动
-#### 自定义启动
+#### 交互式启动（推荐新手）
 ```bash 
 mss
 ```
-#### 一键启动
+#### 一键启动（非交互）
 ```bash 
-mss --openapi https://api.example.com/openapi.json --operation-filter-methods GET,POST --transport streamable -auth-type bearer --bearer-token "your-token-here"
+mss --openapi https://api.example.com/openapi.json \
+  --operation-filter-methods GET \
+  --operation-filter-methods POST \
+  --transport streamable \
+  --auth-type bearer \
+  --bearer-token "your-token-here"
 
 # 使用配置文件
-mcp-swagger-server --config config.json
+mss --config config.json
 ```
+
+## 📖 使用指南
 
 #### 命令行选项
 
@@ -82,22 +100,29 @@ mss [选项]
 --openapi, -o       OpenAPI 规范的 URL 或文件路径
 --transport, -t     传输协议 (stdio|sse|streamable)
 --port, -p          端口号
+--endpoint, -e      自定义端点路径 (默认 sse:/sse, streamable:/mcp)
 --watch, -w         监控文件变化
---verbose           详细日志输出
+--env               环境变量文件路径 (.env)
 
 # Bearer Token 认证选项：
 --auth-type         认证类型 (bearer)
 --bearer-token      直接指定 Bearer Token
 --bearer-env        从环境变量读取 Token
 --config, -c        配置文件路径
+--custom-header     自定义请求头 "Key=Value" (可重复)
+--custom-header-env 环境变量请求头 "Key=VAR_NAME" (可重复)
+--custom-headers-config  自定义请求头配置文件 (JSON)
+--debug-headers     请求头调试日志
 
 # 操作过滤选项：
---operation-filter-methods <methods>        HTTP方法过滤 (可重复) [示例: GET,POST]
---operation-filter-paths <paths>            路径过滤 (支持通配符, 可重复) [示例: /api/*]
---operation-filter-operation-ids <ids>      操作ID过滤 (可重复) [示例: getUserById]
---operation-filter-status-codes <codes>     状态码过滤 (可重复) [示例: 200,201]
---operation-filter-parameters <params>      参数过滤 (可重复) [示例: userId,name]
+--operation-filter-methods <method>         HTTP方法过滤 (可重复) [示例: GET]
+--operation-filter-paths <path>             路径过滤 (支持通配符, 可重复) [示例: /api/*]
+--operation-filter-operation-ids <id>       操作ID过滤 (可重复) [示例: getUserById]
+--operation-filter-status-codes <code>      状态码过滤 (可重复) [示例: 200]
+--operation-filter-parameters <param>       参数过滤 (可重复) [示例: userId]
 ```
+
+> 提示：如果要在 `mss` 中直接启动（跳过交互界面），请显式传入 `--openapi` 参数。
 
 ### 🔐 Bearer Token 认证
 
@@ -110,8 +135,6 @@ mss [选项]
 mss --auth-type bearer --bearer-token "your-token-here" --openapi https://api.example.com/openapi.json --transport streamable
 ```
 
-
-
 #### 环境变量配置
 
 创建 `.env` 文件：
@@ -120,6 +143,7 @@ mss --auth-type bearer --bearer-token "your-token-here" --openapi https://api.ex
 MCP_PORT=3322
 MCP_TRANSPORT=stdio
 MCP_OPENAPI_URL=https://api.example.com/openapi.json
+MCP_ENDPOINT=/mcp
 
 # 认证配置
 MCP_AUTH_TYPE=bearer

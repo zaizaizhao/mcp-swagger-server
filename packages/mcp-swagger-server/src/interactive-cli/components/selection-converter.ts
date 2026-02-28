@@ -1,4 +1,4 @@
-import { OperationFilter } from '../types';
+import { OperationFilter } from '../types/index';
 import { ApiEndpoint } from 'mcp-swagger-parser';
 
 /**

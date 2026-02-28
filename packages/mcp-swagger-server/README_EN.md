@@ -46,16 +46,22 @@ pnpm add -g mcp-swagger-server
 
 ### ⚡ Immediate Usage
 
-#### 1. Command Line Launch
+#### 1. Command Line Launch (recommended: `mss`)
 
 ```bash
-# Using Swagger Petstore API (recommended for testing, OpenAPI 3.0)
-mcp-swagger-server --openapi https://petstore3.swagger.io/api/v3/openapi.json --transport streamable --port 3322
+# Interactive mode (no arguments)
+mss
+
+# One-shot startup (with arguments)
+mss --openapi https://petstore3.swagger.io/api/v3/openapi.json --transport streamable --port 3322
 
 # Using GitHub API (if available)
-mcp-swagger-server --openapi https://api.github.com/openapi.json --transport sse --port 3323
+mss --openapi https://api.github.com/openapi.json --transport sse --port 3323
 
 # Using local OpenAPI file
+mss --openapi ./api-spec.json --transport stdio
+
+# Compatible aliases (equivalent)
 mcp-swagger-server --openapi ./api-spec.json --transport stdio
 ```
 
@@ -67,7 +73,7 @@ Add to your MCP client configuration file:
 {
   "mcpServers": {
     "swagger-api": {
-      "command": "mcp-swagger-server",
+      "command": "mss",
       "args": [
         "--openapi",
         "https://petstore3.swagger.io/api/v3/openapi.json",
@@ -109,21 +115,23 @@ await server.start();
 | Protocol | Description | Use Case |
 |----------|-------------|----------|
 | `stdio` | Standard Input/Output | MCP client integration |
-| `streamable` | WebSocket streaming | Real-time interactive applications |
-| `sse` | Server-Sent Events | Web application integration |
-| `http` | HTTP REST API | Traditional web services |
+| `streamable` | Streamable HTTP (recommended) | Remote MCP / Web integration |
+| `sse` | HTTP + Server-Sent Events (legacy) | Legacy client compatibility |
 
 ### 🎛️ Command Line Options
 
 ```bash
-mcp-swagger-server [options]
+mss [options]
 
 Options:
   --openapi <url|file>    OpenAPI specification URL or file path (required)
-  --transport <type>      Transport type: stdio|streamable|sse|http (default: stdio)
+  --transport <type>      Transport type: stdio|streamable|sse (default: stdio)
   --port <number>         Server port (default: 3322)
-  --host <string>         Server host (default: localhost)
+  --host <string>         Server host (default: 127.0.0.1)
   --watch                 Watch for file changes and auto-reload
+  --allowed-host <host>   Allowed Host header (repeatable)
+  --allowed-origin <url>  Allowed Origin header (repeatable)
+  --disable-dns-rebinding-protection  Disable Host/Origin header protection
   --verbose               Show verbose logging
   --help                  Show help information
 ```
@@ -134,7 +142,7 @@ Options:
 
 ```bash
 # Start Swagger Petstore API MCP server
-mcp-swagger-server \
+mss \
   --openapi https://petstore3.swagger.io/api/v3/openapi.json \
   --transport streamable \
   --port 3322 \
@@ -151,7 +159,7 @@ After conversion, AI assistants can call various Petstore API functions, such as
 
 ```bash
 # Start e-commerce API MCP server
-mcp-swagger-server \
+mss \
   --openapi https://your-ecommerce-api.com/openapi.json \
   --transport sse \
   --port 3323
@@ -161,7 +169,7 @@ mcp-swagger-server \
 
 ```bash
 # Start data analytics API MCP server
-mcp-swagger-server \
+mss \
   --openapi ./analytics-api-spec.yaml \
   --transport stdio \
   --watch
@@ -220,9 +228,8 @@ MCP Swagger Server
 │   └── Error handling and logging
 └── 🔌 Transport Layer
     ├── Stdio (MCP standard)
-    ├── WebSocket (real-time communication)
-    ├── SSE (server push)
-    └── HTTP (REST API)
+    ├── Streamable HTTP (recommended)
+    └── SSE (legacy compatibility)
 ```
 
 ## � Troubleshooting
@@ -235,7 +242,7 @@ MCP Swagger Server
 
 ```bash
 # ❌ Error example - Swagger 2.0 format
-npx mcp-swagger-server --openapi https://petstore.swagger.io/v2/swagger.json
+mss --openapi https://petstore.swagger.io/v2/swagger.json
 
 # Error message: OpenAPIParseError: Missing required field: openapi
 ```
@@ -245,7 +252,7 @@ npx mcp-swagger-server --openapi https://petstore.swagger.io/v2/swagger.json
 1. **Use OpenAPI 3.x specifications**:
    ```bash
    # ✅ Correct example - OpenAPI 3.x format
-   npx mcp-swagger-server --openapi https://petstore3.swagger.io/api/v3/openapi.json
+   mss --openapi https://petstore3.swagger.io/api/v3/openapi.json
    ```
 
 2. **Convert Swagger 2.0 to OpenAPI 3.x**:
@@ -257,7 +264,7 @@ npx mcp-swagger-server --openapi https://petstore.swagger.io/v2/swagger.json
    swagger2openapi https://petstore.swagger.io/v2/swagger.json -o petstore-openapi3.json
    
    # Use the converted file
-   npx mcp-swagger-server --openapi ./petstore-openapi3.json
+   mss --openapi ./petstore-openapi3.json
    ```
 
 3. **Online conversion**:
@@ -283,7 +290,7 @@ curl -s https://your-api.com/swagger.json | jq '.swagger // .openapi'
 curl -I https://your-api.com/openapi.json
 
 # Use verbose logging mode
-npx mcp-swagger-server --openapi https://your-api.com/openapi.json --verbose
+mss --openapi https://your-api.com/openapi.json --verbose
 ```
 
 ### 📋 OpenAPI Specification Requirements
@@ -324,7 +331,7 @@ This project is open-sourced under the [MIT License](LICENSE). Feel free to use 
 Want to experience MCP Swagger Server immediately? Try this one-click launch command:
 
 ```bash
-npx mcp-swagger-server --openapi https://petstore3.swagger.io/api/v3/openapi.json --transport streamable --port 3322 --verbose
+mss --openapi https://petstore3.swagger.io/api/v3/openapi.json --transport streamable --port 3322 --verbose
 ```
 
 Then visit `http://localhost:3322` to see the generated MCP tools!

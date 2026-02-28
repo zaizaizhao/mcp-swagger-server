@@ -137,13 +137,13 @@ cd packages/mcp-swagger-server
 pnpm run cli:help
 
 # 使用远程 OpenAPI
-pnpm run cli:github
+pnpm run cli -- -t streamable -p 3322 -o https://api.github.com/openapi.json
 
 # 使用本地文件并监听变化
-pnpm run cli:enhanced -- -t sse -p 3322 -o ./openapi.json -w -v
+pnpm run cli -- -t sse -p 3322 -o ./openapi.json -w
 
 # 使用配置文件
-pnpm run cli:enhanced -- -c ./config.json
+pnpm run cli -- -c ./config.json
 ```
 
 ### 配置文件示例
@@ -170,7 +170,7 @@ pnpm run cli:enhanced -- -c ./config.json
   "mcpServers": {
     "mcp-swagger": {
       "command": "node",
-      "args": ["/path/to/mcp-swagger-server/dist/cli-enhanced.js", 
+      "args": ["/path/to/mcp-swagger-server/dist/cli.js", 
                "-t", "stdio", 
                "-o", "https://api.github.com/openapi.json", 
                "-v"]
@@ -192,7 +192,7 @@ After=network.target
 Type=simple
 User=mcp
 WorkingDirectory=/opt/mcp-swagger-server
-ExecStart=/usr/bin/node dist/cli-enhanced.js -t streamable -p 3322 -o https://api.github.com/openapi.json -v
+ExecStart=/usr/bin/node dist/cli.js -t streamable -p 3322 -o https://api.github.com/openapi.json -v
 Restart=always
 RestartSec=10
 Environment=NODE_ENV=production
@@ -307,7 +307,7 @@ services:
       - "3322:3322"
     environment:
       - NODE_ENV=production
-    command: ["node", "dist/cli-enhanced.js", "-t", "streamable", "-p", "3322", "-o", "${OPENAPI_URL}", "-v"]
+    command: ["node", "dist/cli.js", "-t", "streamable", "-p", "3322", "-o", "${OPENAPI_URL}", "-v"]
     restart: always
 
   postgres:
