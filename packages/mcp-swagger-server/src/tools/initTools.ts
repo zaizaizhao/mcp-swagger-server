@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { transformOpenApiToMcpTools, MCPTool } from "../transform";
 import { AuthConfig } from 'mcp-swagger-parser';
+import type { CallToolResult, ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 
 export async function initTools(
   server: McpServer, 
@@ -16,7 +17,7 @@ export async function initTools(
     try {
         // 如果没有提供 openApiData，使用默认的 swagger.json
         if (!openApiData) {
-            console.log("⚠️ 未提供 OpenAPI 数据，将使用默认的 swagger.json 文件");
+            console.log("⚠️ 未提供 OpenAPI 数据，将尝试使用默认的 swagger.json 文件（若存在）");
         }
         
         // 从 OpenAPI 规范生成工具
@@ -63,7 +64,7 @@ export async function initTools(
 /**
  * 打印工具摘要
  */
-function printToolsSummary(tools: any[]) {
+function printToolsSummary(tools: MCPTool[]) {
     console.log("\n📊 工具摘要:");
     console.log("─".repeat(80));
     
@@ -122,20 +123,13 @@ async function registerTools(server: McpServer, tools: MCPTool[]): Promise<void>
             server.registerTool(
                 tool.name,
                 {
+                    title: tool.metadata ? `${tool.metadata.method} ${tool.metadata.path}` : undefined,
                     description: tool.description,
                     inputSchema: convertInputSchemaToZod(tool.inputSchema),
-                    // 如果需要 outputSchema，可以在这里添加
-                    // outputSchema: tool.outputSchema ? convertToZodSchema(tool.outputSchema) : undefined,
-                    annotations: tool.metadata ? {
-                        title: `${tool.metadata.method} ${tool.metadata.path}`,
-                        ...(tool.metadata.deprecated && { deprecated: true })
-                    } : undefined
+                    annotations: buildToolAnnotations(tool.metadata)
                 },
-                // 包装handler以适配MCP Server的签名
-                async (extra: any) => {
-                    const result = await tool.handler(extra);
-                    return result as any; // 强制类型转换以解决类型不匹配问题
-                }
+                async (args: Record<string, unknown>): Promise<CallToolResult> =>
+                    (await tool.handler(args)) as unknown as CallToolResult
             );
             
             successCount++;
@@ -158,55 +152,103 @@ async function registerTools(server: McpServer, tools: MCPTool[]): Promise<void>
  * @param inputSchema JSON Schema 格式的输入模式
  * @returns Zod schema 对象
  */
-function convertInputSchemaToZod(inputSchema: MCPTool['inputSchema']): any {
+type JsonSchemaProperty = {
+    type?: string;
+    enum?: unknown[];
+    description?: string;
+    properties?: Record<string, JsonSchemaProperty>;
+    items?: JsonSchemaProperty;
+    required?: string[];
+    additionalProperties?: boolean;
+};
+
+function buildToolAnnotations(metadata?: MCPTool['metadata']): ToolAnnotations | undefined {
+    if (!metadata?.method) {
+        return undefined;
+    }
+
+    const method = metadata.method.toUpperCase();
+    const readOnlyHint = method === 'GET' || method === 'HEAD' || method === 'OPTIONS';
+    const destructiveHint = method === 'DELETE';
+    const idempotentHint = readOnlyHint || method === 'PUT' || method === 'DELETE';
+
+    return {
+        readOnlyHint,
+        destructiveHint,
+        idempotentHint,
+        openWorldHint: true
+    };
+}
+
+function convertSchemaNodeToZod(schema?: JsonSchemaProperty): z.ZodTypeAny {
+    if (!schema) {
+        return z.unknown();
+    }
+
+    let zodType: z.ZodTypeAny;
+
+    switch (schema.type) {
+        case 'string': {
+            if (schema.enum && schema.enum.every((value): value is string => typeof value === 'string') && schema.enum.length > 0) {
+                const [firstValue, ...restValues] = schema.enum;
+                zodType = z.enum([firstValue, ...restValues]);
+            } else {
+                zodType = z.string();
+            }
+            break;
+        }
+        case 'number':
+            zodType = z.number();
+            break;
+        case 'integer':
+            zodType = z.number().int();
+            break;
+        case 'boolean':
+            zodType = z.boolean();
+            break;
+        case 'array':
+            zodType = z.array(convertSchemaNodeToZod(schema.items));
+            break;
+        case 'object': {
+            const shape = convertInputSchemaToZod({
+                type: 'object',
+                properties: schema.properties ?? {},
+                required: schema.required,
+                additionalProperties: schema.additionalProperties
+            });
+
+            const objectSchema = z.object(shape);
+            zodType = schema.additionalProperties === false ? objectSchema.strict() : objectSchema.passthrough();
+            break;
+        }
+        default:
+            zodType = z.unknown();
+            break;
+    }
+
+    if (schema.description) {
+        zodType = zodType.describe(schema.description);
+    }
+
+    return zodType;
+}
+
+function convertInputSchemaToZod(inputSchema: MCPTool['inputSchema']): z.ZodRawShape {
     if (!inputSchema || !inputSchema.properties) {
         return {};
     }
     
-    const zodSchema: Record<string, any> = {};
+    const zodSchema: z.ZodRawShape = {};
     
     for (const [propName, propDef] of Object.entries(inputSchema.properties)) {
         const isRequired = inputSchema.required?.includes(propName) ?? false;
-        let zodType: any;
-        
-        // 根据属性类型创建对应的 Zod 类型
-        switch (propDef.type) {
-            case 'string':
-                zodType = z.string();
-                if (propDef.enum && Array.isArray(propDef.enum)) {
-                    zodType = z.enum(propDef.enum as [string, ...string[]]);
-                }
-                break;
-            case 'number':
-                zodType = z.number();
-                break;
-            case 'integer':
-                zodType = z.number().int();
-                break;
-            case 'boolean':
-                zodType = z.boolean();
-                break;
-            case 'array':
-                zodType = z.array(z.any()); // 简化处理，可以后续完善
-                break;
-            case 'object':
-                zodType = z.object({}).passthrough(); // 简化处理
-                break;
-            default:
-                zodType = z.any();
-                break;
-        }
+        let zodType = convertSchemaNodeToZod(propDef as JsonSchemaProperty);
         
         // 处理可选字段
         if (!isRequired) {
             zodType = zodType.optional();
         }
-        
-        // 添加描述
-        if (propDef.description) {
-            zodType = zodType.describe(propDef.description);
-        }
-        
+
         zodSchema[propName] = zodType;
     }
     

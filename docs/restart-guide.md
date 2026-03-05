@@ -18,10 +18,7 @@ MCP Server Manager 提供了以下重启能力：
 
 ```bash
 # 启动带自动重启的服务器
-npm run start:managed
-
-# 或者直接使用参数
-node dist/index.js --managed --auto-restart
+node dist/index.js --auto-restart
 ```
 
 ### 2. 使用专用管理工具
@@ -62,7 +59,6 @@ npm run manager:logs
 
 | 参数 | 描述 | 默认值 |
 |------|------|--------|
-| `--managed` | 启用管理模式 | false |
 | `--auto-restart` | 启用自动重启 | false |
 | `--max-retries` | 最大重试次数 | 5 |
 | `--transport` | 传输协议 | stdio |
@@ -208,8 +204,8 @@ manager.on('restarted', ({ reason, restartCount }) => {
 
 ```bash
 # 启动多个实例
-node dist/index.js --managed --port 3322 --transport sse &
-node dist/index.js --managed --port 3323 --transport streamable &
+node dist/index.js --port 3322 --transport sse &
+node dist/index.js --port 3323 --transport streamable &
 ```
 
 ## 🚨 故障排除
@@ -235,10 +231,10 @@ node dist/index.js --managed --port 3323 --transport streamable &
 
 ```bash
 # 启用详细日志
-node dist/index.js --managed --auto-restart 2>&1 | tee debug.log
+node dist/index.js --auto-restart 2>&1 | tee debug.log
 
 # 使用调试级别
-node dist/index.js --managed --log-level debug
+node dist/index.js --log-level debug
 ```
 
 ### 3. 手动恢复
@@ -305,7 +301,7 @@ npm run manager:start
 {
   "name": "mcp-server",
   "script": "dist/index.js",
-  "args": ["--managed", "--auto-restart"],
+  "args": ["--auto-restart"],
   "instances": 1,
   "exec_mode": "fork",
   "watch": false,
@@ -327,7 +323,7 @@ After=network.target
 Type=simple
 User=mcpuser
 WorkingDirectory=/opt/mcp-server
-ExecStart=/usr/bin/node dist/index.js --managed --auto-restart
+ExecStart=/usr/bin/node dist/index.js --auto-restart
 Restart=always
 RestartSec=10
 

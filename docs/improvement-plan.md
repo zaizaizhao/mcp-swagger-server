@@ -37,7 +37,7 @@ mcp-swagger-server 项目已经具备了完整的 CLI 功能实现，包括：
 **问题**: 编译后的 CLI 文件需要 shebang 和执行权限
 
 **解决方案**: 
-- 确保 `src/cli.ts` 和 `src/cli-enhanced.ts` 顶部有 `#!/usr/bin/env node`
+- 确保 `src/cli.ts` 顶部有 `#!/usr/bin/env node`
 - 构建后验证 `dist/cli.js` 的 shebang 完整性
 
 ### 3. 调整 package.json 发布配置

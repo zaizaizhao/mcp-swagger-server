@@ -1,7 +1,7 @@
 import inquirer from 'inquirer';
 import { emitKeypressEvents } from 'readline';
-import { OpenAPISpec, OperationObject, EndpointExtractor, ApiEndpoint } from 'mcp-swagger-parser';
-import { OperationFilter } from '../types';
+import { OpenAPISpec, EndpointExtractor, ApiEndpoint } from 'mcp-swagger-parser';
+import { OperationFilter } from '../types/index';
 import { InterfaceDisplayFormatter } from './interface-display-formatter';
 import { SelectionConverter } from './selection-converter';
 import { EndpointFilter } from '../../utils/endpoint-filter';
@@ -176,6 +176,10 @@ export class InterfaceSelector {
    * 包含模式选择
    */
   private async selectByInclusion(): Promise<{ filter: OperationFilter; count: number; selectedEndpoints: string[] }> {
+    if (this.options.enablePagination || this.endpoints.length > (this.options.pageSize || 20)) {
+      return await this.selectWithPagination('include');
+    }
+
     const selectedIndices = await this.selectInterfacesFromTable('选择要包含的接口');
     
     if (selectedIndices.length === 0) {
@@ -193,6 +197,10 @@ export class InterfaceSelector {
    * 排除模式选择
    */
   private async selectByExclusion(): Promise<{ filter: OperationFilter; count: number; selectedEndpoints: string[] }> {
+    if (this.options.enablePagination || this.endpoints.length > (this.options.pageSize || 20)) {
+      return await this.selectWithPagination('exclude');
+    }
+
     const selectedIndices = await this.selectInterfacesFromTable('选择要排除的接口');
     
     const selectedEndpoints = selectedIndices.map(index => this.endpoints[index]);
@@ -284,7 +292,6 @@ export class InterfaceSelector {
    * 分页选择（用于大量接口的情况）
    */
   private async selectWithPagination(
-    choices: any[], 
     mode: 'include' | 'exclude'
   ): Promise<{ filter: OperationFilter; count: number; selectedEndpoints: string[] }> {
     const pageSize = this.options.pageSize || 20;
@@ -561,17 +568,15 @@ export class InterfaceSelector {
             break;
 
           case 'c':
-            // 清空选择
-            selectedIndices.clear();
-            updateDisplay();
-            break;
-
-          case 'c':
             if (key.ctrl) {
               // Ctrl+C 退出
               cleanup();
               console.log('\n❌ 操作已取消');
               resolve([]);
+            } else {
+              // 普通 'c' 键 - 清空选择
+              selectedIndices.clear();
+              updateDisplay();
             }
             break;
         }

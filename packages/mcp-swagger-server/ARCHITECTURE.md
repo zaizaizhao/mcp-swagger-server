@@ -9,23 +9,25 @@ MCP Swagger Server is designed as a modular, extensible system that transforms O
 ```
 mcp-swagger-server/
 ├── src/
-│   ├── cli.ts                 # 🎯 Main CLI entry point
-│   ├── cli-enhanced.ts        # 🚀 Enhanced CLI with advanced features
-│   ├── index.ts              # 📚 Library entry point & exports
-│   ├── server.ts             # ⚙️ Core MCP server implementation
-│   ├── core/                 # 🔧 Core business logic
-│   ├── adapters/             # 🔌 Integration adapters
-│   ├── transport/            # 🚛 Transport protocol implementations
-│   ├── transform/            # 🔄 OpenAPI to MCP transformation
-│   ├── types/                # 📝 TypeScript type definitions
-│   └── tools/                # 🛠️ Utility tools and managers
+│   ├── cli.ts                 # 🎯 CLI binary entry (wrapper)
+│   ├── cli/                   # 🧭 Modular CLI implementation (main entry)
+│   ├── cli-interactive.ts     # 🧩 Interactive CLI entry
+│   ├── index.ts               # 📚 Library entry point & exports
+│   ├── server.ts              # ⚙️ Core MCP server implementation
+│   ├── core/                  # 🔧 Core business logic
+│   ├── adapters/              # 🔌 Integration adapters
+│   ├── transportUtils/        # 🚛 Transport protocol implementations
+│   ├── transform/             # 🔄 OpenAPI to MCP transformation
+│   ├── types/                 # 📝 TypeScript type definitions
+│   ├── utils/                 # 🧰 Shared utilities
+│   └── tools/                 # 🛠️ Utility tools and managers
 ├── dist/                     # 📦 Compiled JavaScript output
 └── docs/                     # 📚 Architecture documentation
 ```
 
 ## 🎯 Key Components
 
-### 1. CLI Layer (`cli.ts`, `cli-enhanced.ts`)
+### 1. CLI Layer (`cli.ts`, `cli/`)
 
 **Responsibility**: Command-line interface and argument parsing
 
@@ -37,8 +39,9 @@ mcp-swagger-server/
 - Rich error handling and logging
 
 **Entry Points**:
-- `cli.ts` - Standard CLI with core features
-- `cli-enhanced.ts` - Advanced CLI with extended functionality
+- `cli.ts` - CLI binary wrapper (delegates to `cli/index.ts`)
+- `cli/index.ts` - Main CLI implementation
+- `cli-interactive.ts` - Interactive CLI (wizard + session manager)
 
 ### 2. Core Layer (`core/`)
 
@@ -59,7 +62,7 @@ mcp-swagger-server/
 - **HTTP Adapter**: Web server integration
 - **Programmatic Adapter**: Library usage
 
-### 4. Transport Layer (`transport/`)
+### 4. Transport Layer (`transportUtils/`)
 
 **Responsibility**: Protocol-specific communication
 
@@ -137,12 +140,11 @@ interface Transport {
 
 ```typescript
 interface ServerConfig {
-  transport: 'stdio' | 'http' | 'sse' | 'streamable';
+  transport: 'stdio' | 'sse' | 'streamable';
   port?: number;
   host?: string;
   openapi: string; // URL or file path
   watch?: boolean;
-  managed?: boolean;
   autoRestart?: boolean;
   maxRetries?: number;
   retryDelay?: number;

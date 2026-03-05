@@ -63,6 +63,7 @@ mcp-swagger-server --config config.json
 # OpenAPI 配置
 MCP_OPENAPI_URL=https://api.example.com/swagger.json
 MCP_TRANSPORT=stdio
+MCP_ENDPOINT=/mcp
 
 # 自定义请求头（格式：MCP_CUSTOM_HEADERS_<HEADER_NAME>=<VALUE>）
 MCP_CUSTOM_HEADERS_USER_AGENT=MCP-Client/1.0

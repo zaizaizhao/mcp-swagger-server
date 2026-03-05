@@ -555,25 +555,6 @@ export class ProcessManagerService implements OnModuleDestroy {
       await this.updateProcessStatus(serverId, ProcessStatus.ERROR, error.message);
     });
 
-    // 监听标准输出
-    if (childProcess.stdout) {
-      childProcess.stdout.on('data', async (data) => {
-        const message = data.toString().trim();
-        if (message) {
-          await this.logProcess(serverId, LogLevel.INFO, `STDOUT: ${message}`);
-        }
-      });
-    }
-
-    // 监听标准错误
-    if (childProcess.stderr) {
-      childProcess.stderr.on('data', async (data) => {
-        const message = data.toString().trim();
-        if (message) {
-          await this.logProcess(serverId, LogLevel.ERROR, `STDERR: ${message}`);
-        }
-      });
-    }
   }
 
   /**

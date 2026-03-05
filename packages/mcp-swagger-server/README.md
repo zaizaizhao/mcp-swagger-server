@@ -46,16 +46,22 @@ pnpm add -g mcp-swagger-server
 
 ### ⚡ 立即使用
 
-#### 1. 命令行启动
+#### 1. 命令行启动（推荐 `mss`）
 
 ```bash
-# 使用 Swagger Petstore API (推荐用于测试，OpenAPI 3.0)
-mcp-swagger-server --openapi https://petstore3.swagger.io/api/v3/openapi.json --transport streamable --port 3322
+# 交互式模式（无参数）
+mss
+
+# 一次性启动（带参数）
+mss --openapi https://petstore3.swagger.io/api/v3/openapi.json --transport streamable --port 3322
 
 # 使用 GitHub API (如果可用)
-mcp-swagger-server --openapi https://api.github.com/openapi.json --transport sse --port 3323
+mss --openapi https://api.github.com/openapi.json --transport sse --port 3323
 
 # 使用本地 OpenAPI 文件
+mss --openapi ./api-spec.json --transport stdio
+
+# 兼容命令别名（等价）
 mcp-swagger-server --openapi ./api-spec.json --transport stdio
 ```
 
@@ -67,7 +73,7 @@ mcp-swagger-server --openapi ./api-spec.json --transport stdio
 {
   "mcpServers": {
     "swagger-api": {
-      "command": "mcp-swagger-server",
+      "command": "mss",
       "args": [
         "--openapi",
         "https://petstore3.swagger.io/api/v3/openapi.json",
@@ -109,20 +115,23 @@ await server.start();
 | 协议 | 说明 | 使用场景 |
 |------|------|----------|
 | `stdio` | 标准输入输出 | MCP 客户端集成 |
-| `streamable` | WebSocket 流式传输 | 实时交互应用 |
-| `sse` | Server-Sent Events | Web 应用集成 |
+| `streamable` | Streamable HTTP（推荐） | 远程 MCP / Web 集成 |
+| `sse` | HTTP + Server-Sent Events（兼容模式） | 兼容旧客户端 |
 
 ### 🎛️ 命令行选项
 
 ```bash
-mcp-swagger-server [选项]
+  mss [选项]
 
 选项:
   --openapi <url|file>    OpenAPI 规范 URL 或文件路径 (必需)
   --transport <type>      传输类型: stdio|streamable|sse (默认: stdio)
   --port <number>         服务器端口 (默认: 3322)
-  --host <string>         服务器主机 (默认: localhost)
+  --host <string>         服务器主机 (默认: 127.0.0.1)
   --watch                 监听文件变化并自动重载
+  --allowed-host <host>   允许的 Host 头（可重复）
+  --allowed-origin <url>  允许的 Origin 头（可重复）
+  --disable-dns-rebinding-protection  禁用 Host/Origin 安全校验
   --verbose               显示详细日志
   --help                  显示帮助信息
 ```
@@ -133,7 +142,7 @@ mcp-swagger-server [选项]
 
 ```bash
 # 启动 Swagger Petstore API MCP 服务器
-mcp-swagger-server \
+mss \
   --openapi https://petstore3.swagger.io/api/v3/openapi.json \
   --transport streamable \
   --port 3322 \
@@ -150,7 +159,7 @@ mcp-swagger-server \
 
 ```bash
 # 启动电商 API MCP 服务器
-mcp-swagger-server \
+mss \
   --openapi https://your-ecommerce-api.com/openapi.json \
   --transport sse \
   --port 3323
@@ -160,7 +169,7 @@ mcp-swagger-server \
 
 ```bash
 # 启动数据分析 API MCP 服务器
-mcp-swagger-server \
+mss \
   --openapi ./analytics-api-spec.yaml \
   --transport stdio \
   --watch
@@ -183,7 +192,7 @@ MCP Swagger Server
 │   └── 错误处理与日志
 └── 🔌 传输层
     ├── Stdio (MCP 标准)
-    ├── WebSocket (实时通信)
+    ├── Streamable HTTP (推荐)
     └── SSE (服务器推送)
 ```
 
@@ -197,7 +206,7 @@ MCP Swagger Server
 
 ```bash
 # ❌ 错误示例 - Swagger 2.0 格式
-npx mcp-swagger-server --openapi https://petstore.swagger.io/v2/swagger.json
+mss --openapi https://petstore.swagger.io/v2/swagger.json
 
 # 错误信息: OpenAPIParseError: Missing required field: openapi
 ```
@@ -207,7 +216,7 @@ npx mcp-swagger-server --openapi https://petstore.swagger.io/v2/swagger.json
 1. **使用 OpenAPI 3.x 规范**:
    ```bash
    # ✅ 正确示例 - OpenAPI 3.x 格式
-   npx mcp-swagger-server --openapi https://petstore3.swagger.io/api/v3/openapi.json
+   mss --openapi https://petstore3.swagger.io/api/v3/openapi.json
    ```
 
 2. **转换 Swagger 2.0 到 OpenAPI 3.x**:
@@ -219,7 +228,7 @@ npx mcp-swagger-server --openapi https://petstore.swagger.io/v2/swagger.json
    swagger2openapi https://petstore.swagger.io/v2/swagger.json -o petstore-openapi3.json
    
    # 使用转换后的文件
-   npx mcp-swagger-server --openapi ./petstore-openapi3.json
+   mss --openapi ./petstore-openapi3.json
    ```
 
 3. **在线转换**:
@@ -245,7 +254,7 @@ curl -s https://your-api.com/swagger.json | jq '.swagger // .openapi'
 curl -I https://your-api.com/openapi.json
 
 # 使用详细日志模式
-npx mcp-swagger-server --openapi https://your-api.com/openapi.json --verbose
+mss --openapi https://your-api.com/openapi.json --verbose
 ```
 
 ### 📋 OpenAPI 规范要求
@@ -270,7 +279,7 @@ npx mcp-swagger-server --openapi https://your-api.com/openapi.json --verbose
 想要立即体验 MCP Swagger Server？试试这个一键启动命令：
 
 ```bash
-npx mcp-swagger-server --openapi https://petstore3.swagger.io/api/v3/openapi.json --transport streamable --port 3322 --verbose
+mss --openapi https://petstore3.swagger.io/api/v3/openapi.json --transport streamable --port 3322 --verbose
 ```
 
 然后访问 `http://localhost:3322` 查看生成的 MCP 工具！

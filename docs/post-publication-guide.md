@@ -92,6 +92,7 @@ mcp-swagger-server --transport http --openapi ./my-api.yaml --watch
 export MCP_PORT=3322
 export MCP_TRANSPORT=streamable
 export MCP_OPENAPI_URL=https://api.github.com/openapi.json
+export MCP_ENDPOINT=/mcp
 export MCP_AUTO_RELOAD=true
 
 # 直接运行（使用环境变量）
@@ -102,7 +103,7 @@ mcp-swagger-server
 
 ```bash
 # 托管模式 - 自动重启
-mcp-swagger-server --transport streamable --openapi https://api.example.com/openapi.json --managed --auto-restart
+mcp-swagger-server --transport streamable --openapi https://api.example.com/openapi.json --auto-restart
 
 # 使用 PM2 管理
 pm2 start "mcp-swagger-server --transport http --openapi https://api.example.com/openapi.json" --name "my-mcp-server"

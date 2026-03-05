@@ -48,7 +48,6 @@ mcp-swagger-server --transport stdio --openapi https://petstore.swagger.io/v2/sw
   -e, --endpoint <url>       自定义端点 URL
   -o, --openapi <source>     OpenAPI 规范源 (URL 或文件路径)
   -w, --watch               监控 OpenAPI 文件变化并自动重载
-  -m, --managed             托管模式 (进程管理)
       --auto-restart        自动重启
       --max-retries <num>   最大重试次数 [默认: 5]
       --retry-delay <ms>    重试延迟 (毫秒) [默认: 5000]
@@ -74,7 +73,7 @@ mcp-swagger-server --transport stdio --openapi https://api.example.com/v1/openap
 mcp-swagger-server --transport http --openapi ./api.yaml --watch
 
 # 🔧 托管模式 - 自动重启和错误恢复
-mcp-swagger-server --transport streamable --openapi https://api.example.com/openapi.json --managed --auto-restart
+mcp-swagger-server --transport streamable --openapi https://api.example.com/openapi.json --auto-restart
 ```
 
 ### 环境变量配置
@@ -84,6 +83,7 @@ mcp-swagger-server --transport streamable --openapi https://api.example.com/open
 export MCP_PORT=3322
 export MCP_TRANSPORT=streamable
 export MCP_OPENAPI_URL=https://api.github.com/openapi.json
+export MCP_ENDPOINT=/mcp
 export MCP_AUTO_RELOAD=true
 
 # 然后直接运行
@@ -256,7 +256,7 @@ mcp-swagger-server --transport sse --openapi ./dev-api.yaml --watch --auto-resta
 # .git/hooks/post-merge
 #!/bin/bash
 pkill -f "mcp-swagger-server" 
-mcp-swagger-server --transport streamable --openapi ./openapi.yaml --managed &
+mcp-swagger-server --transport streamable --openapi ./openapi.yaml &
 ```
 
 ---
@@ -274,7 +274,6 @@ mcp-swagger-server --transport streamable --openapi ./openapi.yaml --managed &
   "host": "0.0.0.0",
   "openapi": "./openapi.yaml",
   "watch": true,
-  "managed": true,
   "autoRestart": true,
   "maxRetries": 5,
   "retryDelay": 5000

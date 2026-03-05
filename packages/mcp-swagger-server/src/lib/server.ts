@@ -2,7 +2,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CLIAdapter } from '../adapters/CLIAdapter';
 import { ProgrammaticAdapter } from '../adapters/ProgrammaticAdapter';
 import { Transformer } from '../core';
-import type { CLIOptions, ProgrammaticConfig, TransformOptions } from '../types';
+import type { ProgrammaticConfig, TransformOptions } from '../types';
+import { startSseMcpServer, startStdioMcpServer, startStreamableMcpServer } from '../transportUtils';
 
 /**
  * 兼容层服务器创建器 - 向下兼容原有API
@@ -58,9 +59,7 @@ export async function runStdioServer(options: {
   transformOptions?: TransformOptions;
 } = {}): Promise<void> {
   const server = await createMcpServer(options);
-  const adapter = new CLIAdapter(server);
-  
-  await adapter.parseAndRun(['--transport', 'stdio']);
+  await startStdioMcpServer(server);
 }
 
 /**
@@ -77,14 +76,8 @@ export async function runSseServer(
     transformOptions?: TransformOptions;
   } = {}
 ): Promise<void> {
-  const server = await createMcpServer(options);
-  const adapter = new CLIAdapter(server);
-  
-  await adapter.parseAndRun([
-    '--transport', 'sse',
-    '--port', port.toString(),
-    '--endpoint', endpoint
-  ]);
+  const createSessionServer = () => createMcpServer(options);
+  await startSseMcpServer(createSessionServer, endpoint, port);
 }
 
 /**
@@ -101,14 +94,8 @@ export async function runStreamableServer(
     transformOptions?: TransformOptions;
   } = {}
 ): Promise<void> {
-  const server = await createMcpServer(options);
-  const adapter = new CLIAdapter(server);
-  
-  await adapter.parseAndRun([
-    '--transport', 'streamable',
-    '--port', port.toString(),
-    '--endpoint', endpoint
-  ]);
+  const createSessionServer = () => createMcpServer(options);
+  await startStreamableMcpServer(createSessionServer, endpoint, port);
 }
 
 /**

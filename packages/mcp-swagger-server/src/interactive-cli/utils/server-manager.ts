@@ -1,12 +1,18 @@
 import { EventEmitter } from 'events';
-import { SessionConfig, OperationFilter } from '../types/index';
+import { SessionConfig, type InterfaceSelectionConfig } from '../types/index';
 import { configManager } from './config-manager';
 import chalk from 'chalk';
-import { runStdioServer, runSseServer, runStreamableServer } from '../../server';
-import { AuthConfig } from 'mcp-swagger-parser';
+import { createMcpServer } from '../../server';
+import { startStdioMcpServer, startSseMcpServer, startStreamableMcpServer } from '../../transportUtils';
+import { AuthConfig, EndpointExtractor, type OpenAPISpec, type OperationFilter as ParserOperationFilter } from 'mcp-swagger-parser';
+import { SelectionConverter } from '../components/selection-converter';
 import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
+import yaml from 'js-yaml';
+import { isUrl } from '../../utils/common';
+import type { Server as HttpServer } from 'http';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 export interface ServerStats {
   uptime: number;
@@ -19,10 +25,13 @@ export interface ServerStats {
 
 export interface ServerStatus {
   isRunning: boolean;
+  isStopping?: boolean;
   config?: SessionConfig;
   stats?: ServerStats;
   serverPromise?: Promise<void>;
-  abortController?: AbortController;
+  httpServer?: HttpServer;
+  mcpServer?: McpServer;
+  close?: () => Promise<void>;
 }
 
 export class ServerManager extends EventEmitter {
@@ -60,7 +69,8 @@ export class ServerManager extends EventEmitter {
     }
 
     try {
-      const { serverPromise, abortController } = await this.startServerProcess(config);
+      await this.initDebugMode();
+      const { serverPromise, close, httpServer, mcpServer } = await this.startServerProcess(config);
       const stats: ServerStats = {
         uptime: 0,
         requests: 0,
@@ -70,15 +80,18 @@ export class ServerManager extends EventEmitter {
 
       const serverStatus: ServerStatus = {
         isRunning: true,
+        isStopping: false,
         config,
         stats,
         serverPromise,
-        abortController
+        close,
+        httpServer,
+        mcpServer
       };
 
       this.runningServers.set(serverId, serverStatus);
       this.logBuffer.set(serverId, []);
-      this.setupServerMonitoring(serverId, serverPromise, abortController);
+      this.setupServerMonitoring(serverId, serverPromise);
       this.startStatsTracking(serverId);
 
       this.emit('serverStarted', { serverId, config });
@@ -109,25 +122,18 @@ export class ServerManager extends EventEmitter {
     }
 
     try {
-      if (serverStatus.abortController) {
-        serverStatus.abortController.abort();
-      }
-      
+      serverStatus.isStopping = true;
       // 等待服务器停止
-      if (serverStatus.serverPromise) {
-        try {
-          await Promise.race([
-            serverStatus.serverPromise,
-            new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('服务器停止超时')), 5000)
-            )
-          ]);
-        } catch (error) {
-          // 忽略由于abort导致的错误
-          if (error instanceof Error && !error.message.includes('abort')) {
-            console.warn('服务器停止时出现错误:', error.message);
-          }
-        }
+      const stopPromise = serverStatus.close ? serverStatus.close() : Promise.resolve();
+      try {
+        await Promise.race([
+          stopPromise,
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('服务器停止超时')), 5000)
+          )
+        ]);
+      } catch (error) {
+        console.warn('服务器停止时出现错误:', error instanceof Error ? error.message : error);
       }
 
       serverStatus.isRunning = false;
@@ -233,115 +239,238 @@ export class ServerManager extends EventEmitter {
    * 生成服务器 ID
    */
   private generateServerId(config: SessionConfig): string {
-    return `${config.name}-${config.transport}-${Date.now()}`;
+    return config.id;
   }
 
   /**
    * 启动服务器进程
    */
-  private async startServerProcess(config: SessionConfig): Promise<{ serverPromise: Promise<void>; abortController: AbortController }> {
-    const abortController = new AbortController();
-    
+  private async startServerProcess(config: SessionConfig): Promise<{
+    serverPromise: Promise<void>;
+    close: () => Promise<void>;
+    httpServer?: HttpServer;
+    mcpServer: McpServer;
+  }> {
     // 加载OpenAPI数据
-    let openApiData = null;
-    if (config.openApiUrl) {
-      try {
-        if (this.isUrl(config.openApiUrl)) {
-          const response = await axios.get(config.openApiUrl);
-          openApiData = response.data;
-        } else {
-          // 本地文件处理
-          const filePath = path.resolve(config.openApiUrl);
-          const fileContent = fs.readFileSync(filePath, 'utf8');
-          openApiData = JSON.parse(fileContent);
-        }
-      } catch (error) {
-        throw new Error(`加载OpenAPI数据失败: ${error instanceof Error ? error.message : '未知错误'}`);
-      }
-    }
+    const openApiData = config.openApiUrl ? await this.loadOpenApiData(config.openApiUrl) : null;
 
     // 构建认证配置
-    const authConfig: AuthConfig = {
-      type: config.auth?.type || 'none',
-      ...(config.auth?.type === 'bearer' && config.auth.token ? {
-        bearer: {
-          source: 'static',
-          token: config.auth.token
-        }
-      } : {})
-    };
+    const authConfig = this.buildAuthConfig(config);
+
+    // 处理自定义请求头（兼容旧结构）
+    const customHeaders = this.normalizeCustomHeaders(config.customHeaders);
 
     // 构建操作过滤器 - 优先使用接口选择配置中的过滤器
-    const operationFilter = config.interfaceSelection?.operationFilter || config.operationFilter;
+    const operationFilter = this.buildOperationFilter(config.interfaceSelection, config.operationFilter, openApiData);
 
     // 调试输出：显示传递给服务器的operationFilter
     console.log(`\n[DEBUG] 服务器启动配置:`);
     console.log(`- 配置名称: ${config.name}`);
     console.log(`- 传输协议: ${config.transport}`);
     console.log(`- 是否有接口选择配置: ${config.interfaceSelection ? 'Yes' : 'No'}`);
-    if (config.interfaceSelection?.operationFilter) {
-      console.log(`- 使用接口选择中的operationFilter`);
-      console.log(`- operationFilter详情:`, JSON.stringify(config.interfaceSelection.operationFilter, null, 2));
-    } else if (config.operationFilter) {
-      console.log(`- 使用默认operationFilter`);
-      console.log(`- operationFilter详情:`, JSON.stringify(config.operationFilter, null, 2));
+    if (operationFilter) {
+      console.log(`- operationFilter详情:`, JSON.stringify(operationFilter, null, 2));
     } else {
       console.log(`- 未设置operationFilter，将转换所有接口`);
     }
 
+    const mcpServer = await createMcpServer(
+      {
+        openApiData,
+        authConfig,
+        customHeaders,
+        debugHeaders: this.debugMode,
+        operationFilter
+      },
+      { registerSignalHandlers: false }
+    );
+
+    let httpServer: HttpServer | undefined;
+    let resolveLifecycle: () => void = () => {};
+    let rejectLifecycle: (error: Error) => void = () => {};
+    const serverPromise = new Promise<void>((resolve, reject) => {
+      resolveLifecycle = resolve;
+      rejectLifecycle = reject;
+    });
+
+    const close = async () => {
+      if (httpServer) {
+        await new Promise<void>((resolve) => httpServer!.close(() => resolve()));
+      }
+      await mcpServer.close();
+      resolveLifecycle();
+    };
+
     // 启动对应的服务器
-    let serverPromise: Promise<void>;
-    
     switch (config.transport.toLowerCase()) {
       case 'stdio':
-        serverPromise = runStdioServer(
-          openApiData,
-          authConfig,
-          config.customHeaders,
-          this.debugMode,
-          operationFilter
+        throw new Error(
+          '交互式会话模式不支持 STDIO 服务器，请使用 --openapi 直接启动模式。'
         );
-        break;
       case 'sse':
-        const ssePort = config.port || 3322;
-        serverPromise = runSseServer(
+        httpServer = await startSseMcpServer(
+          mcpServer,
           '/sse',
-          ssePort,
-          openApiData,
-          authConfig,
-          config.customHeaders,
-          this.debugMode,
-          operationFilter
+          config.port || 3322,
+          {
+            host: config.host || 'localhost'
+          }
         );
         break;
       case 'streamable':
-        const streamPort = config.port || 3322;
-        serverPromise = runStreamableServer(
+        httpServer = await startStreamableMcpServer(
+          mcpServer,
           '/mcp',
-          streamPort,
-          openApiData,
-          authConfig,
-          config.customHeaders,
-          this.debugMode,
-          operationFilter
+          config.port || 3322,
+          {
+            host: config.host || 'localhost'
+          }
         );
         break;
       default:
         throw new Error(`不支持的传输协议: ${config.transport}`);
     }
 
-    return { serverPromise, abortController };
+    if (httpServer) {
+      httpServer.once('close', () => resolveLifecycle());
+      httpServer.once('error', (error: Error) => rejectLifecycle(error));
+    }
+
+    return { serverPromise, close, httpServer, mcpServer };
   }
 
   /**
-   * 检查是否为URL
+   * 构建认证配置（仅支持 none/bearer）
    */
-  private isUrl(str: string): boolean {
+  private buildAuthConfig(config: SessionConfig): AuthConfig {
+    const authType = config.auth?.type || 'none';
+    if (authType === 'bearer' && config.auth?.token) {
+      return {
+        type: 'bearer',
+        bearer: {
+          source: 'static',
+          token: config.auth.token
+        }
+      };
+    }
+    if (authType !== 'none') {
+      console.warn(`未支持的认证类型: ${authType}，将按无认证处理`);
+    }
+    return { type: 'none' };
+  }
+
+  /**
+   * 兼容旧结构的自定义请求头
+   */
+  private normalizeCustomHeaders(customHeaders?: any): any | undefined {
+    if (!customHeaders) return undefined;
+    const hasStructuredFields = typeof customHeaders === 'object' && (
+      'static' in customHeaders ||
+      'env' in customHeaders ||
+      'dynamic' in customHeaders ||
+      'conditional' in customHeaders
+    );
+    if (hasStructuredFields) {
+      return customHeaders;
+    }
+    return { static: customHeaders };
+  }
+
+  /**
+   * 构建操作过滤器（接口选择优先）
+   */
+  private buildOperationFilter(
+    interfaceSelection?: InterfaceSelectionConfig,
+    operationFilter?: ParserOperationFilter,
+    openApiData?: any
+  ): ParserOperationFilter | undefined {
+    const selectionFilter = interfaceSelection
+      ? this.buildFilterFromInterfaceSelection(interfaceSelection, openApiData)
+      : undefined;
+    const normalizedFallback =
+      operationFilter && Object.keys(operationFilter).length > 0 ? operationFilter : undefined;
+    return selectionFilter || normalizedFallback;
+  }
+
+  /**
+   * 从接口选择配置构建过滤器
+   */
+  private buildFilterFromInterfaceSelection(
+    selection: InterfaceSelectionConfig,
+    openApiData?: any
+  ): ParserOperationFilter | undefined {
+    if (!openApiData || !openApiData.paths) {
+      console.warn('接口选择配置存在，但未能加载 OpenAPI 数据，忽略接口选择过滤');
+      return undefined;
+    }
+
     try {
-      new URL(str);
-      return true;
+      const endpoints = EndpointExtractor.extractEndpoints(openApiData as OpenAPISpec);
+      const converter = new SelectionConverter();
+
+      switch (selection.mode) {
+        case 'include':
+          if (selection.selectedEndpoints && selection.selectedEndpoints.length > 0) {
+            return converter.convertIncludeSelection(selection.selectedEndpoints, endpoints);
+          }
+          break;
+        case 'exclude':
+          if (selection.selectedEndpoints && selection.selectedEndpoints.length > 0) {
+            return converter.convertExcludeSelection(selection.selectedEndpoints, endpoints);
+          }
+          break;
+        case 'tags':
+          if (selection.selectedTags && selection.selectedTags.length > 0) {
+            return converter.convertTagsSelection(selection.selectedTags);
+          }
+          break;
+        case 'patterns':
+          if (selection.pathPatterns && selection.pathPatterns.length > 0) {
+            return converter.convertPatternsSelection(selection.pathPatterns);
+          }
+          break;
+      }
+    } catch (error) {
+      console.warn('构建接口选择过滤器失败，将回退到默认过滤器:', error);
+    }
+
+    return undefined;
+  }
+
+  /**
+   * 加载 OpenAPI 数据（支持 JSON/YAML 与 URL/本地文件）
+   */
+  private async loadOpenApiData(source: string): Promise<any> {
+    try {
+      if (isUrl(source)) {
+        const response = await axios.get(source, { timeout: 10000 });
+        const data = response.data;
+        if (typeof data === 'string') {
+          return this.parseOpenApiContent(data, source);
+        }
+        return data;
+      }
+
+      const filePath = path.resolve(source);
+      const fileContent = fs.readFileSync(filePath, 'utf8');
+      return this.parseOpenApiContent(fileContent, source);
+    } catch (error) {
+      throw new Error(`加载OpenAPI数据失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    }
+  }
+
+  private parseOpenApiContent(content: string, source: string): any {
+    const trimmed = content.trim();
+    if (!trimmed) {
+      throw new Error(`OpenAPI 内容为空: ${source}`);
+    }
+
+    // 优先尝试 JSON
+    try {
+      return JSON.parse(trimmed);
     } catch {
-      return false;
+      // 回退到 YAML
+      return yaml.load(trimmed);
     }
   }
 
@@ -350,7 +479,7 @@ export class ServerManager extends EventEmitter {
   /**
    * 设置服务器监控
    */
-  private setupServerMonitoring(serverId: string, serverPromise: Promise<void>, abortController: AbortController): void {
+  private setupServerMonitoring(serverId: string, serverPromise: Promise<void>): void {
     const serverStatus = this.runningServers.get(serverId);
     if (!serverStatus) return;
 
@@ -363,10 +492,16 @@ export class ServerManager extends EventEmitter {
         if (serverStatus) {
           serverStatus.isRunning = false;
         }
-        
-        this.emit('serverStopped', { serverId, config: serverStatus.config });
+        if (serverStatus && !serverStatus.isStopping) {
+          this.runningServers.delete(serverId);
+          this.logBuffer.delete(serverId);
+          this.emit('serverStopped', { serverId, config: serverStatus.config });
+        }
       })
       .catch((error: Error) => {
+        if (serverStatus?.isStopping) {
+          return;
+        }
         const errorMessage = `服务器 ${serverId} 错误: ${error.message}`;
         this.addLog(serverId, `[ERR] ${this.chalk.red(errorMessage)}`);
         
@@ -377,19 +512,12 @@ export class ServerManager extends EventEmitter {
             serverStatus.stats.lastError = new Date();
           }
         }
-        
+        this.runningServers.delete(serverId);
+        this.logBuffer.delete(serverId);
         this.emit('serverError', { serverId, config: serverStatus.config, error });
       });
 
-    // 监听abort信号
-    abortController.signal.addEventListener('abort', () => {
-      const message = `服务器 ${serverId} 被手动停止`;
-      this.addLog(serverId, `[SYS] ${message}`);
-      
-      if (serverStatus) {
-        serverStatus.isRunning = false;
-      }
-    });
+    // 手动停止通过 stopServer/close 处理
   }
 
   /**

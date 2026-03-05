@@ -1,4 +1,5 @@
 import { join } from 'path';
+import * as fs from 'fs';
 import { parseFromFile, parseFromString, transformToMCPTools } from 'mcp-swagger-parser';
 import type { MCPTool, ValidationError, AuthConfig } from 'mcp-swagger-parser';
 
@@ -27,9 +28,17 @@ export async function transformOpenApiToMcpTools(
         validateSchema: true
       });
     } else {
-      // 默认路径
+      // 默认路径（仅在存在时使用）
       const defaultPath = join(__dirname, '../swagger_json_file/swagger.json');
       const filePath = swaggerFilePath || defaultPath;
+
+      if (!fs.existsSync(filePath)) {
+        if (swaggerFilePath) {
+          throw new Error(`OpenAPI 文件不存在: ${filePath}`);
+        }
+        console.warn('⚠️ 未提供 OpenAPI 数据且默认 swagger.json 不存在，将不会生成任何工具');
+        return [];
+      }
       
       console.log(`🔄 Loading OpenAPI specification from: ${filePath}`);
       // 使用新的解析器解析 OpenAPI 规范

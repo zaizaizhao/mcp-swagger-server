@@ -1,10 +1,7 @@
 // Static imports for ES modules
 import type { QuestionCollection, Answers } from 'inquirer';
 import inquirer from 'inquirer';
-import ora from 'ora';
-import boxen from 'boxen';
 import chalk from 'chalk';
-import Table from 'cli-table3';
 import figlet from 'figlet';
 
 type Inquirer = {
@@ -16,32 +13,21 @@ import { UIManager } from './ui/ui-manager';
 import { themeManager } from './themes';
 import { configManager, ConfigManager } from './utils/config-manager';
 import { serverManager, ServerManager } from './utils/server-manager';
-// Server and loadOpenAPIData imports removed - will be implemented later
-import { OperationFilter } from './types';
-import { SessionConfig } from './types';
+import { SessionConfig, CLIOptions } from './types/index';
 import { runStdioServer, runSseServer, runStreamableServer } from '../server';
+import type { ConfigFile, ServerOptions } from '../cli/types';
+import { loadConfigFile, loadEnvFile } from '../cli/config';
+import { parseAuthConfig, validateAuthConfig } from '../cli/auth';
+import { parseCustomHeaders } from '../cli/headers';
+import { parseOperationFilter } from '../cli/filters';
+import { CLI_DEFAULTS } from '../cli/defaults';
+import { routeConsoleToStderrForStdio } from '../cli/utils';
+import type { AuthConfig } from 'mcp-swagger-parser';
 import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
-
-export interface InteractiveCLIOptions {
-  port?: number;
-  transport?: 'stdio' | 'sse' | 'streamable';
-  configFile?: string;
-  debug?: boolean;
-  openapi?: string;
-  endpoint?: string;
-  authType?: string;
-  bearerToken?: string;
-  debugHeaders?: boolean;
-  operationFilterParameters?: string;
-  operationFilterTags?: string;
-  operationFilterPaths?: string;
-  customHeaders?: string;
-}
-
-
+import { isUrl } from '../utils/common';
 
 export class InteractiveCLI {
   private sessionManager: SessionManager;
@@ -52,11 +38,12 @@ export class InteractiveCLI {
   // private currentServer?: Server; // TODO: 实现 Server 类
   private currentServerId?: string;
   private isRunning: boolean = false;
+  private stopServersOnExit: boolean = true;
   
   // Static module references
   private inquirer: Inquirer;
 
-  constructor(private options: InteractiveCLIOptions = {}) {
+  constructor(private options: CLIOptions = {}) {
     this.sessionManager = new SessionManager();
     this.openApiWizard = new OpenAPIWizard();
     this.uiManager = new UIManager();
@@ -78,8 +65,8 @@ export class InteractiveCLI {
     
     this.uiManager.clear();
     
-    // 检查是否提供了 openapi 参数，如果有则直接启动服务
-    if (this.options.openapi) {
+    // 检查是否提供了启动参数；有则进入一次性直启模式，无则进入交互模式
+    if (this.shouldUseDirectMode()) {
       await this.startDirectMode();
       return;
     }
@@ -109,10 +96,47 @@ export class InteractiveCLI {
       }
     }
     
-    // 停止所有运行中的服务器
-    await this.serverManager.stopAllServers();
+    // 停止所有运行中的服务器（仅在用户确认或无保留要求时）
+    if (this.stopServersOnExit) {
+      await this.serverManager.stopAllServers();
+    }
     
     await this.uiManager.showSuccess('👋 再见！');
+  }
+
+  /**
+   * 是否使用一次性直启模式
+   * 无参数时进入交互模式；提供任意启动参数时进入直启模式
+   */
+  private shouldUseDirectMode(): boolean {
+    return Boolean(
+      this.options.openapi ||
+      this.options.config ||
+      this.options.env ||
+      this.options.transport ||
+      this.options.port ||
+      this.options.host ||
+      this.options.endpoint ||
+      this.options.watch ||
+      this.options['auth-type'] ||
+      this.options['bearer-token'] ||
+      this.options['bearer-env'] ||
+      this.options['custom-header']?.length ||
+      this.options['custom-header-env']?.length ||
+      this.options['custom-headers-config'] ||
+      this.options['debug-headers'] ||
+      this.options['operation-filter-methods']?.length ||
+      this.options['operation-filter-paths']?.length ||
+      this.options['operation-filter-operation-ids']?.length ||
+      this.options['operation-filter-status-codes']?.length ||
+      this.options['operation-filter-parameters']?.length ||
+      this.options['auto-restart'] ||
+      this.options['max-retries'] ||
+      this.options['retry-delay'] ||
+      this.options['allowed-host']?.length ||
+      this.options['allowed-origin']?.length ||
+      this.options['disable-dns-rebinding-protection']
+    );
   }
 
   /**
@@ -382,6 +406,13 @@ ${theme.icons.stats} 查看状态和统计信息`;;
    * 使用配置启动服务器
    */
   private async startServerWithConfig(config: SessionConfig): Promise<void> {
+    if (config.transport === 'stdio') {
+      await this.uiManager.showWarning(
+        '交互式会话模式不支持 STDIO 启动。请使用 `mcp-swagger-server --transport stdio --openapi <source>` 直接启动。'
+      );
+      return;
+    }
+
     try {
       const result = await this.serverManager.startServer(config);
       if (result.success && result.serverId) {
@@ -395,12 +426,11 @@ ${theme.icons.stats} 查看状态和统计信息`;;
         
         await this.uiManager.showSuccess(`服务器已启动: ${config.name}`);
         
+        const host = config.host || 'localhost';
         if (config.transport === 'sse' && config.port) {
-          await this.uiManager.showInfo(`访问地址: http://localhost:${config.port}`);
+          await this.uiManager.showInfo(`访问地址: http://${host}:${config.port}/sse`);
         } else if (config.transport === 'streamable' && config.port) {
-          await this.uiManager.showInfo(`访问地址: http://localhost:${config.port}/mcp`);
-        } else if (config.transport === 'stdio') {
-          await this.uiManager.showInfo('服务器已启动，使用 stdio 传输协议');
+          await this.uiManager.showInfo(`访问地址: http://${host}:${config.port}/mcp`);
         }
         
       } else {
@@ -411,148 +441,6 @@ ${theme.icons.stats} 查看状态和统计信息`;;
       await this.uiManager.showError('服务器启动失败', error instanceof Error ? error : undefined);
       throw error;
     }
-  }
-
-  /**
-   * 启动服务器
-   */
-  private async startServer(config: SessionConfig): Promise<void> {
-    if (this.isRunning) {
-      console.log(chalk.yellow('服务器已在运行中'));
-      return;
-    }
-
-    const spinner = ora('启动服务器...').start();
-    
-    try {
-      // 加载 OpenAPI 数据
-      // TODO: 实现 loadOpenAPIData 函数
-      // const openApiData = await loadOpenAPIData(config.openApiUrl);
-      
-      // TODO: 创建并启动服务器
-       // this.currentServer = new Server({
-       //   openApiData,
-       //   operationFilter: config.operationFilter,
-       //   customHeaders: config.customHeaders
-       // });
-
-      // TODO: 启动服务器
-      // await this.currentServer.start({
-      //   transport: config.transport,
-      //   port: config.port
-      // });
-
-      this.isRunning = true;
-      spinner.succeed(`服务器启动成功！`);
-      
-      console.log(boxen(
-          chalk.green.bold('🎉 服务器运行中') + '\n\n' +
-          chalk.gray(`配置: ${config.name}`) + '\n' +
-          chalk.gray(`传输: ${config.transport}`) + '\n' +
-          (config.port ? chalk.gray(`端口: ${config.port}`) + '\n' : '') +
-          chalk.gray(`OpenAPI: ${config.openApiUrl}`),
-        {
-          padding: 1,
-          margin: 1,
-          borderStyle: 'round',
-          borderColor: 'green'
-        }
-      ));
-
-      // 更新最后使用时间
-      await this.sessionManager.updateLastUsed(config.id);
-      
-      // 显示服务器控制菜单
-      await this.showServerControls();
-      
-    } catch (error) {
-      spinner.fail('服务器启动失败');
-      throw error;
-    }
-  }
-
-  /**
-   * 显示服务器控制菜单
-   */
-  private async showServerControls(): Promise<void> {
-    while (this.isRunning) {
-      const { action } = await this.inquirer.prompt([
-        {
-          type: 'list',
-          name: 'action',
-          message: '服务器控制:',
-          choices: [
-            { name: '📊 查看状态', value: 'status' },
-            { name: '🔄 重启服务器', value: 'restart' },
-            { name: '⏹️  停止服务器', value: 'stop' },
-            { name: '🔙 返回主菜单 (保持服务器运行)', value: 'back' }
-          ]
-        }
-      ]);
-
-      switch (action) {
-        case 'status':
-          await this.showServerStatus();
-          break;
-        case 'restart':
-          await this.restartServer();
-          break;
-        case 'stop':
-          await this.stopServer();
-          return;
-        case 'back':
-          return;
-      }
-    }
-  }
-
-  /**
-   * 停止服务器
-   */
-  private async stopServer(): Promise<void> {
-    if (!this.currentServerId) {
-      await this.uiManager.showWarning('服务器未在运行');
-      return;
-    }
-
-    try {
-      await this.uiManager.showInfo('正在停止服务器...');
-      
-      const result = await this.serverManager.stopServer(this.currentServerId);
-      
-      if (result.success) {
-        this.currentServerId = undefined;
-        await this.uiManager.showSuccess('服务器已停止');
-      } else {
-        await this.uiManager.showError('停止服务器失败: ' + (result.error || '未知错误'));
-      }
-    } catch (error) {
-      await this.uiManager.showError('停止服务器失败', error instanceof Error ? error : undefined);
-    }
-  }
-
-  /**
-   * 重启服务器
-   */
-  private async restartServer(): Promise<void> {
-    console.log(chalk.cyan('重启服务器...'));
-    await this.stopServer();
-    // 这里需要保存当前配置以便重启
-    // 实现细节待完善
-  }
-
-  /**
-   * 显示服务器状态
-   */
-  private async showServerStatus(): Promise<void> {
-    if (!this.currentServerId) {
-      await this.uiManager.showWarning('服务器未在运行');
-      return;
-    }
-
-    // 显示服务器状态信息
-    console.log(chalk.green('✅ 服务器运行中'));
-    // 更多状态信息待实现
   }
 
   /**
@@ -654,56 +542,6 @@ ${theme.icons.stats} 查看状态和统计信息`;;
   /**
    * 显示最近配置
    */
-  private async showRecentConfigs(): Promise<void> {
-    const recentConfigs = await this.configManager.getRecentConfigs();
-    
-    if (recentConfigs.length === 0) {
-      await this.uiManager.showInfo('暂无最近使用的配置');
-      return;
-    }
-    
-    const sessions = [];
-    for (const configId of recentConfigs) {
-      const session = await this.sessionManager.getSession(configId);
-      if (session) {
-        sessions.push(session);
-      }
-    }
-    
-    if (sessions.length === 0) {
-      await this.uiManager.showInfo('最近使用的配置已失效');
-      return;
-    }
-    
-    await this.uiManager.showSessionList(sessions);
-    
-    const choices = sessions.map(session => ({
-      name: `${session.name} (${session.transport})`,
-      value: session.id
-    }));
-    
-    choices.push({ name: '🔙 返回主菜单', value: 'back' });
-    
-    const { sessionId } = await this.inquirer.prompt([
-      {
-        type: 'list',
-        name: 'sessionId',
-        message: '选择配置进行操作:',
-        choices,
-        pageSize: 10
-      }
-    ]);
-    
-    if (sessionId === 'back') {
-      return;
-    }
-    
-    await this.manageSession(sessionId);
-  }
-
-  /**
-   * 显示设置
-   */
   private async showSettings(): Promise<void> {
     const config = await this.configManager.getConfig();
     
@@ -767,7 +605,6 @@ ${theme.icons.stats} 查看状态和统计信息`;;
   private async showStatus(): Promise<void> {
     const serverStatus = this.currentServerId ? this.serverManager.getServerStatus(this.currentServerId) : undefined;
     const stats = await this.sessionManager.getSessionStats();
-    const config = await this.configManager.getConfig();
     
     // 显示服务器状态
     if (serverStatus && serverStatus.config) {
@@ -880,6 +717,9 @@ ${theme.icons.stats} 查看状态和统计信息`;;
 
       if (stopServers) {
         await this.serverManager.stopAllServers();
+        this.stopServersOnExit = true;
+      } else {
+        this.stopServersOnExit = false;
       }
     }
 
@@ -899,17 +739,107 @@ ${theme.icons.stats} 查看状态和统计信息`;;
    */
   private async startDirectMode(): Promise<void> {
     try {
+      // 加载配置文件与环境变量
+      let config: ConfigFile | undefined;
+      if (this.options.config) {
+        try {
+          config = loadConfigFile(this.options.config);
+        } catch (error) {
+          console.error(chalk.yellow('⚠️ 配置文件加载失败，将使用命令行与环境变量配置'));
+        }
+      }
+
+      let envVars: Record<string, string> = {};
+      if (this.options.env) {
+        try {
+          envVars = loadEnvFile(this.options.env);
+        } catch (error) {
+          console.error(chalk.yellow('⚠️ .env 文件加载失败，将使用系统环境变量'));
+        }
+      }
+
+      const mergedEnv = { ...process.env, ...envVars };
+
+      const transport = this.options.transport || config?.transport || mergedEnv.MCP_TRANSPORT || CLI_DEFAULTS.transport;
+      const port = Number(this.options.port ?? config?.port ?? mergedEnv.MCP_PORT ?? CLI_DEFAULTS.port);
+      const openApiSource = this.options.openapi || config?.openapi || mergedEnv.MCP_OPENAPI_URL || '';
+      const endpoint = this.options.endpoint || config?.endpoint || (transport === 'sse' ? '/sse' : '/mcp');
+      const host = this.options.host || mergedEnv.MCP_HOST || CLI_DEFAULTS.host;
+
+      const parseList = (value: unknown): string[] | undefined => {
+        if (!value) {
+          return undefined;
+        }
+
+        const values = Array.isArray(value) ? value : [value];
+        const normalized = values
+          .flatMap(item => String(item).split(','))
+          .map(item => item.trim())
+          .filter(Boolean);
+
+        return normalized.length > 0 ? normalized : undefined;
+      };
+
+      const allowedHosts =
+        parseList(this.options['allowed-host']) ||
+        parseList(config?.allowedHosts) ||
+        parseList(mergedEnv.MCP_ALLOWED_HOSTS);
+
+      const allowedOrigins =
+        parseList(this.options['allowed-origin']) ||
+        parseList(config?.allowedOrigins) ||
+        parseList(mergedEnv.MCP_ALLOWED_ORIGINS);
+
+      const disableDnsRebindingProtection = Boolean(
+        this.options['disable-dns-rebinding-protection'] ||
+          config?.disableDnsRebindingProtection ||
+          mergedEnv.MCP_DISABLE_DNS_REBINDING_PROTECTION === 'true'
+      );
+      const enableDnsRebindingProtection = !disableDnsRebindingProtection;
+
+      if (String(transport).toLowerCase() === 'stdio') {
+        routeConsoleToStderrForStdio();
+      }
+
       console.log(chalk.cyan('🚀 MCP Swagger Server - 直接启动模式'));
       console.log();
-      
+
+      const resolvedOptions: ServerOptions & {
+        'auth-type'?: string;
+        'bearer-token'?: string;
+        'bearer-env'?: string;
+        'custom-header'?: string[];
+        'custom-headers-config'?: string;
+        'custom-header-env'?: string[];
+        'operation-filter-methods'?: string[];
+        'operation-filter-paths'?: string[];
+        'operation-filter-operation-ids'?: string[];
+        'operation-filter-status-codes'?: string[];
+        'operation-filter-parameters'?: string[];
+      } = {
+        ...(this.options as any),
+        transport,
+        port: String(port),
+        endpoint
+      };
+
+      // 解析认证配置
+      const authConfig = parseAuthConfig(resolvedOptions, config, envVars);
+      validateAuthConfig(authConfig, envVars);
+
+      // 解析自定义请求头与过滤器
+      const customHeaders = parseCustomHeaders(resolvedOptions, config, envVars);
+      const debugHeaders = this.options['debug-headers'] || config?.debugHeaders || false;
+      const operationFilter = parseOperationFilter(resolvedOptions, config);
+
       // 显示配置信息
-      await this.showDirectModeConfig();
+      await this.showDirectModeConfig({ transport, port, host, openApiSource, authConfig });
       
       // 加载OpenAPI数据
       let openApiData = null;
-      if (this.options.openapi) {
+      if (openApiSource) {
         console.log(chalk.blue('📡 加载 OpenAPI 规范'));
-        openApiData = await this.loadOpenAPIData(this.options.openapi);
+        openApiData = await this.loadOpenAPIData(openApiSource);
         
         if (openApiData) {
           console.log();
@@ -927,45 +857,61 @@ ${theme.icons.stats} 查看状态和统计信息`;;
         }
       }
       
-      // 构建认证配置
-      const authConfig = this.buildAuthConfig();
-      
-      // 构建操作过滤器
-      const operationFilter = this.buildOperationFilter();
-      
-      // 构建自定义请求头
-      const customHeaders = this.buildCustomHeaders();
-      
       console.log();
       console.log(chalk.blue('🚀 启动服务器'));
       
       // 根据传输协议启动服务器
-      const transport = this.options.transport || 'stdio';
-      const port = this.options.port || 3322;
-      
       switch (transport.toLowerCase()) {
         case 'stdio':
           console.log(chalk.yellow('正在启动 STDIO 服务器...'));
           console.log(chalk.gray('  💬 适用于 AI 客户端集成（如 Claude Desktop）'));
-          await runStdioServer(openApiData, authConfig, customHeaders, this.options.debugHeaders, operationFilter);
+          await runStdioServer(openApiData, authConfig, customHeaders, debugHeaders, operationFilter);
           break;
           
         case 'streamable':
           console.log(chalk.yellow('正在启动 Streamable 服务器...'));
-          const streamEndpoint = this.options.endpoint || '/mcp';
-          const streamUrl = `http://localhost:${port}${streamEndpoint}`;
+          const streamEndpoint = endpoint;
+          const streamUrl = `http://${host}:${port}${streamEndpoint}`;
           console.log(chalk.gray(`  🌐 服务器地址: ${streamUrl}`));
           console.log(chalk.gray('  🔗 适用于 Web 应用集成'));
-          await runStreamableServer(streamEndpoint, port, openApiData, authConfig, customHeaders, this.options.debugHeaders, operationFilter);
+          await runStreamableServer(
+            streamEndpoint,
+            port,
+            openApiData,
+            authConfig,
+            customHeaders,
+            debugHeaders,
+            operationFilter,
+            host,
+            {
+              allowedHosts,
+              allowedOrigins,
+              enableDnsRebindingProtection
+            }
+          );
           break;
           
         case 'sse':
           console.log(chalk.yellow('正在启动 SSE 服务器...'));
-          const sseEndpoint = this.options.endpoint || '/sse';
-          const sseUrl = `http://localhost:${port}${sseEndpoint}`;
+          const sseEndpoint = endpoint;
+          const sseUrl = `http://${host}:${port}${sseEndpoint}`;
           console.log(chalk.gray(`  📡 SSE 端点: ${sseUrl}`));
           console.log(chalk.gray('  ⚡ 适用于实时 Web 应用'));
-          await runSseServer(sseEndpoint, port, openApiData, authConfig, customHeaders, this.options.debugHeaders, operationFilter);
+          await runSseServer(
+            sseEndpoint,
+            port,
+            openApiData,
+            authConfig,
+            customHeaders,
+            debugHeaders,
+            operationFilter,
+            host,
+            {
+              allowedHosts,
+              allowedOrigins,
+              enableDnsRebindingProtection
+            }
+          );
           break;
           
         default:
@@ -978,7 +924,7 @@ ${theme.icons.stats} 查看状态和统计信息`;;
       console.log(chalk.green('✓ MCP Swagger Server 启动成功！'));
       
       if (transport !== 'stdio') {
-        const serverUrl = `http://localhost:${port}${this.options.endpoint || (transport === 'sse' ? '/sse' : '/mcp')}`;
+        const serverUrl = `http://${host}:${port}${endpoint}`;
         console.log(chalk.gray(`  🛑 服务器运行在: ${serverUrl}`));
       }
       
@@ -995,22 +941,30 @@ ${theme.icons.stats} 查看状态和统计信息`;;
   /**
    * 显示直接启动模式的配置信息
    */
-  private async showDirectModeConfig(): Promise<void> {
-    const transport = this.options.transport || 'stdio';
-    const port = this.options.port || 3322;
+  private async showDirectModeConfig(options: {
+    transport: string;
+    port: number;
+    host: string;
+    openApiSource?: string;
+    authConfig: AuthConfig;
+  }): Promise<void> {
+    const { transport, port, host, openApiSource, authConfig } = options;
     
     console.log(chalk.blue('📋 服务器配置'));
     console.log('-'.repeat(20));
     console.log(`传输协议: ${chalk.white(transport.toUpperCase())}`);
     console.log(`端口号: ${chalk.white(port.toString())} ${chalk.gray(transport === 'stdio' ? '(STDIO 模式不使用端口)' : '')}`);
-    console.log(`数据源: ${chalk.white(this.options.openapi || '未指定')} ${chalk.gray(this.options.openapi ? (this.isUrl(this.options.openapi) ? '远程 URL' : '本地文件') : '')}`);
+    console.log(`主机地址: ${chalk.white(host)}`);
+    console.log(`数据源: ${chalk.white(openApiSource || '未指定')} ${chalk.gray(openApiSource ? (isUrl(openApiSource) ? '远程 URL' : '本地文件') : '')}`);
     
     // 显示认证配置
-    const authType = this.options.authType || 'none';
-    console.log(`认证类型: ${chalk.white(authType.toUpperCase())}`);
-    
-    if (authType === 'bearer' && this.options.bearerToken) {
-      console.log(`Token 来源: ${chalk.white('静态配置')} ${chalk.gray('✓ 已配置')}`);
+    console.log(`认证类型: ${chalk.white(authConfig.type.toUpperCase())}`);
+    if (authConfig.type === 'bearer' && authConfig.bearer) {
+      if (authConfig.bearer.source === 'env') {
+        console.log(`Token 来源: ${chalk.white(`环境变量 ${authConfig.bearer.envName || 'API_TOKEN'}`)}`);
+      } else {
+        console.log(`Token 来源: ${chalk.white('静态配置')} ${chalk.gray(authConfig.bearer.token ? '✓ 已配置' : '✗ 未配置')}`);
+      }
     }
     
     console.log();
@@ -1021,27 +975,34 @@ ${theme.icons.stats} 查看状态和统计信息`;;
    */
   private async loadOpenAPIData(source: string): Promise<any> {
     try {
-      if (this.isUrl(source)) {
+      const parseContent = (raw: string) => {
+        const trimmed = raw.trim();
+        if (!trimmed) {
+          throw new Error('OpenAPI 内容为空');
+        }
+        try {
+          return JSON.parse(trimmed);
+        } catch {
+          return yaml.load(trimmed);
+        }
+      };
+
+      if (isUrl(source)) {
         console.log(chalk.yellow(`正在从远程 URL 加载 OpenAPI 规范...`));
         console.log(chalk.gray(`  📡 ${source}`));
-        const response = await axios.get(source);
+        const response = await axios.get(source, { timeout: 30000 });
         console.log(chalk.green('✓ 远程 OpenAPI 规范加载成功'));
+        if (typeof response.data === 'string') {
+          return parseContent(response.data);
+        }
         return response.data;
       } else {
         console.log(chalk.yellow(`正在从本地文件加载 OpenAPI 规范...`));
         const filePath = path.resolve(source);
         console.log(chalk.gray(`  📁 ${filePath}`));
         const content = fs.readFileSync(filePath, 'utf-8');
-        
-        let data;
-        if (source.endsWith('.yaml') || source.endsWith('.yml')) {
-          console.log(chalk.gray('  🔄 解析 YAML 格式...'));
-          data = yaml.load(content);
-        } else {
-          console.log(chalk.gray('  🔄 解析 JSON 格式...'));
-          data = JSON.parse(content);
-        }
-        
+        console.log(chalk.gray('  🔄 解析 OpenAPI 内容...'));
+        const data = parseContent(content);
         console.log(chalk.green('✓ 本地 OpenAPI 规范加载成功'));
         return data;
       }
@@ -1052,78 +1013,4 @@ ${theme.icons.stats} 查看状态和统计信息`;;
     }
   }
   
-  /**
-   * 检查是否为URL
-   */
-  private isUrl(str: string): boolean {
-    try {
-      new URL(str);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  
-  /**
-   * 构建认证配置
-   */
-  private buildAuthConfig(): any {
-    const authType = this.options.authType || 'none';
-    
-    if (authType === 'bearer' && this.options.bearerToken) {
-      return {
-        type: 'bearer',
-        bearer: {
-          source: 'static',
-          token: this.options.bearerToken
-        }
-      };
-    }
-    
-    return { type: 'none' };
-  }
-  
-  /**
-   * 构建操作过滤器
-   */
-  private buildOperationFilter(): any {
-    if (this.options.operationFilterParameters) {
-      return {
-        parameters: this.options.operationFilterParameters.split(',').map(p => p.trim())
-      };
-    }
-    
-    if (this.options.operationFilterTags) {
-      return {
-        tags: this.options.operationFilterTags.split(',').map(t => t.trim())
-      };
-    }
-    
-    if (this.options.operationFilterPaths) {
-      return {
-        paths: this.options.operationFilterPaths.split(',').map(p => p.trim())
-      };
-    }
-    
-    return null;
-  }
-  
-  /**
-   * 构建自定义请求头
-   */
-  private buildCustomHeaders(): any {
-    const headers: any = {};
-    
-    if (this.options.customHeaders) {
-      const headerPairs = this.options.customHeaders.split(',');
-      for (const pair of headerPairs) {
-        const [key, value] = pair.split(':').map(s => s.trim());
-        if (key && value) {
-          headers[key] = value;
-        }
-      }
-    }
-    
-    return Object.keys(headers).length > 0 ? headers : null;
-  }
 }

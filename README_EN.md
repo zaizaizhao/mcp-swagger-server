@@ -3,7 +3,7 @@
 <div align="center">
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5+-blue.svg)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-16+-green.svg)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **A tool that converts OpenAPI/Swagger specifications to Model Context Protocol (MCP) format**
@@ -13,6 +13,10 @@
 </div>
 
 ---
+## 🎬 Quick Demo
+
+![Demo GIF](./docs/img/demo.gif)
+
 ## 🎯 Project Screenshots
 
 ![Project Screenshot](./docs/img/mss.png)
@@ -53,20 +57,33 @@ mcp-swagger-server/
 npm i mcp-swagger-server -g
 ```
 
+### Command Guide
+
+- `mss`: interactive terminal UI (default)
+- `mcp-swagger-server` / `mcp-swagger`: standard CLI (best for scripts and AI client integration)
+- `mss --openapi ...`: direct mode (skip interactive UI)
+
+> Note: interactive session mode does not support starting STDIO servers. Use `mss --openapi ... --transport stdio` (alias still works: `mcp-swagger-server --transport stdio ...`) for STDIO.
+
 ### Quick Launch
-#### Custom Launch
+#### Interactive Launch (recommended for first-time setup)
 ```bash 
 mss
 ```
-#### One-Click Launch
+#### One-Command Launch (non-interactive)
 ```bash 
-mss --openapi https://api.example.com/openapi.json --operation-filter-methods GET,POST --transport streamable --auth-type bearer --bearer-token "your-token-here"
+mss --openapi https://api.example.com/openapi.json \
+  --operation-filter-methods GET \
+  --operation-filter-methods POST \
+  --transport streamable \
+  --auth-type bearer \
+  --bearer-token "your-token-here"
 
 # Using configuration file
 mss --config config.json
 ```
 
-## � Usage Guide
+## 📖 Usage Guide
 
 ### 🔧 `mcp-swagger-server` Package
 
@@ -98,22 +115,29 @@ mss [options]
 --openapi, -o       OpenAPI specification URL or file path
 --transport, -t     Transport protocol (stdio|sse|streamable)
 --port, -p          Port number
+--endpoint, -e      Custom endpoint path (default: sse=/sse, streamable=/mcp)
 --watch, -w         Monitor file changes
---verbose           Verbose logging
+--env               Environment file path (.env)
 
 # Bearer Token authentication options:
 --auth-type         Authentication type (bearer)
 --bearer-token      Directly specify Bearer Token
 --bearer-env        Read token from environment variable
 --config, -c        Configuration file path
+--custom-header     Custom header "Key=Value" (repeatable)
+--custom-header-env Environment header "Key=VAR_NAME" (repeatable)
+--custom-headers-config  Custom headers config file (JSON)
+--debug-headers     Enable header debug logging
 
 # Operation filtering options:
---operation-filter-methods <methods>        HTTP method filtering (repeatable) [Example: GET,POST]
---operation-filter-paths <paths>            Path filtering (supports wildcards, repeatable) [Example: /api/*]
---operation-filter-operation-ids <ids>      Operation ID filtering (repeatable) [Example: getUserById]
---operation-filter-status-codes <codes>     Status code filtering (repeatable) [Example: 200,201]
---operation-filter-parameters <params>      Parameter filtering (repeatable) [Example: userId,name]
+--operation-filter-methods <method>         HTTP method filtering (repeatable) [Example: GET]
+--operation-filter-paths <path>             Path filtering (supports wildcards, repeatable) [Example: /api/*]
+--operation-filter-operation-ids <id>       Operation ID filtering (repeatable) [Example: getUserById]
+--operation-filter-status-codes <code>      Status code filtering (repeatable) [Example: 200]
+--operation-filter-parameters <param>       Parameter filtering (repeatable) [Example: userId]
 ```
+
+> Note: to use direct mode with `mss`, you must pass `--openapi`.
 
 #### Examples
 
@@ -136,25 +160,43 @@ mss --openapi https://api.example.com/openapi.json --auth-type bearer --bearer-e
 
 # Using operation filtering options
 # Include only GET and POST method endpoints
-mss --openapi https://api.example.com/openapi.json --operation-filter-methods GET,POST --transport streamable
+mss --openapi https://api.example.com/openapi.json \
+  --operation-filter-methods GET \
+  --operation-filter-methods POST \
+  --transport streamable
 
 # Include only specific path endpoints
-mss --openapi https://api.example.com/openapi.json --operation-filter-paths "/api/users/*,/api/orders/*" --transport streamable
+mss --openapi https://api.example.com/openapi.json \
+  --operation-filter-paths "/api/users/*" \
+  --operation-filter-paths "/api/orders/*" \
+  --transport streamable
 
 # Include only specific operation ID endpoints
-mss --openapi https://api.example.com/openapi.json --operation-filter-operation-ids "getUserById,createUser" --transport streamable
+mss --openapi https://api.example.com/openapi.json \
+  --operation-filter-operation-ids "getUserById" \
+  --operation-filter-operation-ids "createUser" \
+  --transport streamable
 
 # Include only specific status code endpoints
-mss --openapi https://api.example.com/openapi.json --operation-filter-status-codes "200,201,204" --transport streamable
+mss --openapi https://api.example.com/openapi.json \
+  --operation-filter-status-codes "200" \
+  --operation-filter-status-codes "201" \
+  --operation-filter-status-codes "204" \
+  --transport streamable
 
 # Include only endpoints with specific parameters
-mss --openapi https://api.example.com/openapi.json --operation-filter-parameters "userId,email" --transport streamable
+mss --openapi https://api.example.com/openapi.json \
+  --operation-filter-parameters "userId" \
+  --operation-filter-parameters "email" \
+  --transport streamable
 
 # Combine multiple filtering options
 mss --openapi https://api.example.com/openapi.json \
-  --operation-filter-methods GET,POST \
+  --operation-filter-methods GET \
+  --operation-filter-methods POST \
   --operation-filter-paths "/api/users/*" \
-  --operation-filter-status-codes "200,201" \
+  --operation-filter-status-codes "200" \
+  --operation-filter-status-codes "201" \
   --transport streamable
 ```
 
@@ -207,6 +249,7 @@ Create a `.env` file:
 MCP_PORT=3322
 MCP_TRANSPORT=stdio
 MCP_OPENAPI_URL=https://api.example.com/openapi.json
+MCP_ENDPOINT=/mcp
 
 # Authentication configuration
 MCP_AUTH_TYPE=bearer
@@ -246,33 +289,26 @@ API_TOKEN=your-bearer-token-here
 #### Programmatic Usage
 
 ```typescript
-import { createMcpServer } from 'mcp-swagger-server';
+import axios from 'axios';
+import { createMcpServer, startStreamableMcpServer } from 'mcp-swagger-server';
 
-// Basic usage
+const openApiData = (await axios.get('https://api.example.com/openapi.json')).data;
+
 const server = await createMcpServer({
-  openapi: 'https://api.example.com/openapi.json',
-  transport: 'streamable',
-  port: 3322
-});
-
-// With Bearer Token authentication
-const securedServer = await createMcpServer({
-  openapi: 'https://api.example.com/openapi.json',
-  transport: 'streamable',
-  port: 3322,
-  auth: {
+  openApiData,
+  authConfig: {
     type: 'bearer',
     bearer: {
-      token: 'your-token-here',
-      source: 'static'
+      source: 'static',
+      token: 'your-token-here'
     }
   }
 });
 
-await server.start();
+await startStreamableMcpServer(server, '/mcp', 3322);
 ```
 
-## �️ Development
+## 🛠️ Development
 
 ### Build System
 
@@ -321,7 +357,7 @@ pnpm cli --help
 npx @modelcontextprotocol/inspector node dist/index.js
 ```
 
-## � Project Status
+## 📊 Project Status
 
 | Package | Status | Description |
 |---------|--------|-------------|
