@@ -10,6 +10,8 @@ export interface ServerOptions {
   customHeaders?: any;
   debugHeaders?: boolean;
   operationFilter?: any;
+  baseUrl?: string;
+  sourceOrigin?: string;
 }
 
 export interface HttpTransportSecurityOptions {
@@ -37,7 +39,7 @@ export async function createMcpServer(
   );
 
   // 先初始化工具，确保在连接传输层前完成
-  await initTools(server, options.openApiData, options.authConfig, options.customHeaders, options.debugHeaders, options.operationFilter);
+  await initTools(server, options.openApiData, options.authConfig, options.customHeaders, options.debugHeaders, options.operationFilter, options.baseUrl, options.sourceOrigin);
 
   if (lifecycle.registerSignalHandlers !== false) {
     process.on("SIGINT", async () => {
@@ -54,13 +56,15 @@ export async function createMcpServer(
 }
 
 export async function runStdioServer(
-  openApiData?: any, 
+  openApiData?: any,
   authConfig?: AuthConfig,
   customHeaders?: any,
   debugHeaders?: boolean,
-  operationFilter?: any
+  operationFilter?: any,
+  baseUrl?: string,
+  sourceOrigin?: string
 ): Promise<void> {
-  const server = await createMcpServer({ openApiData, authConfig, customHeaders, debugHeaders, operationFilter });
+  const server = await createMcpServer({ openApiData, authConfig, customHeaders, debugHeaders, operationFilter, baseUrl, sourceOrigin });
   await startStdioMcpServer(server);
 }
 
@@ -73,11 +77,13 @@ export async function runSseServer(
   debugHeaders?: boolean,
   operationFilter?: any,
   host?: string,
-  securityOptions: Omit<HttpTransportSecurityOptions, "host"> = {}
+  securityOptions: Omit<HttpTransportSecurityOptions, "host"> = {},
+  baseUrl?: string,
+  sourceOrigin?: string
 ): Promise<void> {
   const createSessionServer = () =>
     createMcpServer(
-      { openApiData, authConfig, customHeaders, debugHeaders, operationFilter },
+      { openApiData, authConfig, customHeaders, debugHeaders, operationFilter, baseUrl, sourceOrigin },
       { registerSignalHandlers: false }
     );
   await startSseMcpServer(createSessionServer, endpoint, port, {
@@ -95,11 +101,13 @@ export async function runStreamableServer(
   debugHeaders?: boolean,
   operationFilter?: any,
   host?: string,
-  securityOptions: Omit<HttpTransportSecurityOptions, "host"> = {}
+  securityOptions: Omit<HttpTransportSecurityOptions, "host"> = {},
+  baseUrl?: string,
+  sourceOrigin?: string
 ): Promise<void> {
   const createSessionServer = () =>
     createMcpServer(
-      { openApiData, authConfig, customHeaders, debugHeaders, operationFilter },
+      { openApiData, authConfig, customHeaders, debugHeaders, operationFilter, baseUrl, sourceOrigin },
       { registerSignalHandlers: false }
     );
   await startStreamableMcpServer(createSessionServer, endpoint, port, {

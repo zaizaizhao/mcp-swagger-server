@@ -113,6 +113,13 @@ function parseCommandLineArgs(): CLIOptions {
         }
         break;
 
+      case '--base-url':
+        if (nextArg && !nextArg.startsWith('-')) {
+          options['base-url'] = nextArg;
+          i++;
+        }
+        break;
+
       case '--watch':
         options.watch = true;
         break;
@@ -298,6 +305,7 @@ function showHelp() {
   -p, --port <number>     指定服务器端口 (1-65535)
   -H, --host <address>    指定服务器主机地址
   -t, --transport <type>  指定传输协议 (stdio|sse|streamable)
+  --base-url <url>        覆盖 API 基础 URL（优先级最高）
   --allowed-host <host>   允许的 Host 头（可重复）
   --allowed-origin <url>  允许的 Origin 头（可重复）
   --disable-dns-rebinding-protection  禁用 Host/Origin 安全校验

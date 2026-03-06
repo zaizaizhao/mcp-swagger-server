@@ -73,12 +73,13 @@ function createResourceLink(uri: string, name?: string, description?: string, mi
  */
 export class OpenAPIToMCPTransformer {
   private spec: OpenAPISpec;
-  private options: Required<Omit<TransformerOptions, 'authConfig' | 'customHeaders' | 'debugHeaders' | 'protectedHeaders' | 'operationFilter'>> & { 
+  private options: Required<Omit<TransformerOptions, 'authConfig' | 'customHeaders' | 'debugHeaders' | 'protectedHeaders' | 'operationFilter' | 'sourceOrigin'>> & {
     authConfig?: AuthConfig;
     customHeaders?: TransformerOptions['customHeaders'];
     debugHeaders?: boolean;
     protectedHeaders?: string[];
     operationFilter?: OperationFilter;
+    sourceOrigin?: string;
   };
   private annotationExtractor: SchemaAnnotationExtractor;
   private authManager?: AuthManager;
@@ -86,8 +87,9 @@ export class OpenAPIToMCPTransformer {
 
   constructor(spec: OpenAPISpec, options: TransformerOptions = {}) {
     this.spec = spec;
+    const resolvedBaseUrl = options.baseUrl || this.getDefaultBaseUrl(options.sourceOrigin);
     this.options = {
-      baseUrl: options.baseUrl || this.getDefaultBaseUrl(),
+      baseUrl: resolvedBaseUrl,
       includeDeprecated: options.includeDeprecated ?? false,
       includeTags: options.includeTags ?? [],
       excludeTags: options.excludeTags ?? [],
@@ -100,6 +102,7 @@ export class OpenAPIToMCPTransformer {
       customHeaders: options.customHeaders ?? undefined,
       debugHeaders: options.debugHeaders ?? false,
       protectedHeaders: options.protectedHeaders ?? [],
+      sourceOrigin: options.sourceOrigin,
       includeFieldAnnotations: options.includeFieldAnnotations ?? true,
       annotationOptions: {
         showFieldTypes: options.annotationOptions?.showFieldTypes ?? true,
@@ -187,13 +190,13 @@ export class OpenAPIToMCPTransformer {
   /**
    * Get default base URL from spec
    */
-  private getDefaultBaseUrl(): string {
+  private getDefaultBaseUrl(sourceOrigin?: string): string {
     if (this.spec.servers && this.spec.servers.length > 0) {
       const serverUrl = this.spec.servers[0].url;
       console.log(`Using default base URL from OpenAPI spec: ${serverUrl}`);
 
       // 处理相对路径和格式化 URL
-      return this.normalizeBaseUrl(serverUrl);
+      return this.normalizeBaseUrl(serverUrl, sourceOrigin);
     }
     console.log('No servers found in OpenAPI spec, using default: http://localhost');
     return 'http://localhost';
@@ -202,7 +205,7 @@ export class OpenAPIToMCPTransformer {
   /**
    * 标准化 Base URL
    */
-  private normalizeBaseUrl(url: string): string {
+  private normalizeBaseUrl(url: string, sourceOrigin?: string): string {
     if (!url) {
       return 'http://localhost';
     }
@@ -212,7 +215,8 @@ export class OpenAPIToMCPTransformer {
 
     // 如果是相对路径，添加默认协议
     if (url.startsWith('/')) {
-      return `http://localhost${url}`;
+      const origin = sourceOrigin || this.options?.sourceOrigin || 'http://localhost';
+      return `${origin}${url}`;
     }
 
     // 如果没有协议，添加 http://

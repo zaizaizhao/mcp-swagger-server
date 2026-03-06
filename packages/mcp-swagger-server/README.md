@@ -4,7 +4,7 @@
 
 [![NPM Version](https://img.shields.io/npm/v/mcp-swagger-server.svg)](https://www.npmjs.com/package/mcp-swagger-server)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5+-blue.svg)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-16+-green.svg)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **将任意 OpenAPI/Swagger 规范转换为 Model Context Protocol (MCP) 工具的强大服务器**
@@ -88,27 +88,26 @@ mcp-swagger-server --openapi ./api-spec.json --transport stdio
 #### 3. 编程式调用
 
 ```javascript
-import { createMcpServer } from 'mcp-swagger-server';
+import { runStreamableServer } from 'mcp-swagger-server';
+import axios from 'axios';
 
-const server = await createMcpServer({
-  openapi: 'https://petstore3.swagger.io/api/v3/openapi.json',
-  transport: 'streamable',
-  port: 3322
-});
+const { data: openApiData } = await axios.get(
+  'https://petstore3.swagger.io/api/v3/openapi.json'
+);
 
-await server.start();
+await runStreamableServer('/mcp', 3322, openApiData);
 ```
 
 ## 🛠️ 主要功能
 
 ### 📋 支持的 OpenAPI 格式
 
-- **OpenAPI 3.x**: 完整支持最新规范 ✅
-- **Swagger 2.0**: 需要先转换为 OpenAPI 3.x 格式 ⚠️
+- **OpenAPI 3.x**: 完整支持 ✅
+- **Swagger 2.0**: 启动时自动转换为 OpenAPI 3.x（包含 `host/basePath`）✅
 - **多种输入**: JSON、YAML、URL、本地文件
 - **实时更新**: 支持 `--watch` 模式自动重载
 
-> **⚠️ 重要提示**: 本工具目前主要支持 OpenAPI 3.x 规范。如果您的 API 使用 Swagger 2.0 格式，建议先使用 [Swagger Editor](https://editor.swagger.io/) 或 [swagger2openapi](https://www.npmjs.com/package/swagger2openapi) 工具将其转换为 OpenAPI 3.x 格式。
+> **提示**: 若规范里使用相对 `servers.url`（如 `/api/v3`），推荐通过远程 URL 加载 OpenAPI 文档，或显式传入 `--base-url`，以确保请求地址包含正确域名与端口。
 
 ### 🔌 传输协议支持
 
@@ -118,7 +117,7 @@ await server.start();
 | `streamable` | Streamable HTTP（推荐） | 远程 MCP / Web 集成 |
 | `sse` | HTTP + Server-Sent Events（兼容模式） | 兼容旧客户端 |
 
-### 🎛️ 命令行选项
+### 🎛️ 常用命令行选项
 
 ```bash
   mss [选项]
@@ -128,11 +127,17 @@ await server.start();
   --transport <type>      传输类型: stdio|streamable|sse (默认: stdio)
   --port <number>         服务器端口 (默认: 3322)
   --host <string>         服务器主机 (默认: 127.0.0.1)
+  --base-url <url>        覆盖 API 基础 URL（优先级最高）
+  --config <file>         JSON 配置文件
+  --env <file>            .env 环境变量文件
+  --auth-type <type>      认证类型: none|bearer
+  --bearer-token <token>  Bearer Token 静态值
+  --bearer-env <varname>  Bearer Token 环境变量名
   --watch                 监听文件变化并自动重载
+  --debug-headers         打印最终请求头（调试）
   --allowed-host <host>   允许的 Host 头（可重复）
   --allowed-origin <url>  允许的 Origin 头（可重复）
   --disable-dns-rebinding-protection  禁用 Host/Origin 安全校验
-  --verbose               显示详细日志
   --help                  显示帮助信息
 ```
 
@@ -145,8 +150,7 @@ await server.start();
 mss \
   --openapi https://petstore3.swagger.io/api/v3/openapi.json \
   --transport streamable \
-  --port 3322 \
-  --verbose
+  --port 3322
 ```
 
 转换后，AI 助手将能够调用 Petstore API 的各种功能，如：
@@ -200,42 +204,48 @@ MCP Swagger Server
 
 ### 常见问题
 
-#### ❌ "Missing required field: openapi" 错误
+#### ❌ 请求地址丢失端口（例如变成 `http://localhost/...`）
 
-**问题**: 当尝试使用 Swagger 2.0 规范时出现此错误。
+**问题**: OpenAPI 文档里 `servers.url` 是相对路径（如 `/v1`）时，请求可能落到错误地址。
 
 ```bash
-# ❌ 错误示例 - Swagger 2.0 格式
-mss --openapi https://petstore.swagger.io/v2/swagger.json
-
-# 错误信息: OpenAPIParseError: Missing required field: openapi
+# 示例：文档源带端口，但 servers 使用相对路径
+mss --openapi http://localhost:65531/openapi.json
+# servers: [{ "url": "/v1" }]
 ```
 
 **解决方案**:
 
-1. **使用 OpenAPI 3.x 规范**:
+1. **优先使用远程 URL 加载 OpenAPI 文档**（会自动推导 origin + 端口）。
+
+2. **显式指定 `--base-url` 覆盖**:
    ```bash
-   # ✅ 正确示例 - OpenAPI 3.x 格式
-   mss --openapi https://petstore3.swagger.io/api/v3/openapi.json
+   mss --openapi ./openapi.json --base-url http://localhost:65531/v1
    ```
 
-2. **转换 Swagger 2.0 到 OpenAPI 3.x**:
-   ```bash
-   # 安装转换工具
-   npm install -g swagger2openapi
-   
-   # 转换 Swagger 2.0 到 OpenAPI 3.x
-   swagger2openapi https://petstore.swagger.io/v2/swagger.json -o petstore-openapi3.json
-   
-   # 使用转换后的文件
-   mss --openapi ./petstore-openapi3.json
+3. **在规范中直接写绝对 `servers.url`**:
+   ```json
+   {
+     "servers": [{ "url": "http://localhost:65531/v1" }]
+   }
    ```
 
-3. **在线转换**:
-   - 访问 [Swagger Editor](https://editor.swagger.io/)
-   - 导入您的 Swagger 2.0 规范
-   - 使用 "Edit" > "Convert to OpenAPI 3" 功能
-   - 导出转换后的 OpenAPI 3.x 文件
+#### ⚙️ Swagger 2.0 兼容说明
+
+默认会自动将 Swagger 2.0 转换为 OpenAPI 3.x（包括 `host/basePath` 到 `servers` 的映射）。
+
+如果遇到转换失败，可先手动转换再导入：
+
+```bash
+# 安装转换工具
+npm install -g swagger2openapi
+
+# 转换 Swagger 2.0 到 OpenAPI 3.x
+swagger2openapi https://petstore.swagger.io/v2/swagger.json -o petstore-openapi3.json
+
+# 使用转换后的文件
+mss --openapi ./petstore-openapi3.json
+```
 
 #### 🔗 验证 API 规范版本
 
@@ -253,14 +263,14 @@ curl -s https://your-api.com/swagger.json | jq '.swagger // .openapi'
 # 测试 API 可访问性
 curl -I https://your-api.com/openapi.json
 
-# 使用详细日志模式
-mss --openapi https://your-api.com/openapi.json --verbose
+# 强制覆盖基础地址测试
+mss --openapi https://your-api.com/openapi.json --base-url https://your-api.com
 ```
 
 ### 📋 OpenAPI 规范要求
 
-- **必需字段**: `openapi` (版本号，如 "3.0.0")
-- **推荐版本**: OpenAPI 3.0.x 或 3.1.x
+- **必需字段**: `openapi`（3.x）或 `swagger`（2.0）
+- **推荐版本**: OpenAPI 3.0.x / 3.1.x，或 Swagger 2.0
 - **文件格式**: JSON 或 YAML
 - **编码格式**: UTF-8
 
@@ -279,7 +289,7 @@ mss --openapi https://your-api.com/openapi.json --verbose
 想要立即体验 MCP Swagger Server？试试这个一键启动命令：
 
 ```bash
-mss --openapi https://petstore3.swagger.io/api/v3/openapi.json --transport streamable --port 3322 --verbose
+mss --openapi https://petstore3.swagger.io/api/v3/openapi.json --transport streamable --port 3322
 ```
 
 然后访问 `http://localhost:3322` 查看生成的 MCP 工具！

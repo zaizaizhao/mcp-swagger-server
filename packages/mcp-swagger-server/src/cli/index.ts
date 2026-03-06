@@ -92,6 +92,10 @@ export async function main() {
   const port = Number(options.port ?? config?.port ?? mergedEnv.MCP_PORT ?? CLI_DEFAULTS.port);
   const host = options.host || config?.host || mergedEnv.MCP_HOST || CLI_DEFAULTS.host;
   const openApiSource = options.openapi || config?.openapi || mergedEnv.MCP_OPENAPI_URL || '';
+  const baseUrl = options['base-url'] || config?.baseUrl || mergedEnv.MCP_BASE_URL || undefined;
+  const sourceOrigin = (!baseUrl && openApiSource && isUrl(openApiSource))
+    ? new URL(openApiSource).origin
+    : undefined;
   const endpoint = options.endpoint || config?.endpoint || mergedEnv.MCP_ENDPOINT || (transport === 'sse' ? '/sse' : '/mcp');
   const autoReload = options.watch || config?.watch || mergedEnv.MCP_AUTO_RELOAD === 'true';
   const autoRestart = options['auto-restart'] || config?.autoRestart || false;
@@ -181,6 +185,13 @@ export async function main() {
     CliDesign.brand.white(openApiSource || '未指定'),
     CliDesign.brand.muted(openApiSource ? (isUrl(openApiSource) ? '远程 URL' : '本地文件') : '')
   ]));
+  if (baseUrl) {
+    console.log(CliDesign.tableRow([
+      CliDesign.brand.secondary('基础URL:'),
+      CliDesign.brand.white(baseUrl),
+      CliDesign.brand.muted('用户指定覆盖')
+    ]));
+  }
   console.log(CliDesign.tableRow([
     CliDesign.brand.secondary('文件监控:'),
     CliDesign.brand.white(autoReload ? '启用' : '禁用'),
@@ -272,7 +283,7 @@ export async function main() {
         case 'stdio':
           console.log(CliDesign.loading('正在启动 STDIO 服务器...'));
           console.log(CliDesign.brand.muted(`  ${CliDesign.icons.chat} 适用于 AI 客户端集成（如 Claude Desktop）`));
-          await runStdioServer(openApiData, authConfig, customHeaders, debugHeaders, operationFilter);
+          await runStdioServer(openApiData, authConfig, customHeaders, debugHeaders, operationFilter, baseUrl, sourceOrigin);
           break;
 
         case 'streamable':
@@ -294,7 +305,9 @@ export async function main() {
               allowedHosts,
               allowedOrigins,
               enableDnsRebindingProtection
-            }
+            },
+            baseUrl,
+            sourceOrigin
           );
           break;
 
@@ -317,7 +330,9 @@ export async function main() {
               allowedHosts,
               allowedOrigins,
               enableDnsRebindingProtection
-            }
+            },
+            baseUrl,
+            sourceOrigin
           );
           break;
 

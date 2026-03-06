@@ -101,6 +101,7 @@ mss [选项]
 --transport, -t     传输协议 (stdio|sse|streamable)
 --port, -p          端口号
 --endpoint, -e      自定义端点路径 (默认 sse:/sse, streamable:/mcp)
+--base-url          覆盖 API 基础 URL（优先级最高）
 --watch, -w         监控文件变化
 --env               环境变量文件路径 (.env)
 
@@ -122,7 +123,7 @@ mss [选项]
 --operation-filter-parameters <param>       参数过滤 (可重复) [示例: userId]
 ```
 
-> 提示：如果要在 `mss` 中直接启动（跳过交互界面），请显式传入 `--openapi` 参数。
+> 提示：如果要在 `mss` 中直接启动（跳过交互界面），请显式传入 `--openapi` 参数。若 OpenAPI 文档中的 `servers.url` 是相对路径（如 `/v1`），请优先使用远程 URL 加载文档，或显式传入 `--base-url`。Swagger 2.0 文档会在启动时自动转换为 OpenAPI 3.x（含 `host/basePath` 映射）。
 
 ### 🔐 Bearer Token 认证
 
@@ -144,6 +145,7 @@ MCP_PORT=3322
 MCP_TRANSPORT=stdio
 MCP_OPENAPI_URL=https://api.example.com/openapi.json
 MCP_ENDPOINT=/mcp
+MCP_BASE_URL=https://api.example.com/v1
 
 # 认证配置
 MCP_AUTH_TYPE=bearer

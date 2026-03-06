@@ -262,6 +262,9 @@ export class ServerManager extends EventEmitter {
 
     // 构建操作过滤器 - 优先使用接口选择配置中的过滤器
     const operationFilter = this.buildOperationFilter(config.interfaceSelection, config.operationFilter, openApiData);
+    const sourceOrigin = (!config.baseUrl && config.openApiUrl && isUrl(config.openApiUrl))
+      ? new URL(config.openApiUrl).origin
+      : undefined;
 
     // 调试输出：显示传递给服务器的operationFilter
     console.log(`\n[DEBUG] 服务器启动配置:`);
@@ -280,7 +283,9 @@ export class ServerManager extends EventEmitter {
         authConfig,
         customHeaders,
         debugHeaders: this.debugMode,
-        operationFilter
+        operationFilter,
+        baseUrl: config.baseUrl,
+        sourceOrigin
       },
       { registerSignalHandlers: false }
     );

@@ -1,5 +1,16 @@
 # mcp-swagger-server
 
+## 1.7.0
+
+### Minor Changes
+
+- Mcp版本升级，修复可能的安全问题，以及多客户端连接问题，base url指向问题，代码重构
+
+### Patch Changes
+
+- Updated dependencies []:
+  - mcp-swagger-parser@1.7.0
+
 ## 1.6.0
 
 ### Minor Changes
@@ -89,7 +100,6 @@
 - Add Bearer token authentication support and improve OpenAPI 3.0 compatibility
 
   This change includes:
-
   - New Bearer token authentication middleware
   - Enhanced OpenAPI 3.0 specification parsing
   - Better error handling for malformed swagger files

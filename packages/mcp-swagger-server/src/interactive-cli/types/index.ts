@@ -73,6 +73,7 @@ export interface SessionConfig {
   name: string;
   description?: string;
   openApiUrl: string;
+  baseUrl?: string;
   transport: TransportType;
   port?: number;
   host?: string;
@@ -235,6 +236,7 @@ export interface WizardData {
   name?: string;
   description?: string;
   openApiUrl?: string;
+  baseUrl?: string;
   transport?: TransportType;
   port?: number;
   host?: string;
@@ -325,6 +327,7 @@ export interface CLIOptions {
   
   // OpenAPI 相关选项
   openapi?: string;
+  'base-url'?: string;
   watch?: boolean;
   endpoint?: string;
   

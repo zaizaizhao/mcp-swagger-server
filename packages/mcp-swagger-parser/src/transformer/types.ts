@@ -243,6 +243,7 @@ export interface OperationFilter {
  */
 export interface TransformerOptions {
   baseUrl?: string;
+  sourceOrigin?: string;
   includeDeprecated?: boolean;
   includeTags?: string[];
   excludeTags?: string[];

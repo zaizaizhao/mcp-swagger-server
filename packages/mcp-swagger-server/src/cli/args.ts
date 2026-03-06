@@ -30,6 +30,7 @@ export const ARGS_CONFIG = {
     'operation-filter-operation-ids': { type: 'string' as const, multiple: true },
     'operation-filter-status-codes': { type: 'string' as const, multiple: true },
     'operation-filter-parameters': { type: 'string' as const, multiple: true },
+    'base-url': { type: 'string' as const },
     'allowed-host': { type: 'string' as const, multiple: true },
     'allowed-origin': { type: 'string' as const, multiple: true },
     'disable-dns-rebinding-protection': { type: 'boolean' as const, default: false },
@@ -55,6 +56,7 @@ export function showHelp() {
   console.log(CliDesign.option('-H, --host <host>', '服务器监听主机', CLI_DEFAULTS.host));
   console.log(CliDesign.option('-e, --endpoint <path>', '自定义端点路径'));
   console.log(CliDesign.option('-o, --openapi <source>', 'OpenAPI 数据源 (URL 或文件路径)'));
+  console.log(CliDesign.option('--base-url <url>', '覆盖 API 基础 URL (优先级最高)'));
   console.log(CliDesign.option('-c, --config <file>', '配置文件路径 (JSON 格式)'));
   console.log(CliDesign.option('--env <file>', '环境变量文件路径 (.env 格式)'));
   

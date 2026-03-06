@@ -117,6 +117,7 @@ export class InteractiveCLI {
       this.options.port ||
       this.options.host ||
       this.options.endpoint ||
+      this.options['base-url'] ||
       this.options.watch ||
       this.options['auth-type'] ||
       this.options['bearer-token'] ||
@@ -763,6 +764,10 @@ ${theme.icons.stats} 查看状态和统计信息`;;
       const transport = this.options.transport || config?.transport || mergedEnv.MCP_TRANSPORT || CLI_DEFAULTS.transport;
       const port = Number(this.options.port ?? config?.port ?? mergedEnv.MCP_PORT ?? CLI_DEFAULTS.port);
       const openApiSource = this.options.openapi || config?.openapi || mergedEnv.MCP_OPENAPI_URL || '';
+      const baseUrl = this.options['base-url'] || config?.baseUrl || mergedEnv.MCP_BASE_URL || undefined;
+      const sourceOrigin = (!baseUrl && openApiSource && isUrl(openApiSource))
+        ? new URL(openApiSource).origin
+        : undefined;
       const endpoint = this.options.endpoint || config?.endpoint || (transport === 'sse' ? '/sse' : '/mcp');
       const host = this.options.host || mergedEnv.MCP_HOST || CLI_DEFAULTS.host;
 
@@ -833,7 +838,7 @@ ${theme.icons.stats} 查看状态和统计信息`;;
       const operationFilter = parseOperationFilter(resolvedOptions, config);
 
       // 显示配置信息
-      await this.showDirectModeConfig({ transport, port, host, openApiSource, authConfig });
+      await this.showDirectModeConfig({ transport, port, host, openApiSource, baseUrl, authConfig });
       
       // 加载OpenAPI数据
       let openApiData = null;
@@ -865,7 +870,7 @@ ${theme.icons.stats} 查看状态和统计信息`;;
         case 'stdio':
           console.log(chalk.yellow('正在启动 STDIO 服务器...'));
           console.log(chalk.gray('  💬 适用于 AI 客户端集成（如 Claude Desktop）'));
-          await runStdioServer(openApiData, authConfig, customHeaders, debugHeaders, operationFilter);
+          await runStdioServer(openApiData, authConfig, customHeaders, debugHeaders, operationFilter, baseUrl, sourceOrigin);
           break;
           
         case 'streamable':
@@ -887,7 +892,9 @@ ${theme.icons.stats} 查看状态和统计信息`;;
               allowedHosts,
               allowedOrigins,
               enableDnsRebindingProtection
-            }
+            },
+            baseUrl,
+            sourceOrigin
           );
           break;
           
@@ -910,7 +917,9 @@ ${theme.icons.stats} 查看状态和统计信息`;;
               allowedHosts,
               allowedOrigins,
               enableDnsRebindingProtection
-            }
+            },
+            baseUrl,
+            sourceOrigin
           );
           break;
           
@@ -946,9 +955,10 @@ ${theme.icons.stats} 查看状态和统计信息`;;
     port: number;
     host: string;
     openApiSource?: string;
+    baseUrl?: string;
     authConfig: AuthConfig;
   }): Promise<void> {
-    const { transport, port, host, openApiSource, authConfig } = options;
+    const { transport, port, host, openApiSource, baseUrl, authConfig } = options;
     
     console.log(chalk.blue('📋 服务器配置'));
     console.log('-'.repeat(20));
@@ -956,6 +966,9 @@ ${theme.icons.stats} 查看状态和统计信息`;;
     console.log(`端口号: ${chalk.white(port.toString())} ${chalk.gray(transport === 'stdio' ? '(STDIO 模式不使用端口)' : '')}`);
     console.log(`主机地址: ${chalk.white(host)}`);
     console.log(`数据源: ${chalk.white(openApiSource || '未指定')} ${chalk.gray(openApiSource ? (isUrl(openApiSource) ? '远程 URL' : '本地文件') : '')}`);
+    if (baseUrl) {
+      console.log(`基础 URL: ${chalk.white(baseUrl)} ${chalk.gray('(显式覆盖)')}`);
+    }
     
     // 显示认证配置
     console.log(`认证类型: ${chalk.white(authConfig.type.toUpperCase())}`);
