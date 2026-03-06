@@ -51,6 +51,13 @@ export class Transformer implements ITransformer {
 
   async transformFromUrl(url: string, options: TransformOptions = {}): Promise<MCPTool[]> {
     const mergedOptions = { ...this.defaultOptions, ...options };
+    const sourceOrigin = (!mergedOptions.baseUrl && !mergedOptions.sourceOrigin)
+      ? this.extractSourceOrigin(url)
+      : mergedOptions.sourceOrigin;
+    const effectiveOptions: TransformOptions = {
+      ...mergedOptions,
+      sourceOrigin
+    };
     console.log(`🌐 Loading OpenAPI specification from URL: ${url}`);
 
     try {
@@ -72,7 +79,7 @@ export class Transformer implements ITransformer {
       console.log(`✅ Loaded OpenAPI spec from URL: ${parseResult.spec.info.title} v${parseResult.spec.info.version}`);
 
       // 转换为MCP工具
-      return await this.transformFromOpenAPI(parseResult.spec, mergedOptions);
+      return await this.transformFromOpenAPI(parseResult.spec, effectiveOptions);
 
     } catch (error: any) {
       console.error(`❌ Failed to load OpenAPI spec from URL: ${url}`, error);
@@ -88,6 +95,7 @@ export class Transformer implements ITransformer {
       // 使用mcp-swagger-parser进行转换
       const transformerOptions: TransformerOptions = {
         baseUrl: options.baseUrl,
+        sourceOrigin: options.sourceOrigin,
         includeDeprecated: options.includeDeprecated,
         requestTimeout: options.requestTimeout,
         pathPrefix: options.pathPrefix,
@@ -148,6 +156,14 @@ export class Transformer implements ITransformer {
     } catch (error: any) {
       console.error('❌ Failed to transform OpenAPI spec:', error);
       throw new Error(`OpenAPI transformation failed: ${error?.message || 'Unknown error'}`);
+    }
+  }
+
+  private extractSourceOrigin(url: string): string | undefined {
+    try {
+      return new URL(url).origin;
+    } catch {
+      return undefined;
     }
   }
 

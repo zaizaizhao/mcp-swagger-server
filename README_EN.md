@@ -116,6 +116,7 @@ mss [options]
 --transport, -t     Transport protocol (stdio|sse|streamable)
 --port, -p          Port number
 --endpoint, -e      Custom endpoint path (default: sse=/sse, streamable=/mcp)
+--base-url          Override API base URL (highest priority)
 --watch, -w         Monitor file changes
 --env               Environment file path (.env)
 
@@ -137,7 +138,7 @@ mss [options]
 --operation-filter-parameters <param>       Parameter filtering (repeatable) [Example: userId]
 ```
 
-> Note: to use direct mode with `mss`, you must pass `--openapi`.
+> Note: to use direct mode with `mss`, you must pass `--openapi`. If your OpenAPI spec uses relative `servers.url` values (for example `/v1`), prefer loading from a remote URL, or set `--base-url` explicitly. Swagger 2.0 specs are auto-converted to OpenAPI 3.x on startup (including `host/basePath` mapping).
 
 #### Examples
 
@@ -250,6 +251,7 @@ MCP_PORT=3322
 MCP_TRANSPORT=stdio
 MCP_OPENAPI_URL=https://api.example.com/openapi.json
 MCP_ENDPOINT=/mcp
+MCP_BASE_URL=https://api.example.com/v1
 
 # Authentication configuration
 MCP_AUTH_TYPE=bearer

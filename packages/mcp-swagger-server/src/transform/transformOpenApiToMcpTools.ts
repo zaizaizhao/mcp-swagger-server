@@ -13,7 +13,8 @@ export async function transformOpenApiToMcpTools(
   authConfig?: AuthConfig,
   customHeaders?: any,
   debugHeaders?: boolean,
-  operationFilter?: any
+  operationFilter?: any,
+  sourceOrigin?: string
 ): Promise<MCPTool[]> {
   try {
     let parseResult: any;
@@ -86,6 +87,7 @@ export async function transformOpenApiToMcpTools(
     // 转换为 MCP 工具
     const tools = transformToMCPTools(parseResult.spec, {
       baseUrl,
+      sourceOrigin,
       includeDeprecated: false,
       requestTimeout: 30000,
       pathPrefix: '',

@@ -1,8 +1,11 @@
 {
   "$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
-    "changelog": ["@changesets/changelog-github", {
-    "repo": "zaizaizhao/mcp-swagger-server"
-  }],
+  "changelog": [
+    "@changesets/changelog-github",
+    {
+      "repo": "zaizaizhao/mcp-swagger-server"
+    }
+  ],
   "commit": false,
   "fixed": [],
   "linked": [],

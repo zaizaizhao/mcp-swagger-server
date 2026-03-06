@@ -4,7 +4,7 @@
 
 [![NPM Version](https://img.shields.io/npm/v/mcp-swagger-server.svg)](https://www.npmjs.com/package/mcp-swagger-server)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5+-blue.svg)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-16+-green.svg)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **A powerful server that transforms any OpenAPI/Swagger specification into Model Context Protocol (MCP) tools**
@@ -88,27 +88,26 @@ Add to your MCP client configuration file:
 #### 3. Programmatic Usage
 
 ```javascript
-import { createMcpServer } from 'mcp-swagger-server';
+import { runStreamableServer } from 'mcp-swagger-server';
+import axios from 'axios';
 
-const server = await createMcpServer({
-  openapi: 'https://petstore3.swagger.io/api/v3/openapi.json',
-  transport: 'streamable',
-  port: 3322
-});
+const { data: openApiData } = await axios.get(
+  'https://petstore3.swagger.io/api/v3/openapi.json'
+);
 
-await server.start();
+await runStreamableServer('/mcp', 3322, openApiData);
 ```
 
 ## 🛠️ Main Features
 
 ### 📋 Supported OpenAPI Formats
 
-- **OpenAPI 3.x**: Full support for the latest specification ✅
-- **Swagger 2.0**: Requires conversion to OpenAPI 3.x format first ⚠️
+- **OpenAPI 3.x**: Fully supported ✅
+- **Swagger 2.0**: Auto-converted to OpenAPI 3.x on startup (including `host/basePath`) ✅
 - **Multiple Inputs**: JSON, YAML, URL, local files
 - **Real-time Updates**: Support for `--watch` mode auto-reload
 
-> **⚠️ Important Notice**: This tool currently primarily supports OpenAPI 3.x specifications. If your API uses Swagger 2.0 format, it's recommended to first convert it to OpenAPI 3.x format using [Swagger Editor](https://editor.swagger.io/) or [swagger2openapi](https://www.npmjs.com/package/swagger2openapi) tool.
+> **Note**: If your spec uses relative `servers.url` values (for example `/api/v3`), prefer loading the OpenAPI document from a remote URL, or set `--base-url` explicitly to keep the correct host and port.
 
 ### 🔌 Transport Protocol Support
 
@@ -118,7 +117,7 @@ await server.start();
 | `streamable` | Streamable HTTP (recommended) | Remote MCP / Web integration |
 | `sse` | HTTP + Server-Sent Events (legacy) | Legacy client compatibility |
 
-### 🎛️ Command Line Options
+### 🎛️ Common CLI Options
 
 ```bash
 mss [options]
@@ -128,25 +127,30 @@ Options:
   --transport <type>      Transport type: stdio|streamable|sse (default: stdio)
   --port <number>         Server port (default: 3322)
   --host <string>         Server host (default: 127.0.0.1)
+  --base-url <url>        Override API base URL (highest priority)
+  --config <file>         JSON config file
+  --env <file>            .env file
+  --auth-type <type>      Auth type: none|bearer
+  --bearer-token <token>  Bearer token static value
+  --bearer-env <varname>  Bearer token environment variable name
   --watch                 Watch for file changes and auto-reload
+  --debug-headers         Print final request headers for debugging
   --allowed-host <host>   Allowed Host header (repeatable)
   --allowed-origin <url>  Allowed Origin header (repeatable)
   --disable-dns-rebinding-protection  Disable Host/Origin header protection
-  --verbose               Show verbose logging
   --help                  Show help information
 ```
 
 ## 📚 Usage Examples
 
-### � Swagger Petstore API Integration
+### 🐙 Swagger Petstore API Integration
 
 ```bash
 # Start Swagger Petstore API MCP server
 mss \
   --openapi https://petstore3.swagger.io/api/v3/openapi.json \
   --transport streamable \
-  --port 3322 \
-  --verbose
+  --port 3322
 ```
 
 After conversion, AI assistants can call various Petstore API functions, such as:
@@ -181,13 +185,19 @@ mss \
 
 ```bash
 # Set default OpenAPI specification
-export MCP_SWAGGER_OPENAPI_URL="https://api.example.com/openapi.json"
+export MCP_OPENAPI_URL="https://api.example.com/openapi.json"
 
 # Set default transport type
-export MCP_SWAGGER_TRANSPORT="streamable"
+export MCP_TRANSPORT="streamable"
 
 # Set default port
-export MCP_SWAGGER_PORT="3322"
+export MCP_PORT="3322"
+
+# Optional: set default base URL override
+export MCP_BASE_URL="https://api.example.com/v1"
+
+# Optional: bearer token
+export API_TOKEN="your-token-here"
 ```
 
 ### Configuration File
@@ -232,46 +242,47 @@ MCP Swagger Server
     └── SSE (legacy compatibility)
 ```
 
-## � Troubleshooting
+## 🔍 Troubleshooting
 
 ### Common Issues
 
-#### ❌ "Missing required field: openapi" Error
+#### ❌ Request URL loses the original port (for example `http://localhost/...`)
 
-**Problem**: This error occurs when trying to use Swagger 2.0 specifications.
+**Problem**: This usually happens when `servers.url` in the OpenAPI document is relative (for example `/v1`).
 
 ```bash
-# ❌ Error example - Swagger 2.0 format
-mss --openapi https://petstore.swagger.io/v2/swagger.json
-
-# Error message: OpenAPIParseError: Missing required field: openapi
+# Example: source URL has a port but servers uses a relative URL
+mss --openapi http://localhost:65531/openapi.json
+# servers: [{ "url": "/v1" }]
 ```
 
 **Solutions**:
 
-1. **Use OpenAPI 3.x specifications**:
+1. **Prefer loading OpenAPI from a remote URL** so the origin can be inferred automatically.
+
+2. **Set `--base-url` explicitly**:
    ```bash
-   # ✅ Correct example - OpenAPI 3.x format
-   mss --openapi https://petstore3.swagger.io/api/v3/openapi.json
+   mss --openapi ./openapi.json --base-url http://localhost:65531/v1
    ```
 
-2. **Convert Swagger 2.0 to OpenAPI 3.x**:
-   ```bash
-   # Install conversion tool
-   npm install -g swagger2openapi
-   
-   # Convert Swagger 2.0 to OpenAPI 3.x
-   swagger2openapi https://petstore.swagger.io/v2/swagger.json -o petstore-openapi3.json
-   
-   # Use the converted file
-   mss --openapi ./petstore-openapi3.json
+3. **Use absolute `servers.url` in your spec**:
+   ```json
+   {
+     "servers": [{ "url": "http://localhost:65531/v1" }]
+   }
    ```
 
-3. **Online conversion**:
-   - Visit [Swagger Editor](https://editor.swagger.io/)
-   - Import your Swagger 2.0 specification
-   - Use "Edit" > "Convert to OpenAPI 3" feature
-   - Export the converted OpenAPI 3.x file
+#### ⚙️ Swagger 2.0 compatibility
+
+Swagger 2.0 specs are auto-converted to OpenAPI 3.x by default (including mapping `host/basePath` to `servers`).
+
+If conversion fails, manually convert first:
+
+```bash
+npm install -g swagger2openapi
+swagger2openapi https://petstore.swagger.io/v2/swagger.json -o petstore-openapi3.json
+mss --openapi ./petstore-openapi3.json
+```
 
 #### 🔗 Verify API Specification Version
 
@@ -289,18 +300,18 @@ curl -s https://your-api.com/swagger.json | jq '.swagger // .openapi'
 # Test API accessibility
 curl -I https://your-api.com/openapi.json
 
-# Use verbose logging mode
-mss --openapi https://your-api.com/openapi.json --verbose
+# Force a base URL override for verification
+mss --openapi https://your-api.com/openapi.json --base-url https://your-api.com
 ```
 
 ### 📋 OpenAPI Specification Requirements
 
-- **Required Fields**: `openapi` (version number, e.g., "3.0.0")
-- **Recommended Versions**: OpenAPI 3.0.x or 3.1.x
+- **Required Fields**: `openapi` (3.x) or `swagger` (2.0)
+- **Recommended Versions**: OpenAPI 3.0.x / 3.1.x, or Swagger 2.0
 - **File Formats**: JSON or YAML
 - **Encoding**: UTF-8
 
-## �📖 Best Practices
+## 📖 Best Practices
 
 ### 🔒 Security Recommendations
 
@@ -331,7 +342,7 @@ This project is open-sourced under the [MIT License](LICENSE). Feel free to use 
 Want to experience MCP Swagger Server immediately? Try this one-click launch command:
 
 ```bash
-mss --openapi https://petstore3.swagger.io/api/v3/openapi.json --transport streamable --port 3322 --verbose
+mss --openapi https://petstore3.swagger.io/api/v3/openapi.json --transport streamable --port 3322
 ```
 
 Then visit `http://localhost:3322` to see the generated MCP tools!

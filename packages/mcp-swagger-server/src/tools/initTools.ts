@@ -5,12 +5,14 @@ import { AuthConfig } from 'mcp-swagger-parser';
 import type { CallToolResult, ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 
 export async function initTools(
-  server: McpServer, 
-  openApiData?: any, 
+  server: McpServer,
+  openApiData?: any,
   authConfig?: AuthConfig,
   customHeaders?: any,
   debugHeaders?: boolean,
-  operationFilter?: any
+  operationFilter?: any,
+  baseUrl?: string,
+  sourceOrigin?: string
 ) {
     console.log("🔧 初始化 MCP 工具...");
     
@@ -22,13 +24,14 @@ export async function initTools(
         
         // 从 OpenAPI 规范生成工具
         const tools = await transformOpenApiToMcpTools(
-          undefined, 
-          undefined, 
-          openApiData, 
-          authConfig, 
-          customHeaders, 
+          undefined,
+          baseUrl,
+          openApiData,
+          authConfig,
+          customHeaders,
           debugHeaders,
-          operationFilter
+          operationFilter,
+          sourceOrigin
         );
    
         

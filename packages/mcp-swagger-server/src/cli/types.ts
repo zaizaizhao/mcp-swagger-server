@@ -5,6 +5,7 @@ export interface ServerOptions {
   port: string;
   host?: string;
   endpoint?: string;
+  'base-url'?: string;
   autoRestart?: boolean;
   maxRetries?: string;
   retryDelay?: string;
@@ -37,6 +38,7 @@ export interface ConfigFile {
   host?: string;
   endpoint?: string;
   openapi?: string;
+  baseUrl?: string;
   watch?: boolean;
   auth?: AuthConfig;
   autoRestart?: boolean;
@@ -66,6 +68,7 @@ export interface ConfigFile {
 
 export interface ParsedOptions extends ServerOptions {
   help?: boolean;
+  'base-url'?: string;
   'auth-type'?: string;
   'bearer-token'?: string;
   'bearer-env'?: string;
