@@ -1,8 +1,34 @@
+import { createHash } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { transformOpenApiToMcpTools, MCPTool } from "../transform";
 import { AuthConfig } from 'mcp-swagger-parser';
 import type { CallToolResult, ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
+
+interface ToolInitializationOptions {
+  openApiData?: any;
+  authConfig?: AuthConfig;
+  customHeaders?: any;
+  debugHeaders?: boolean;
+  operationFilter?: any;
+  baseUrl?: string;
+  sourceOrigin?: string;
+}
+
+interface PreparedToolRegistration {
+  tool: MCPTool;
+  registration: {
+    title?: string;
+    description: string;
+    inputSchema: z.ZodRawShape;
+    annotations?: ToolAnnotations;
+  };
+}
+
+const MAX_PREPARED_TOOL_CACHE_ENTRIES = 16;
+const preparedToolCache = new Map<string, Promise<PreparedToolRegistration[]>>();
+const objectCacheTokens = new WeakMap<object, number>();
+let nextObjectCacheToken = 1;
 
 export async function initTools(
   server: McpServer,
@@ -22,25 +48,18 @@ export async function initTools(
             console.log("⚠️ 未提供 OpenAPI 数据，将尝试使用默认的 swagger.json 文件（若存在）");
         }
         
-        // 从 OpenAPI 规范生成工具
-        const tools = await transformOpenApiToMcpTools(
-          undefined,
-          baseUrl,
+        const preparedTools = await getPreparedTools({
           openApiData,
           authConfig,
           customHeaders,
           debugHeaders,
           operationFilter,
-          sourceOrigin
-        );
-   
-        
-        console.log(`📦 成功生成 ${tools.length} 个工具`);
-          // 打印工具摘要
-        printToolsSummary(tools);
+          baseUrl,
+          sourceOrigin,
+        });
         
         // 批量注册工具到 MCP Server
-        await registerTools(server, tools);
+        await registerTools(server, preparedTools);
         
         console.log("✅ 工具初始化完成");
         
@@ -51,8 +70,8 @@ export async function initTools(
         if ((error as any)?.code === 'VALIDATION_ERROR' && !openApiData) {
             console.log("🔄 尝试使用默认配置重新初始化...");
             try {
-                const tools = await transformOpenApiToMcpTools();
-                await registerTools(server, tools);
+                const preparedTools = await getPreparedTools();
+                await registerTools(server, preparedTools);
                 console.log("✅ 使用默认配置初始化完成");
                 return;
             } catch (fallbackError) {
@@ -62,6 +81,125 @@ export async function initTools(
         
         throw error;
     }
+}
+
+function getObjectCacheToken(value: object): number {
+    const cachedToken = objectCacheTokens.get(value);
+    if (cachedToken !== undefined) {
+        return cachedToken;
+    }
+
+    const nextToken = nextObjectCacheToken++;
+    objectCacheTokens.set(value, nextToken);
+    return nextToken;
+}
+
+function getCacheToken(value: unknown): string {
+    if (value === undefined) {
+        return 'undefined';
+    }
+
+    if (value === null) {
+        return 'null';
+    }
+
+    switch (typeof value) {
+        case 'string':
+            return `string:${createHash('sha256').update(value).digest('hex')}`;
+        case 'number':
+        case 'boolean':
+        case 'bigint':
+            return `${typeof value}:${String(value)}`;
+        case 'object':
+        case 'function':
+            return `ref:${getObjectCacheToken(value as object)}`;
+        default:
+            return `${typeof value}:${String(value)}`;
+    }
+}
+
+function buildPreparedToolCacheKey(options: ToolInitializationOptions): string | undefined {
+    if (options.openApiData === undefined) {
+        return undefined;
+    }
+
+    return [
+        `openApi=${getCacheToken(options.openApiData)}`,
+        `auth=${getCacheToken(options.authConfig)}`,
+        `customHeaders=${getCacheToken(options.customHeaders)}`,
+        `debugHeaders=${getCacheToken(Boolean(options.debugHeaders))}`,
+        `operationFilter=${getCacheToken(options.operationFilter)}`,
+        `baseUrl=${getCacheToken(options.baseUrl)}`,
+        `sourceOrigin=${getCacheToken(options.sourceOrigin)}`
+    ].join('|');
+}
+
+function prunePreparedToolCache(): void {
+    while (preparedToolCache.size > MAX_PREPARED_TOOL_CACHE_ENTRIES) {
+        const oldestCacheKey = preparedToolCache.keys().next().value;
+        if (!oldestCacheKey) {
+            break;
+        }
+
+        preparedToolCache.delete(oldestCacheKey);
+    }
+}
+
+async function buildPreparedTools(
+    options: ToolInitializationOptions = {}
+): Promise<PreparedToolRegistration[]> {
+    const tools = await transformOpenApiToMcpTools(
+        undefined,
+        options.baseUrl,
+        options.openApiData,
+        options.authConfig,
+        options.customHeaders,
+        options.debugHeaders,
+        options.operationFilter,
+        options.sourceOrigin
+    );
+
+    console.log(`📦 成功生成 ${tools.length} 个工具`);
+    printToolsSummary(tools);
+
+    return tools.map((tool) => ({
+        tool,
+        registration: {
+            title: tool.metadata ? `${tool.metadata.method} ${tool.metadata.path}` : undefined,
+            description: tool.description,
+            inputSchema: convertInputSchemaToZod(tool.inputSchema),
+            annotations: buildToolAnnotations(tool.metadata)
+        }
+    }));
+}
+
+async function getPreparedTools(
+    options: ToolInitializationOptions = {}
+): Promise<PreparedToolRegistration[]> {
+    const cacheKey = buildPreparedToolCacheKey(options);
+    if (!cacheKey) {
+        return buildPreparedTools(options);
+    }
+
+    const cachedPreparedTools = preparedToolCache.get(cacheKey);
+    if (cachedPreparedTools) {
+        preparedToolCache.delete(cacheKey);
+        preparedToolCache.set(cacheKey, cachedPreparedTools);
+
+        const preparedTools = await cachedPreparedTools;
+        console.log(`♻️ 复用缓存的 ${preparedTools.length} 个 MCP 工具定义`);
+        return preparedTools;
+    }
+
+    const preparedToolsPromise = buildPreparedTools(options).catch((error) => {
+        preparedToolCache.delete(cacheKey);
+        throw error;
+    });
+
+    preparedToolCache.set(cacheKey, preparedToolsPromise);
+    prunePreparedToolCache();
+
+    return preparedToolsPromise;
 }
 
 /**
@@ -115,22 +253,17 @@ function printToolsSummary(tools: MCPTool[]) {
  * @param server MCP Server 实例
  * @param tools 从 OpenAPI 转换的工具列表
  */
-async function registerTools(server: McpServer, tools: MCPTool[]): Promise<void> {
-    console.log(`🔗 开始注册 ${tools.length} 个工具到 MCP Server...`);
+async function registerTools(server: McpServer, preparedTools: PreparedToolRegistration[]): Promise<void> {
+    console.log(`🔗 开始注册 ${preparedTools.length} 个工具到 MCP Server...`);
     
     let successCount = 0;
     let errorCount = 0;
     
-    for (const tool of tools) {
+    for (const { tool, registration } of preparedTools) {
         try {            // 使用 MCP Server 的 registerTool API 注册工具
             server.registerTool(
                 tool.name,
-                {
-                    title: tool.metadata ? `${tool.metadata.method} ${tool.metadata.path}` : undefined,
-                    description: tool.description,
-                    inputSchema: convertInputSchemaToZod(tool.inputSchema),
-                    annotations: buildToolAnnotations(tool.metadata)
-                },
+                registration,
                 async (args: Record<string, unknown>): Promise<CallToolResult> =>
                     (await tool.handler(args)) as unknown as CallToolResult
             );
@@ -147,7 +280,7 @@ async function registerTools(server: McpServer, tools: MCPTool[]): Promise<void>
     console.log(`\n📊 工具注册完成:`);
     console.log(`  ✅ 成功: ${successCount} 个`);
     console.log(`  ❌ 失败: ${errorCount} 个`);
-    console.log(`  📦 总计: ${tools.length} 个工具`);
+    console.log(`  📦 总计: ${preparedTools.length} 个工具`);
 }
 
 /**

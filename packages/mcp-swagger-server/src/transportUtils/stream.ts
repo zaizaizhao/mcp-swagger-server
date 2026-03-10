@@ -12,6 +12,7 @@ import {
   createBaseHttpServer,
   type HttpSecurityOptions,
   type RequestHandlers,
+  writeJsonRpcErrorResponse,
 } from "../tools/httpServer";
 import { getBody } from "../tools/getBody";
 
@@ -242,11 +243,17 @@ export async function startStreamableMcpServer(
     res: ServerResponse
   ) => {
     if (!req.url) {
-      res.writeHead(400).end("No URL");
+      writeJsonRpcErrorResponse(res, 400, -32000, "Bad Request: No URL");
       return;
     }
 
-    const reqUrl = new URL(req.url, "http://localhost");
+    let reqUrl: URL;
+    try {
+      reqUrl = new URL(req.url, "http://localhost");
+    } catch {
+      writeJsonRpcErrorResponse(res, 400, -32000, "Bad Request: Invalid URL");
+      return;
+    }
 
     // Handle POST requests to endpoint
     if (req.method === "POST" && reqUrl.pathname === endpoint) {
@@ -258,7 +265,7 @@ export async function startStreamableMcpServer(
         if (sessionId) {
           const activeSession = activeSessions[sessionId];
           if (!activeSession) {
-            res.writeHead(404).end("No active transport");
+            writeJsonRpcErrorResponse(res, 404, -32001, "Session not found");
             return;
           }
 
@@ -268,16 +275,11 @@ export async function startStreamableMcpServer(
 
         // 2. If this is an initialize request, create a new isolated session server.
         if (!isInitializeRequest(body)) {
-          res.setHeader("Content-Type", "application/json");
-          res.writeHead(400).end(
-            JSON.stringify({
-              error: {
-                code: -32000,
-                message: "Bad Request: No valid session ID provided",
-              },
-              id: null,
-              jsonrpc: "2.0",
-            })
+          writeJsonRpcErrorResponse(
+            res,
+            400,
+            -32000,
+            "Bad Request: No valid session ID provided"
           );
           return;
         }
@@ -314,14 +316,7 @@ export async function startStreamableMcpServer(
         await transport.handleRequest(req, res, body);
       } catch (error) {
         console.error("Error handling request:", error);
-        res.setHeader("Content-Type", "application/json");
-        res.writeHead(500).end(
-          JSON.stringify({
-            error: { code: -32603, message: "Internal Server Error" },
-            id: null,
-            jsonrpc: "2.0",
-          })
-        );
+        writeJsonRpcErrorResponse(res, 500, -32603, "Internal Server Error");
       }
       return;
     }
@@ -330,13 +325,18 @@ export async function startStreamableMcpServer(
     if (req.method === "GET" && reqUrl.pathname === endpoint) {
       const sessionId = getHeaderValue(req, "mcp-session-id");
       if (!sessionId) {
-        res.writeHead(400).end("No sessionId");
+        writeJsonRpcErrorResponse(
+          res,
+          400,
+          -32000,
+          "Bad Request: Mcp-Session-Id header is required"
+        );
         return;
       }
 
       const activeSession = activeSessions[sessionId];
       if (!activeSession) {
-        res.writeHead(404).end("No active transport");
+        writeJsonRpcErrorResponse(res, 404, -32001, "Session not found");
         return;
       }
 
@@ -355,13 +355,18 @@ export async function startStreamableMcpServer(
     if (req.method === "DELETE" && reqUrl.pathname === endpoint) {
       const sessionId = getHeaderValue(req, "mcp-session-id");
       if (!sessionId) {
-        res.writeHead(400).end("Invalid or missing sessionId");
+        writeJsonRpcErrorResponse(
+          res,
+          400,
+          -32000,
+          "Bad Request: Mcp-Session-Id header is required"
+        );
         return;
       }
 
       const activeSession = activeSessions[sessionId];
       if (!activeSession) {
-        res.writeHead(404).end("No active transport");
+        writeJsonRpcErrorResponse(res, 404, -32001, "Session not found");
         return;
       }
 
@@ -370,13 +375,13 @@ export async function startStreamableMcpServer(
         await closeSession(sessionId);
       } catch (error) {
         console.error("Error handling delete request:", error);
-        res.writeHead(500).end("Error handling delete request");
+        writeJsonRpcErrorResponse(res, 500, -32603, "Internal Server Error");
       }
       return;
     }
 
     // If we reach here, no handler matched
-    res.writeHead(404).end("Not found");
+    writeJsonRpcErrorResponse(res, 404, -32000, "Not Found: Unsupported MCP endpoint");
   };
 
   const cleanup = () => {
