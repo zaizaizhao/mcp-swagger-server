@@ -50,6 +50,117 @@ export interface RequestHandlers {
   security?: HttpSecurityOptions;
 }
 
+type JsonRpcErrorResponse = {
+  jsonrpc: "2.0";
+  error: {
+    code: number;
+    message: string;
+    data?: unknown;
+  };
+  id: null;
+};
+
+type JsonErrorResponse = {
+  error: {
+    code: string;
+    message: string;
+    data?: unknown;
+  };
+};
+
+export function writeJsonErrorResponse(
+  res: ServerResponse,
+  status: number,
+  code: string,
+  message: string,
+  data?: unknown,
+  headers: Record<string, string> = {}
+): void {
+  const payload: JsonErrorResponse = {
+    error: {
+      code,
+      message,
+    },
+  };
+
+  if (data !== undefined) {
+    payload.error.data = data;
+  }
+
+  res.setHeader("Content-Type", "application/json");
+  for (const [name, value] of Object.entries(headers)) {
+    res.setHeader(name, value);
+  }
+  res.writeHead(status).end(JSON.stringify(payload));
+}
+
+export function writeJsonRpcErrorResponse(
+  res: ServerResponse,
+  status: number,
+  code: number,
+  message: string,
+  data?: unknown
+): void {
+  const payload: JsonRpcErrorResponse = {
+    jsonrpc: "2.0",
+    error: {
+      code,
+      message,
+    },
+    id: null,
+  };
+
+  if (data !== undefined) {
+    payload.error.data = data;
+  }
+
+  res.setHeader("Content-Type", "application/json");
+  res.writeHead(status).end(JSON.stringify(payload));
+}
+
+function getRequestPathname(req: IncomingMessage): string | undefined {
+  if (!req.url) {
+    return undefined;
+  }
+
+  try {
+    return new URL(req.url, "http://localhost").pathname;
+  } catch {
+    return undefined;
+  }
+}
+
+function buildAuthDiscoveryPaths(endpoint: string): Set<string> {
+  const normalizedEndpoint =
+    endpoint !== "/" && endpoint.endsWith("/") ? endpoint.slice(0, -1) : endpoint;
+
+  const paths = [
+    "/.well-known/oauth-protected-resource",
+    "/.well-known/oauth-authorization-server",
+    "/.well-known/openid-configuration",
+  ];
+
+  if (normalizedEndpoint && normalizedEndpoint !== "/") {
+    paths.push(
+      `/.well-known/oauth-protected-resource${normalizedEndpoint}`,
+      `/.well-known/oauth-authorization-server${normalizedEndpoint}`,
+      `${normalizedEndpoint}/.well-known/oauth-authorization-server`,
+      `/.well-known/openid-configuration${normalizedEndpoint}`,
+      `${normalizedEndpoint}/.well-known/openid-configuration`
+    );
+  }
+
+  return new Set(paths);
+}
+
+function requestMatchesAuthDiscovery(
+  req: IncomingMessage,
+  authDiscoveryPaths: ReadonlySet<string>
+): boolean {
+  const pathname = getRequestPathname(req);
+  return pathname ? authDiscoveryPaths.has(pathname) : false;
+}
+
 /**
  * Normalizes host values for safe host-header matching.
  */
@@ -258,6 +369,32 @@ function handleCommonEndpoints(
   return false;
 }
 
+function requestMatchesEndpoint(req: IncomingMessage, endpoint: string): boolean {
+  return getRequestPathname(req) === endpoint;
+}
+
+function handleAuthDiscoveryEndpoints(
+  req: IncomingMessage,
+  res: ServerResponse,
+  authDiscoveryPaths: ReadonlySet<string>
+): boolean {
+  if (req.method !== "GET" || !requestMatchesAuthDiscovery(req, authDiscoveryPaths)) {
+    return false;
+  }
+
+  writeJsonErrorResponse(
+    res,
+    404,
+    "oauth_metadata_not_supported",
+    "OAuth metadata is not configured for this server.",
+    undefined,
+    {
+      "Cache-Control": "no-store",
+    }
+  );
+  return true;
+}
+
 /**
  * Sets up signal handlers for graceful shutdown
  */
@@ -311,6 +448,7 @@ export function createBaseHttpServer(
 ): http.Server {
   const listenHost = host || "127.0.0.1";
   const security = buildEffectiveSecurityOptions(port, listenHost, handlers.security);
+  const authDiscoveryPaths = buildAuthDiscoveryPaths(endpoint);
 
   let cleanedUp = false;
   const runCleanupOnce = () => {
@@ -322,34 +460,71 @@ export function createBaseHttpServer(
   };
 
   const httpServer = http.createServer(async (req, res) => {
+    const isEndpointRequest = requestMatchesEndpoint(req, endpoint);
+
     const headerValidationError = validateRequestHeaders(req, security);
     if (headerValidationError) {
-      res.writeHead(403).end(headerValidationError);
+      if (isEndpointRequest) {
+        writeJsonRpcErrorResponse(res, 403, -32000, headerValidationError);
+      } else {
+        writeJsonErrorResponse(res, 403, "forbidden", headerValidationError);
+      }
       return;
     }
 
     // Handle CORS for all requests （跨域）
     const corsAllowed = handleCORS(req, res, security);
     if (!corsAllowed) {
-      res.writeHead(403).end("CORS origin not allowed");
+      if (isEndpointRequest) {
+        writeJsonRpcErrorResponse(res, 403, -32000, "CORS origin not allowed");
+      } else {
+        writeJsonErrorResponse(
+          res,
+          403,
+          "cors_origin_not_allowed",
+          "CORS origin not allowed"
+        );
+      }
       return;
     }
 
     // Handle OPTIONS requests
     if (req.method === "OPTIONS") {
-      res.writeHead(204).end();
+      if (requestMatchesEndpoint(req, endpoint)) {
+        res.setHeader("Allow", "GET, POST, DELETE");
+        writeJsonRpcErrorResponse(res, 405, -32000, "Method not allowed.");
+      } else {
+        res.writeHead(204).end();
+      }
       return;
     }
 
     // Handle common endpoints like health and ping （health check and ping test）
     if (handleCommonEndpoints(req, res)) return;
 
+    // Return deterministic JSON for OAuth/OIDC discovery when auth is not configured.
+    if (handleAuthDiscoveryEndpoints(req, res, authDiscoveryPaths)) return;
+
     // 生成接口
     try {
       await handlers.handleRequest(req, res);
     } catch (error) {
       console.error(`Error in ${handlers.serverType} request handler:`, error);
-      res.writeHead(500).end("Internal Server Error");
+      if (res.headersSent) {
+        res.end();
+        return;
+      }
+
+      if (isEndpointRequest) {
+        writeJsonRpcErrorResponse(res, 500, -32603, "Internal Server Error");
+      } else {
+        writeJsonErrorResponse(
+          res,
+          500,
+          "internal_server_error",
+          "Internal Server Error"
+        );
+      }
     }
   });
 
