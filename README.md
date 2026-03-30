@@ -216,3 +216,8 @@ MIT License - 详见 [LICENSE](LICENSE) 文件。
 [⭐ Star](../../stargazers) • [🐛 Issues](../../issues) • [💬 Discussions](../../discussions)
 
 </div>
+
+## Hosted deployment
+
+A hosted deployment is available on [Fronteir AI](https://fronteir.ai/mcp/zaizaizhao-mcp-swagger-server).
+
