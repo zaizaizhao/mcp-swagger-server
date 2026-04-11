@@ -105,7 +105,7 @@ pnpm preview
 
 ```env
 # API 基础地址
-VITE_API_BASE_URL=http://localhost:3000/api
+VITE_API_BASE_URL=http://localhost:3001/api
 
 # 应用标题
 VITE_APP_TITLE=MCP Swagger Server
@@ -143,9 +143,9 @@ VITE_ENABLE_DEMO_MODE=true
 
 前端通过以下 API 端点与后端服务通信：
 
-- `POST /api/validate` - 验证 OpenAPI 规范
-- `POST /api/preview` - 预览 API 信息
-- `POST /api/convert` - 转换为 MCP 格式
+- `POST /api/openapi/validate` - 验证 OpenAPI 规范
+- `POST /api/openapi/parse` - 解析 OpenAPI 并生成 MCP 工具预览
+- `POST /api/openapi/normalize` - 规范化 OpenAPI / Swagger 文档
 
 ## 📄 许可证
 

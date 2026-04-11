@@ -21,7 +21,7 @@
     "start:streamable": "node dist/index.js --transport streamable --port 3322",
     "start:cli": "pnpm run cli",
     "cli": "pnpm run build && node dist/cli.js",
-    "cli:help": "pnpm run cli -- --help",
+    "cli:help": "pnpm run build && node dist/cli.js --help",
     "cli:petstore": "pnpm run cli -- -t streamable -p 3323 -o https://petstore.swagger.io/v2/swagger.json",
     "manager": "ts-node src/tools/mcp-manager.ts",
     "manager:start": "ts-node src/tools/mcp-manager.ts start",

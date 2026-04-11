@@ -1,0 +1,26 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Minimal Verification API",
+    "version": "1.0.0",
+    "description": "Used for local release-path verification."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080"
+    }
+  ],
+  "paths": {
+    "/ping": {
+      "get": {
+        "operationId": "getPing",
+        "summary": "Ping",
+        "responses": {
+          "200": {
+            "description": "pong"
+          }
+        }
+      }
+    }
+  }
+}

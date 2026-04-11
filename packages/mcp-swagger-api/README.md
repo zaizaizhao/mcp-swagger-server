@@ -68,22 +68,19 @@ pnpm start:dev
 pnpm build
 ```
 
-The API server will be available at `http://localhost:3000`
+The API server will be available at `http://localhost:3001`
 
 ### 🎯 Basic Usage
 
 **Create an MCP Server from OpenAPI:**
 
 ```bash
-curl -X POST http://localhost:3000/api/v1/mcp/create \
+curl -X POST http://localhost:3001/api/openapi/parse \
   -H "Content-Type: application/json" \
   -d '{
-    "openApiData": "https://petstore.swagger.io/v2/swagger.json",
-    "config": {
-      "name": "petstore-api",
-      "version": "1.0.0",
-      "port": 3322,
-      "transport": "http"
+    "source": {
+      "type": "url",
+      "content": "https://petstore.swagger.io/v2/swagger.json"
     }
   }'
 ```
@@ -91,7 +88,7 @@ curl -X POST http://localhost:3000/api/v1/mcp/create \
 **Check Server Status:**
 
 ```bash
-curl http://localhost:3000/api/v1/mcp/status
+curl http://localhost:3001/health
 ```
 
 ## 🔧 API Reference
@@ -100,12 +97,12 @@ curl http://localhost:3000/api/v1/mcp/status
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/v1/mcp/create` | Create MCP server from OpenAPI spec |
-| `GET` | `/api/v1/mcp/status` | Get current server status |
-| `POST` | `/api/v1/mcp/reload` | Reload tools from updated spec |
-| `DELETE` | `/api/v1/mcp/stop` | Stop running MCP server |
-| `POST` | `/api/v1/openapi/parse` | Parse and validate OpenAPI spec |
-| `POST` | `/api/v1/openapi/validate` | Validate OpenAPI specification |
+| `POST` | `/api/openapi/parse` | Parse and convert an OpenAPI spec into MCP-ready output |
+| `POST` | `/api/openapi/validate` | Validate an OpenAPI specification |
+| `POST` | `/api/openapi/normalize` | Normalize an OpenAPI or Swagger document |
+| `GET` | `/health` | Health probe endpoint |
+| `GET` | `/api/v1/servers` | List managed MCP servers |
+| `POST` | `/api/v1/servers` | Create a managed MCP server instance |
 
 ### Configuration Options
 
@@ -198,10 +195,10 @@ pnpm build
 
 ## 📚 Documentation
 
-- [🏗️ Architecture Overview](../docs/mcp-swagger-ui-architecture.md)
-- [🚀 Development Guide](../docs/mcp-swagger-ui-development-guide.md)
-- [📖 Technical Documentation](../docs/mcp-swagger-ui-technical-documentation.md)
-- [🔧 API Documentation](http://localhost:3000/api) (when server is running)
+- [📚 Project Documentation Index](../docs/README.md)
+- [🏗️ Project Baseline](../PROJECT_BASELINE.md)
+- [🚀 Release Baseline](../RELEASE_BASELINE_V1.md)
+- [🔧 API Documentation](http://localhost:3001/api/docs) (when server is running)
 
 ## 🤝 Contributing
 

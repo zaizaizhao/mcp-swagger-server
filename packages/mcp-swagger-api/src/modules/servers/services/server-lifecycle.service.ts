@@ -22,9 +22,7 @@ import { ParserService } from '../../openapi/services/parser.service';
 import { ValidatorService } from '../../openapi/services/validator.service';
 
 // 导入mcp-swagger-server包中的transport实现
-import { createMcpServer } from 'mcp-swagger-server/dist/server.js';
-import { startStreamableMcpServer } from 'mcp-swagger-server/dist/transportUtils/stream.js';
-import { startSseMcpServer } from 'mcp-swagger-server/dist/transportUtils/sse.js';
+import { createMcpServer, startStreamableMcpServer, startSseMcpServer } from 'mcp-swagger-server';
 
 export interface ServerStartResult {
   mcpServer: any;

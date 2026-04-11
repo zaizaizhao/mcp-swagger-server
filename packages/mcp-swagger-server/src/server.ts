@@ -28,7 +28,7 @@ export async function createMcpServer(
   const server = new McpServer(
     {
       name: "mcp-swagger-server",
-      version: "1.0.0",
+      version: "1.7.0",
       description: "A Model Context Protocol server for Swagger documentation to transform OpenAPI specs into MCP format.",
     },
     {

@@ -112,7 +112,7 @@ export async function parseAndTransform(
 /**
  * Package metadata
  */
-export const VERSION = '1.0.0';
+export const VERSION = '1.7.0';
 export const PACKAGE_NAME = 'mcp-swagger-parser';
 
 /**

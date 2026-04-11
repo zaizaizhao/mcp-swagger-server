@@ -8,7 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
 import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
-import { PUBLIC_KEY } from '../decorators/permissions.decorator';
+import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { AuthService } from '../services/auth.service';
 import { User } from '../../../database/entities/user.entity';
 import { AuditAction, AuditLevel, AuditStatus } from '../../../database/entities/audit-log.entity';
@@ -24,7 +24,7 @@ export class PermissionsGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     // 检查是否为公共端点
-    const isPublic = this.reflector.getAllAndOverride<boolean>(PUBLIC_KEY, [
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);

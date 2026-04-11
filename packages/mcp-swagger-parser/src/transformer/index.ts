@@ -5,6 +5,7 @@ import { AuthManager, AuthConfig } from '../auth/types';
 import { BearerAuthManager } from '../auth/bearer-auth';
 import { CustomHeadersManager } from '../headers/CustomHeadersManager';
 import axios, { AxiosResponse, AxiosError } from 'axios';
+import { isParserDebugEnabled, parserDebugLog, parserWarnLog } from '../utils/logger';
 
 // Re-export types
 export type { MCPTool, MCPToolResponse, TransformerOptions, ContentBlock, TextContent, ImageContent, AudioContent, ResourceLink, EmbeddedResource } from './types';
@@ -144,7 +145,7 @@ export class OpenAPIToMCPTransformer {
         break;
       // 后续可以添加其他认证方式
       default:
-        console.warn(`Unsupported auth type: ${authConfig.type}`);
+        parserWarnLog(`Unsupported auth type: ${authConfig.type}`);
         this.authManager = undefined;
     }
   }
@@ -193,12 +194,12 @@ export class OpenAPIToMCPTransformer {
   private getDefaultBaseUrl(sourceOrigin?: string): string {
     if (this.spec.servers && this.spec.servers.length > 0) {
       const serverUrl = this.spec.servers[0].url;
-      console.log(`Using default base URL from OpenAPI spec: ${serverUrl}`);
+      parserDebugLog(`Using default base URL from OpenAPI spec: ${serverUrl}`);
 
       // 处理相对路径和格式化 URL
       return this.normalizeBaseUrl(serverUrl, sourceOrigin);
     }
-    console.log('No servers found in OpenAPI spec, using default: http://localhost');
+    parserDebugLog('No servers found in OpenAPI spec, using default: http://localhost');
     return 'http://localhost';
   }
 
@@ -422,7 +423,7 @@ export class OpenAPIToMCPTransformer {
         }
       };
     } catch (error) {
-      console.warn(`Failed to create tool for ${method.toUpperCase()} ${path}:`, error);
+      parserWarnLog(`Failed to create tool for ${method.toUpperCase()} ${path}:`, error);
       return null;
     }
   }
@@ -565,7 +566,7 @@ export class OpenAPIToMCPTransformer {
         // Default HTTP request handler
         return await this.executeHttpRequest(method, path, args, operation);
       } catch (error) {
-        console.error(`Error executing ${method.toUpperCase()} ${path}:`, error);
+        parserWarnLog(`Error executing ${method.toUpperCase()} ${path}:`, error);
         return {
           content: [createTextContent(
             `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -621,11 +622,13 @@ export class OpenAPIToMCPTransformer {
 
       // 5. 准备请求体
       const requestBody = this.buildRequestBody(args, operation);
-      console.log(JSON.stringify(requestBody, null, 2));
+      if (isParserDebugEnabled(this.options.debugHeaders)) {
+        parserDebugLog(JSON.stringify(requestBody, null, 2));
+      }
       
       // 6. 调试输出最终请求头
       if (this.options.debugHeaders) {
-        console.log(`[${method.toUpperCase()} ${path}] Final headers:`, headers);
+        parserDebugLog(`[${method.toUpperCase()} ${path}] Final headers:`, headers);
       }
       
       // 7. 执行 HTTP 请求
@@ -658,18 +661,18 @@ export class OpenAPIToMCPTransformer {
     let url = this.buildBaseUrl(path);
     const queryParams: Record<string, any> = {};
 
-    console.log(`Building URL - Base: ${this.options.baseUrl}, Prefix: ${this.options.pathPrefix}, Path: ${path}`);
-    console.log(`Initial URL: ${url}`);
+    parserDebugLog(`Building URL - Base: ${this.options.baseUrl}, Prefix: ${this.options.pathPrefix}, Path: ${path}`);
+    parserDebugLog(`Initial URL: ${url}`);
 
     // 处理路径参数
     url = url.replace(/{([^}]+)}/g, (match, paramName) => {
       const value = args[paramName];
       if (value !== undefined) {
         const encodedValue = encodeURIComponent(String(value));
-        console.log(`Replacing path parameter {${paramName}} with: ${encodedValue}`);
+        parserDebugLog(`Replacing path parameter {${paramName}} with: ${encodedValue}`);
         return encodedValue;
       }
-      console.warn(`Path parameter {${paramName}} not found in args:`, Object.keys(args));
+      parserWarnLog(`Path parameter {${paramName}} not found in args:`, Object.keys(args));
       return match;
     });
 
@@ -680,13 +683,13 @@ export class OpenAPIToMCPTransformer {
           const value = args[param.name];
           if (value !== undefined) {
             queryParams[param.name] = value;
-            console.log(`Added query parameter: ${param.name} = ${value}`);
+            parserDebugLog(`Added query parameter: ${param.name} = ${value}`);
           }
         }
       }
     }
 
-    console.log(`Final URL: ${url}, Query params:`, queryParams);
+    parserDebugLog(`Final URL: ${url}, Query params:`, queryParams);
     return { url, queryParams };
   }
 

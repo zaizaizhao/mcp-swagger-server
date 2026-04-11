@@ -21,6 +21,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { JwtAuthGuard } from '../security/guards/jwt-auth.guard';
 
 import { ServerManagerService } from './services/server-manager.service';
 import { SystemLogService } from './services/system-log.service';
@@ -56,6 +57,8 @@ import {
 @ApiTags('服务器管理')
 @Controller('v1/servers')
 // @UseGuards(AuthGuard) // TODO: 添加认证守卫
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth('JWT')
 export class ServersController {
   private readonly logger = new Logger(ServersController.name);
 
@@ -84,7 +87,6 @@ export class ServersController {
   async createServer(@Body() createDto: CreateServerDto): Promise<ServerResponseDto> {
     try {
       this.logger.log(`Creating server: ${createDto.name}`);
-      console.log("createDto", createDto);
       const server = await this.serverManager.createServer(createDto);
       
       return server;
