@@ -4,6 +4,7 @@ This directory contains current operational and usage-oriented documentation.
 
 ## Included
 
+- [local-setup-and-run](./local-setup-and-run.md)
 - [quick-start-guide](./quick-start-guide.md)
 - [usage-guide](./usage-guide.md)
 - [deployment-guide](./deployment-guide.md)

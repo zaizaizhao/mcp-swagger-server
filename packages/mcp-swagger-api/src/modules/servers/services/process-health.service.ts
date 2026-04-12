@@ -125,6 +125,7 @@ export class ProcessHealthService implements OnModuleInit, OnModuleDestroy {
       // 获取进程信息
       const processInfo = this.processManager.getProcessInfo(serverId);
       if (!processInfo || processInfo.status !== ProcessStatus.RUNNING) {
+        this.stopHealthCheck(serverId);
         throw new Error(`Process not running for server ${serverId}`);
       }
 

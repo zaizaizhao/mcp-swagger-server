@@ -13,6 +13,7 @@ The current top-level governance documents remain at repository root:
 - [PROJECT_BASELINE](../PROJECT_BASELINE.md)
 - [RELEASE_BASELINE_V1](../RELEASE_BASELINE_V1.md)
 - [PROJECT_ANALYSIS_AND_V1_PLAN](../PROJECT_ANALYSIS_AND_V1_PLAN.md)
+- [Local Setup And Run](./guides/local-setup-and-run.md)
 
 ## Structure
 

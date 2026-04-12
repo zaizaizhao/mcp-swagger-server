@@ -372,6 +372,7 @@ export default {
     autoNameTip: "Document name will be automatically extracted from URL",
     selectDocument: "Select Document",
     validationResult: "Validation Result",
+    noParseResult: "No parse result available",
     conversionResult: "Conversion Result",
     preview: "Preview",
     tools: "Tools",

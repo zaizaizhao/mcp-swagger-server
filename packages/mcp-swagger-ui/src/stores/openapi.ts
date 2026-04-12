@@ -483,6 +483,7 @@ export const useOpenAPIStore = defineStore("openapi", () => {
     duplicateSpec,
     deleteSpec,
     validateSpec,
+    validateOpenAPIContent,
     convertToMCP,
     selectSpec,
     initialize,

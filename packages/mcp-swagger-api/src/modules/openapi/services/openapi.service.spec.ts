@@ -95,6 +95,33 @@ describe('OpenAPIService', () => {
     expect(result.valid).toBe(true);
   });
 
+  it('should validate content source using raw content instead of parsed spec', async () => {
+    const { service, parserService, validatorService } = createService();
+
+    validatorService.validateSpecification.mockResolvedValue({
+      valid: true,
+      errors: [],
+      warnings: [],
+    });
+
+    const rawContent =
+      '{"openapi":"3.0.0","info":{"title":"Petstore","version":"1.0.0"},"paths":{},"metadata":{"x":1}}';
+
+    const result = await service.validateOpenAPI({
+      source: {
+        type: 'content',
+        content: rawContent,
+      },
+      options: {},
+    } as any);
+
+    expect(parserService.parseFromString).not.toHaveBeenCalled();
+    expect(validatorService.validateSpecification).toHaveBeenCalledWith(
+      rawContent,
+    );
+    expect(result.valid).toBe(true);
+  });
+
   it('should reject empty content during validation', async () => {
     const { service } = createService();
 

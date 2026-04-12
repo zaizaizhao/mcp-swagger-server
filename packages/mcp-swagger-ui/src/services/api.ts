@@ -796,6 +796,24 @@ export const openApiAPI = {
     });
     return response.data;
   },
+
+  // 从 URL 解析 OpenAPI 规范，避免浏览器直接跨域抓取
+  async parseSpecFromUrl(url: string): Promise<{
+    info: any;
+    paths: Record<string, any>;
+    endpoints: any[];
+    tools: any[];
+    servers: any[];
+    openapi: string;
+    components: any;
+    parsedAt: string;
+    parseId?: string;
+  }> {
+    const response = await api.get("/openapi/parse-url", {
+      params: { url },
+    });
+    return response.data;
+  },
 };
 
 // ============================================================================

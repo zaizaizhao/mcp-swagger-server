@@ -83,8 +83,14 @@ export class OpenAPIService {
         throw new BadRequestException('OpenAPI source content cannot be empty');
       }
 
-      const spec = await this.loadOpenAPISpec(configDto);
-      const result = await this.validatorService.validateSpecification(spec);
+      const result =
+        configDto.source.type === 'content'
+          ? await this.validatorService.validateSpecification(
+              configDto.source.content,
+            )
+          : await this.validatorService.validateSpecification(
+              await this.loadOpenAPISpec(configDto),
+            );
 
       this.logger.log(
         `OpenAPI validation completed: ${result.valid ? 'valid' : 'invalid'} with ${result.errors.length} errors and ${result.warnings.length} warnings`,

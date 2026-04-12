@@ -51,6 +51,8 @@ export class ProcessManagerService implements OnModuleDestroy {
   private readonly processInfo = new Map<string, ProcessInfo>();
   private readonly config: ProcessManagerConfig;
   private readonly execAsync = promisify(exec);
+  private readonly gbkDecoder =
+    process.platform === 'win32' ? new TextDecoder('gbk') : null;
   
   // MCP连接统计缓存
   private readonly mcpConnectionStats = new Map<string, MCPConnectionStats>();
@@ -462,13 +464,31 @@ export class ProcessManagerService implements OnModuleDestroy {
   /**
    * 监控进程输出
    */
+  private decodeProcessOutput(data: Buffer): string {
+    const utf8Text = data.toString('utf8');
+
+    if (process.platform !== 'win32' || !this.gbkDecoder) {
+      return utf8Text;
+    }
+
+    if (!utf8Text.includes('\uFFFD')) {
+      return utf8Text;
+    }
+
+    try {
+      return this.gbkDecoder.decode(data);
+    } catch {
+      return utf8Text;
+    }
+  }
+
   private setupProcessOutputMonitoring(processInfo: ProcessInfo): void {
     const { id: serverId, pid, process: childProcess } = processInfo;
     
     // 监控标准输出
     if (childProcess.stdout) {
       childProcess.stdout.on('data', async (data: Buffer) => {
-        const message = data.toString().trim();
+        const message = this.decodeProcessOutput(data).trim();
         if (message) {
           // 尝试解析MCP连接事件
           await this.handleProcessOutput(serverId, message);
@@ -493,7 +513,7 @@ export class ProcessManagerService implements OnModuleDestroy {
     // 监控标准错误
     if (childProcess.stderr) {
       childProcess.stderr.on('data', async (data: Buffer) => {
-        const message = data.toString().trim();
+        const message = this.decodeProcessOutput(data).trim();
         if (message) {
           // 添加到日志监控器
           const logEntry: ProcessLogEntry = {
@@ -521,6 +541,8 @@ export class ProcessManagerService implements OnModuleDestroy {
     childProcess.on('exit', async (code, signal) => {
       this.logger.log(`Process ${serverId} exited with code ${code} and signal ${signal}`);
       await this.logProcess(serverId, LogLevel.INFO, `Process exited with code ${code} and signal ${signal}`);
+      this.resourceMonitor.stopMonitoring(serverId);
+      this.logMonitor.stopLogMonitoring(serverId);
       
       const processInfo = this.processInfo.get(serverId);
       if (processInfo) {
@@ -543,6 +565,8 @@ export class ProcessManagerService implements OnModuleDestroy {
     childProcess.on('error', async (error) => {
       this.logger.error(`Process ${serverId} encountered an error:`, error);
       await this.logProcess(serverId, LogLevel.ERROR, `Process error: ${error.message}`);
+      this.resourceMonitor.stopMonitoring(serverId);
+      this.logMonitor.stopLogMonitoring(serverId);
       
       const event: ProcessEvent = {
         processId: serverId,

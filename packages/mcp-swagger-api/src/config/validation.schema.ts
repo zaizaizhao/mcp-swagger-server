@@ -9,7 +9,9 @@ export const validationSchema = Joi.object({
   MCP_PORT: Joi.number().port().default(3322),
 
   // CORS配置
-  CORS_ORIGINS: Joi.string().default('http://localhost:5173'),
+  CORS_ORIGINS: Joi.string().default(
+    'http://localhost:5173,http://localhost:3000,http://127.0.0.1:3000',
+  ),
 
   // 安全配置
   API_KEY: Joi.string().optional(),
