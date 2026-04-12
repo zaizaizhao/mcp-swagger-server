@@ -10,6 +10,10 @@ import {
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { User } from './user.entity';
+import {
+  getEnumColumnOptions,
+  getJsonColumnOptions,
+} from '../db-compat';
 
 export enum DocumentStatus {
   DRAFT = 'draft',
@@ -43,8 +47,7 @@ export class OpenAPIDocument {
 
   @ApiProperty({ description: '文档状态' })
   @Column({
-    type: 'enum',
-    enum: DocumentStatus,
+    ...getEnumColumnOptions(process.env.DB_TYPE, DocumentStatus),
     default: DocumentStatus.DRAFT,
   })
   status: DocumentStatus;
@@ -58,7 +61,7 @@ export class OpenAPIDocument {
   tags?: string[];
 
   @ApiProperty({ description: '文档元数据' })
-  @Column({ type: 'jsonb', nullable: true })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }))
   metadata?: {
     originalUrl?: string;
     importSource?: 'file' | 'url' | 'manual';

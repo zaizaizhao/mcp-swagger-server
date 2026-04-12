@@ -8,6 +8,12 @@ import {
   Index,
 } from 'typeorm';
 import { User } from './user.entity';
+import {
+  getEnumColumnOptions,
+  getIpColumnOptions,
+  getJsonColumnOptions,
+  getUuidColumnOptions,
+} from '../db-compat';
 
 export enum AuditAction {
   // 用户操作
@@ -83,8 +89,7 @@ export class AuditLog {
   id: string;
 
   @Column({
-    type: 'enum',
-    enum: AuditAction,
+    ...getEnumColumnOptions(process.env.DB_TYPE, AuditAction),
   })
   action: AuditAction;
 
@@ -92,15 +97,13 @@ export class AuditLog {
   description?: string;
 
   @Column({
-    type: 'enum',
-    enum: AuditLevel,
+    ...getEnumColumnOptions(process.env.DB_TYPE, AuditLevel),
     default: AuditLevel.INFO,
   })
   level: AuditLevel;
 
   @Column({
-    type: 'enum',
-    enum: AuditStatus,
+    ...getEnumColumnOptions(process.env.DB_TYPE, AuditStatus),
     default: AuditStatus.SUCCESS,
   })
   status: AuditStatus;
@@ -111,7 +114,7 @@ export class AuditLog {
   @Column({ type: 'varchar', length: 255, nullable: true })
   resourceId?: string; // 操作的资源ID
 
-  @Column({ type: 'inet', nullable: true })
+  @Column(getIpColumnOptions(process.env.DB_TYPE, { nullable: true }))
   ipAddress?: string;
 
   @Column({ type: 'varchar', length: 500, nullable: true })
@@ -120,7 +123,7 @@ export class AuditLog {
   @Column({ type: 'varchar', length: 255, nullable: true })
   sessionId?: string;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }))
   details?: {
     // 操作前的数据
     before?: any;
@@ -144,7 +147,7 @@ export class AuditLog {
     [key: string]: any;
   };
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }))
   metadata?: {
     duration?: number; // 操作耗时（毫秒）
     size?: number; // 数据大小
@@ -153,7 +156,7 @@ export class AuditLog {
     [key: string]: any;
   };
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column(getUuidColumnOptions(process.env.DB_TYPE, { nullable: true }))
   userId?: string;
 
   @ManyToOne(() => User, user => user.auditLogs, { onDelete: 'SET NULL' })

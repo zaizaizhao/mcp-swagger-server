@@ -1,4 +1,5 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, Index } from 'typeorm';
+import { getJsonColumnOptions } from '../../../database/db-compat';
 
 @Entity('health_check_results')
 @Index(['serverId'])
@@ -20,10 +21,10 @@ export class HealthCheckResultEntity {
   @Column({ name: 'error_message', type: 'text', nullable: true })
   error?: string;
 
-  @Column({ name: 'memory_usage', type: 'jsonb', nullable: true })
+  @Column({ name: 'memory_usage', ...getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }) })
   memoryUsage?: NodeJS.MemoryUsage;
 
-  @Column({ name: 'cpu_usage', type: 'jsonb', nullable: true })
+  @Column({ name: 'cpu_usage', ...getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }) })
   cpuUsage?: NodeJS.CpuUsage;
 
   @CreateDateColumn({ name: 'timestamp' })

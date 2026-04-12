@@ -1,5 +1,10 @@
 import { Entity, Column, PrimaryColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { ProcessStatus } from '../interfaces/process.interface';
+import {
+  getEnumColumnOptions,
+  getJsonColumnOptions,
+  getTimestampTzColumnOptions,
+} from '../../../database/db-compat';
 
 @Entity('process_info')
 export class ProcessInfoEntity {
@@ -9,13 +14,13 @@ export class ProcessInfoEntity {
   @Column({ type: 'integer' })
   pid: number;
 
-  @Column({ name: 'start_time', type: 'timestamp with time zone' })
+  @Column({ name: 'start_time', ...getTimestampTzColumnOptions(process.env.DB_TYPE) })
   startTime: Date;
 
   @Column({
-    type: 'varchar',
-    length: 20,
-    enum: ProcessStatus,
+    ...getEnumColumnOptions(process.env.DB_TYPE, ProcessStatus, {
+      length: 20,
+    }),
     default: ProcessStatus.STOPPED
   })
   status: ProcessStatus;
@@ -26,10 +31,10 @@ export class ProcessInfoEntity {
   @Column({ name: 'last_error', type: 'text', nullable: true })
   lastError?: string;
 
-  @Column({ name: 'memory_usage', type: 'jsonb', nullable: true })
+  @Column({ name: 'memory_usage', ...getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }) })
   memoryUsage?: NodeJS.MemoryUsage;
 
-  @Column({ name: 'cpu_usage', type: 'jsonb', nullable: true })
+  @Column({ name: 'cpu_usage', ...getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }) })
   cpuUsage?: NodeJS.CpuUsage;
 
   @UpdateDateColumn({ name: 'updated_at' })

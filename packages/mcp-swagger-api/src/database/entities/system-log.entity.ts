@@ -9,6 +9,11 @@ import {
 } from 'typeorm';
 import { MCPServerEntity } from './mcp-server.entity';
 import { User } from './user.entity';
+import {
+  getEnumColumnOptions,
+  getJsonColumnOptions,
+  getUuidColumnOptions,
+} from '../db-compat';
 
 export enum SystemLogEventType {
   // MCP服务器生命周期事件
@@ -67,8 +72,7 @@ export class SystemLogEntity {
   id: string;
 
   @Column({
-    type: 'enum',
-    enum: SystemLogEventType,
+    ...getEnumColumnOptions(process.env.DB_TYPE, SystemLogEventType),
   })
   eventType: SystemLogEventType;
 
@@ -79,20 +83,18 @@ export class SystemLogEntity {
   description?: string;
 
   @Column({
-    type: 'enum',
-    enum: SystemLogLevel,
+    ...getEnumColumnOptions(process.env.DB_TYPE, SystemLogLevel),
     default: SystemLogLevel.INFO,
   })
   level: SystemLogLevel;
 
   @Column({
-    type: 'enum',
-    enum: SystemLogStatus,
+    ...getEnumColumnOptions(process.env.DB_TYPE, SystemLogStatus),
     default: SystemLogStatus.SUCCESS,
   })
   status: SystemLogStatus;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column(getUuidColumnOptions(process.env.DB_TYPE, { nullable: true }))
   serverId?: string;
 
   @ManyToOne(() => MCPServerEntity, { onDelete: 'CASCADE' })
@@ -108,7 +110,7 @@ export class SystemLogEntity {
   @Column({ type: 'int', nullable: true })
   serverPort?: number;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column(getUuidColumnOptions(process.env.DB_TYPE, { nullable: true }))
   userId?: string;
 
   @ManyToOne(() => User, { onDelete: 'SET NULL' })
@@ -118,7 +120,7 @@ export class SystemLogEntity {
   @Column({ type: 'varchar', length: 255, nullable: true })
   source?: string; // 事件来源，如 'process_manager', 'health_checker', 'user_action'
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }))
   context?: {
     // 进程信息
     processId?: number;
@@ -156,7 +158,7 @@ export class SystemLogEntity {
     [key: string]: any;
   };
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }))
   metadata?: {
     duration?: number; // 事件持续时间（毫秒）
     retryCount?: number; // 重试次数

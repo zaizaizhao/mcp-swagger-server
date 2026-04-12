@@ -81,6 +81,16 @@ packages/*/dist/
 # MCP specific
 *.mcp-server.log
 *.mcp-server-stats.json
+logs/
+pids/
+packages/data/
+.codex_temp_*.json
+
+# Local environment files
+packages/*/.env
+packages/*/.env.local
+packages/*/.env.development
+packages/*/.env.production
 
 # Test related
 /coverage

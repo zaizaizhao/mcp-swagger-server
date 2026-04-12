@@ -8,6 +8,11 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { MCPServerEntity } from './mcp-server.entity';
+import {
+  getEnumColumnOptions,
+  getJsonColumnOptions,
+  getUuidColumnOptions,
+} from '../db-compat';
 
 export enum LogLevel {
   DEBUG = 'debug',
@@ -38,15 +43,13 @@ export class LogEntryEntity {
   id: string;
 
   @Column({
-    type: 'enum',
-    enum: LogLevel,
+    ...getEnumColumnOptions(process.env.DB_TYPE, LogLevel),
     default: LogLevel.INFO,
   })
   level: LogLevel;
 
   @Column({
-    type: 'enum',
-    enum: LogSource,
+    ...getEnumColumnOptions(process.env.DB_TYPE, LogSource),
     default: LogSource.SYSTEM,
   })
   source: LogSource;
@@ -54,7 +57,7 @@ export class LogEntryEntity {
   @Column({ type: 'text' })
   message: string;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }))
   context?: {
     userId?: string;
     requestId?: string;
@@ -71,7 +74,7 @@ export class LogEntryEntity {
     [key: string]: any;
   };
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }))
   metadata?: {
     userAgent?: string;
     ip?: string;
@@ -80,7 +83,7 @@ export class LogEntryEntity {
     [key: string]: any;
   };
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column(getUuidColumnOptions(process.env.DB_TYPE, { nullable: true }))
   serverId?: string;
 
   @ManyToOne(() => MCPServerEntity, { onDelete: 'SET NULL' })
@@ -96,7 +99,7 @@ export class LogEntryEntity {
   @Column({ type: 'text', nullable: true })
   stackTrace?: string;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }))
   tags?: string[];
 
   @CreateDateColumn({ name: 'timestamp' })

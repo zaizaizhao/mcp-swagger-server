@@ -7,6 +7,10 @@ import {
   Index,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
+import {
+  getEnumColumnOptions,
+  getJsonColumnOptions,
+} from '../../../database/db-compat';
 
 export enum AssistantType {
   CLAUDE_DESKTOP = 'claude_desktop',
@@ -47,38 +51,35 @@ export class AiAssistantTemplateEntity {
 
   @ApiProperty({ description: 'AI助手类型', enum: AssistantType })
   @Column({
-    type: 'enum',
-    enum: AssistantType,
+    ...getEnumColumnOptions(process.env.DB_TYPE, AssistantType),
     default: AssistantType.CLAUDE_DESKTOP,
   })
   type: AssistantType;
 
   @ApiProperty({ description: '模板分类', enum: TemplateCategory })
   @Column({
-    type: 'enum',
-    enum: TemplateCategory,
+    ...getEnumColumnOptions(process.env.DB_TYPE, TemplateCategory),
     default: TemplateCategory.GENERAL,
   })
   category: TemplateCategory;
 
   @ApiProperty({ description: '模板状态', enum: TemplateStatus })
   @Column({
-    type: 'enum',
-    enum: TemplateStatus,
+    ...getEnumColumnOptions(process.env.DB_TYPE, TemplateStatus),
     default: TemplateStatus.ACTIVE,
   })
   status: TemplateStatus;
 
   @ApiProperty({ description: '配置模板内容' })
-  @Column({ type: 'jsonb' })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE))
   configTemplate: Record<string, any>;
 
   @ApiProperty({ description: '默认配置值' })
-  @Column({ type: 'jsonb', nullable: true })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }))
   defaultValues: Record<string, any>;
 
   @ApiProperty({ description: '配置字段验证规则' })
-  @Column({ type: 'jsonb', nullable: true })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }))
   validationRules: Record<string, any>;
 
   @ApiProperty({ description: '模板标签' })

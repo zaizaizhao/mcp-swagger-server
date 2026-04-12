@@ -4,6 +4,8 @@ This directory contains current operational and usage-oriented documentation.
 
 ## Included
 
+- [database-mode-quickstart](./database-mode-quickstart.md)
+- [database-strategy](./database-strategy.md)
 - [local-setup-and-run](./local-setup-and-run.md)
 - [quick-start-guide](./quick-start-guide.md)
 - [usage-guide](./usage-guide.md)

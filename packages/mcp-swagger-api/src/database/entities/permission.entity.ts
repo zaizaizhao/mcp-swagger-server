@@ -8,6 +8,10 @@ import {
   Index,
 } from 'typeorm';
 import { Role } from './role.entity';
+import {
+  getEnumColumnOptions,
+  getJsonColumnOptions,
+} from '../db-compat';
 
 export enum PermissionCategory {
   SYSTEM = 'system',
@@ -46,14 +50,12 @@ export class Permission {
   description?: string;
 
   @Column({
-    type: 'enum',
-    enum: PermissionCategory,
+    ...getEnumColumnOptions(process.env.DB_TYPE, PermissionCategory),
   })
   category: PermissionCategory;
 
   @Column({
-    type: 'enum',
-    enum: PermissionAction,
+    ...getEnumColumnOptions(process.env.DB_TYPE, PermissionAction),
   })
   action: PermissionAction;
 
@@ -66,7 +68,7 @@ export class Permission {
   @Column({ type: 'boolean', default: false })
   isSystem: boolean; // 系统权限，不可删除
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }))
   conditions?: {
     // 权限条件，如IP限制、时间限制等
     ipWhitelist?: string[];
@@ -78,7 +80,7 @@ export class Permission {
     [key: string]: any;
   };
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }))
   metadata?: {
     icon?: string;
     color?: string;

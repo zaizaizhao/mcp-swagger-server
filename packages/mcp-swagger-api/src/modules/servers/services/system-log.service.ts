@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { SystemLogEntity, SystemLogLevel, SystemLogEventType } from '../../../database/entities/system-log.entity';
 import { MCPServerEntity } from '../../../database/entities/mcp-server.entity';
 import { SystemLogResponseDto } from '../dto/system-log.dto';
@@ -28,13 +30,20 @@ export interface QuerySystemLogDto {
 @Injectable()
 export class SystemLogService {
   private readonly logger = new Logger(SystemLogService.name);
+  private readonly systemLogRetentionDays: number;
 
   constructor(
     @InjectRepository(SystemLogEntity)
     private readonly systemLogRepository: Repository<SystemLogEntity>,
     @InjectRepository(MCPServerEntity)
     private readonly mcpServerRepository: Repository<MCPServerEntity>,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    this.systemLogRetentionDays = this.configService.get<number>(
+      'SYSTEM_LOG_RETENTION_DAYS',
+      14,
+    );
+  }
 
   /**
    * 创建系统日志记录
@@ -151,5 +160,19 @@ export class SystemLogService {
       createdAt: Between(new Date(0), beforeDate),
     });
     return result.affected || 0;
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_4AM)
+  async cleanupExpiredLogs(): Promise<void> {
+    try {
+      const beforeDate = new Date();
+      beforeDate.setDate(beforeDate.getDate() - this.systemLogRetentionDays);
+      const affected = await this.cleanupOldLogs(beforeDate);
+      this.logger.log(
+        `Cleaned up ${affected} system logs older than ${this.systemLogRetentionDays} days`,
+      );
+    } catch (error) {
+      this.logger.error('Failed to cleanup expired system logs', error);
+    }
   }
 }

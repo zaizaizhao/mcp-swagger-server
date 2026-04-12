@@ -14,6 +14,12 @@ import {
 import * as bcrypt from 'bcrypt';
 import { Role } from './role.entity';
 import { AuditLog } from './audit-log.entity';
+import {
+  getEnumColumnOptions,
+  getIpColumnOptions,
+  getJsonColumnOptions,
+  getTimestampColumnOptions,
+} from '../db-compat';
 
 
 export enum UserStatus {
@@ -46,8 +52,7 @@ export class User {
   lastName?: string;
 
   @Column({
-    type: 'enum',
-    enum: UserStatus,
+    ...getEnumColumnOptions(process.env.DB_TYPE, UserStatus),
     default: UserStatus.PENDING,
   })
   status: UserStatus;
@@ -61,22 +66,22 @@ export class User {
   @Column({ type: 'varchar', length: 255, nullable: true })
   passwordResetToken?: string;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column(getTimestampColumnOptions(process.env.DB_TYPE, { nullable: true }))
   passwordResetExpires?: Date;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column(getTimestampColumnOptions(process.env.DB_TYPE, { nullable: true }))
   lastLoginAt?: Date;
 
-  @Column({ type: 'inet', nullable: true })
+  @Column(getIpColumnOptions(process.env.DB_TYPE, { nullable: true }))
   lastLoginIp?: string;
 
   @Column({ type: 'int', default: 0 })
   loginAttempts: number;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column(getTimestampColumnOptions(process.env.DB_TYPE, { nullable: true }))
   lockedUntil?: Date;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }))
   preferences?: {
     theme?: 'light' | 'dark';
     language?: string;
@@ -89,7 +94,7 @@ export class User {
     [key: string]: any;
   };
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }))
   metadata?: {
     department?: string;
     position?: string;

@@ -1,7 +1,11 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { createDataSource } from './data-source';
+import { TypeOrmModuleOptions } from '@nestjs/typeorm';
+import {
+  getDatabaseType,
+  verifySqliteDatabasePath,
+} from './db-compat';
 import { MCPServerEntity } from './entities/mcp-server.entity';
 import { AuthConfigEntity } from './entities/auth-config.entity';
 import { TestCaseEntity } from './entities/test-case.entity';
@@ -21,14 +25,10 @@ import { SeedService } from './seed.service';
   imports: [
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get('DB_HOST', 'localhost'),
-        port: configService.get('DB_PORT', 5432),
-        username: configService.get('DB_USERNAME', 'postgres'),
-        password: configService.get('DB_PASSWORD', 'password'),
-        database: configService.get('DB_DATABASE', 'mcp_swagger_api'),
-        entities: [
+      useFactory: (configService: ConfigService): TypeOrmModuleOptions => {
+        const dbType = getDatabaseType(configService.get<string>('DB_TYPE'));
+        const nodeEnv = String(configService.get<string>('NODE_ENV', 'development'));
+        const entities = [
           MCPServerEntity,
           AuthConfigEntity,
           TestCaseEntity,
@@ -42,17 +42,46 @@ import { SeedService } from './seed.service';
           AiAssistantTemplateEntity,
           AiAssistantConfigEntity,
           OpenAPIDocument,
-        ],
-        synchronize: configService.get('NODE_ENV') === 'development',
-        logging: configService.get('DB_LOGGING', false),
-        ssl: configService.get('NODE_ENV') === 'production' 
-          ? { rejectUnauthorized: false } 
-          : false,
-        retryAttempts: 3,
-        retryDelay: 3000,
-        autoLoadEntities: true,
-        keepConnectionAlive: true,
-      }),
+        ];
+
+        if (dbType === 'sqlite') {
+          const sqlitePath = verifySqliteDatabasePath(configService);
+
+          return {
+            type: 'sqljs' as const,
+            location: sqlitePath,
+            autoSave: true,
+            entities,
+            synchronize: configService.get(
+              'DB_SYNCHRONIZE',
+              nodeEnv !== 'production',
+            ),
+            logging: configService.get('DB_LOGGING', false),
+            autoLoadEntities: true,
+            keepConnectionAlive: true,
+          };
+        }
+
+        return {
+          type: 'postgres' as const,
+          host: configService.get('DB_HOST', 'localhost'),
+          port: configService.get('DB_PORT', 5432),
+          username: configService.get('DB_USERNAME', 'postgres'),
+          password: configService.get('DB_PASSWORD', 'password'),
+          database: String(configService.get('DB_DATABASE', 'mcp_swagger_api')),
+          entities,
+          synchronize: configService.get(
+            'DB_SYNCHRONIZE',
+            nodeEnv === 'development',
+          ),
+          logging: configService.get('DB_LOGGING', false),
+          ssl: nodeEnv === 'production' ? { rejectUnauthorized: false } : false,
+          retryAttempts: 3,
+          retryDelay: 3000,
+          autoLoadEntities: true,
+          keepConnectionAlive: true,
+        };
+      },
       inject: [ConfigService],
     }),
     

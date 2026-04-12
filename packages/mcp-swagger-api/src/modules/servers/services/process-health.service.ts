@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
+import { Repository, LessThan, MoreThan } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
@@ -23,6 +23,9 @@ export class ProcessHealthService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(ProcessHealthService.name);
   private readonly healthCheckIntervals = new Map<string, NodeJS.Timeout>();
   private readonly config: ProcessManagerConfig;
+  private readonly healthCheckRetentionDays: number;
+  private readonly healthCheckPersistIntervalMs: number;
+  private readonly lastHealthCheckPersistedAt = new Map<string, number>();
   private isShuttingDown = false;
 
   constructor(
@@ -40,6 +43,14 @@ export class ProcessHealthService implements OnModuleInit, OnModuleDestroy {
       healthCheckInterval: this.configService.get<number>('HEALTH_CHECK_INTERVAL', DEFAULT_PROCESS_CONFIG.healthCheckInterval),
       healthCheckTimeout: this.configService.get<number>('HEALTH_CHECK_TIMEOUT', DEFAULT_PROCESS_CONFIG.healthCheckTimeout),
     };
+    this.healthCheckRetentionDays = this.configService.get<number>(
+      'HEALTH_CHECK_RETENTION_DAYS',
+      7,
+    );
+    this.healthCheckPersistIntervalMs = this.configService.get<number>(
+      'HEALTH_CHECK_PERSIST_INTERVAL_MS',
+      60000,
+    );
   }
 
   async onModuleInit() {
@@ -328,6 +339,10 @@ export class ProcessHealthService implements OnModuleInit, OnModuleDestroy {
    */
   private async saveHealthCheckResult(serverId: string, result: HealthCheckResult): Promise<void> {
     try {
+      if (!this.shouldPersistHealthCheck(serverId, result)) {
+        return;
+      }
+
       const entity = this.healthCheckRepository.create({
         serverId,
         isHealthy: result.healthy,
@@ -342,6 +357,33 @@ export class ProcessHealthService implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       this.logger.error(`Failed to save health check result for server ${serverId}:`, error);
     }
+  }
+
+  private shouldPersistHealthCheck(
+    serverId: string,
+    result: HealthCheckResult,
+  ): boolean {
+    if (!result.healthy) {
+      this.lastHealthCheckPersistedAt.set(serverId, Date.now());
+      return true;
+    }
+
+    if (this.healthCheckPersistIntervalMs <= 0) {
+      this.lastHealthCheckPersistedAt.set(serverId, Date.now());
+      return true;
+    }
+
+    const now = Date.now();
+    const lastPersistedAt = this.lastHealthCheckPersistedAt.get(serverId);
+    if (
+      lastPersistedAt !== undefined &&
+      now - lastPersistedAt < this.healthCheckPersistIntervalMs
+    ) {
+      return false;
+    }
+
+    this.lastHealthCheckPersistedAt.set(serverId, now);
+    return true;
   }
 
   /**
@@ -404,20 +446,21 @@ export class ProcessHealthService implements OnModuleInit, OnModuleDestroy {
   async cleanupOldHealthChecks(): Promise<void> {
     try {
       const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - 7); // 保留7天的记录
+      cutoffDate.setDate(cutoffDate.getDate() - this.healthCheckRetentionDays);
 
       const result = await this.healthCheckRepository.delete({
         timestamp: LessThan(cutoffDate)
       });
 
       this.logger.log(`Cleaned up ${result.affected} old health check records`);
+      this.lastHealthCheckPersistedAt.clear();
     } catch (error) {
       this.logger.error('Failed to cleanup old health check records:', error);
     }
   }
 
   /**
-   * 获取服务器健康状态统计
+   * 鑾峰彇鏈嶅姟鍣ㄥ仴搴风姸鎬佺粺璁?
    */
   async getHealthStats(serverId: string, hours = 24): Promise<{
     totalChecks: number;
@@ -433,7 +476,7 @@ export class ProcessHealthService implements OnModuleInit, OnModuleDestroy {
       const checks = await this.healthCheckRepository.find({
         where: {
           serverId,
-          timestamp: LessThan(cutoffDate)
+          timestamp: MoreThan(cutoffDate)
         },
         order: { timestamp: 'DESC' }
       });
