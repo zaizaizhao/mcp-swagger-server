@@ -44,6 +44,22 @@ yarn global add mcp-swagger-server
 pnpm add -g mcp-swagger-server
 ```
 
+### 🧰 开发环境初始化（仓库开发）
+
+如果你是在本仓库里进行本地开发，请先在仓库根目录执行：
+
+```bash
+node -v
+corepack enable
+corepack prepare pnpm@latest --activate
+pnpm -v
+pnpm install
+```
+
+完整本地开发安装与运行基线见：
+
+- [Local Setup And Run](../../docs/guides/local-setup-and-run.md)
+
 ### ⚡ 立即使用
 
 #### 1. 命令行启动（推荐 `mss`）

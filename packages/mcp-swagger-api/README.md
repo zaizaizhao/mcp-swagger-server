@@ -26,7 +26,7 @@ MCP Swagger API is a **NestJS-powered backend service** that bridges the gap bet
 - **🔄 Zero Configuration**: Paste your OpenAPI spec and get MCP tools instantly
 - **🎯 AI-Native**: Purpose-built for LLM and AI assistant integration  
 - **🚀 Production Ready**: Enterprise-grade NestJS foundation with monitoring
-- **🔌 Multi-Protocol**: Support for HTTP, WebSocket, and Stdio transports
+- **🔌 Multi-Transport Management**: HTTP API + managed MCP transports (`streamable`, `sse`; `websocket` planned)
 - **📊 Real-time**: Live status monitoring and dynamic tool management
 
 ## ✨ Core Features
@@ -45,7 +45,7 @@ MCP Swagger API is a **NestJS-powered backend service** that bridges the gap bet
 
 ### 🔌 Flexible Integration
 - **Embedded MCP Server**: No external dependencies required
-- **Multiple Transports**: HTTP, WebSocket, and Stdio protocols
+- **Multiple Transports**: HTTP API with MCP `streamable` / `sse` transports (`websocket` is not yet implemented)
 - **RESTful API**: Clean, documented endpoints for easy integration
 - **Swagger Documentation**: Auto-generated API documentation
 
@@ -54,6 +54,20 @@ MCP Swagger API is a **NestJS-powered backend service** that bridges the gap bet
 ### Prerequisites
 - Node.js ≥ 18.0.0
 - pnpm ≥ 8.0.0 (recommended)
+
+Environment bootstrap (from repository root):
+
+```bash
+node -v
+corepack enable
+corepack prepare pnpm@latest --activate
+pnpm -v
+pnpm install
+```
+
+Detailed setup baseline:
+
+- [Local Setup And Run](../../docs/guides/local-setup-and-run.md)
 
 ### Installation & Setup
 
@@ -112,7 +126,7 @@ interface MCPServerConfig {
   version: string;        // Server version
   description?: string;   // Optional description
   port: number;          // Port number (3000-65535)
-  transport: 'http' | 'websocket' | 'stdio';
+  transport: 'streamable' | 'sse' | 'websocket'; // websocket is planned but not implemented yet
 }
 ```
 

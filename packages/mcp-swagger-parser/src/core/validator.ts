@@ -12,9 +12,15 @@ import type {
 
 export class Validator {
   private config: ParserConfig;
+  private readonly swaggerParserApi: { validate: (spec: any) => Promise<any> };
 
   constructor(config: ParserConfig) {
     this.config = config;
+    // Handle both CJS and ESM interop shapes across runtime/test environments.
+    const api = (SwaggerParser as any)?.validate
+      ? (SwaggerParser as any)
+      : (SwaggerParser as any)?.default;
+    this.swaggerParserApi = api;
   }
 
   /**
@@ -30,7 +36,20 @@ export class Validator {
     // Schema validation using swagger-parser if enabled
     if (this.config.validateSchema) {
       try {
-        await SwaggerParser.validate(spec as any);
+        const { specForValidation, downgradedFrom } = this.prepareSchemaValidationSpec(spec);
+        if (!this.swaggerParserApi?.validate) {
+          throw new Error('Swagger parser validate API is unavailable');
+        }
+        await this.swaggerParserApi.validate(specForValidation as any);
+
+        if (downgradedFrom) {
+          warnings.push({
+            path: 'openapi',
+            message: `Schema validation used compatibility mode: ${downgradedFrom} -> 3.0.3`,
+            code: 'OPENAPI_PATCH_COMPATIBILITY_MODE',
+            severity: 'warning'
+          });
+        }
       } catch (error) {
         if (error instanceof Error) {
           errors.push({
@@ -64,6 +83,39 @@ export class Validator {
       isValid: errors.length === 0,
       errors,
       warnings
+    };
+  }
+
+  /**
+   * swagger-parser@10 only supports OpenAPI 3.0.0~3.0.3.
+   * For 3.0.x patch versions above 3.0.3, keep semantic compatibility and
+   * validate against 3.0.3 to avoid false-negative version rejections.
+   */
+  private prepareSchemaValidationSpec(spec: OpenAPISpec): {
+    specForValidation: OpenAPISpec;
+    downgradedFrom?: string;
+  } {
+    const openapiVersion = (spec as any)?.openapi;
+    if (typeof openapiVersion !== 'string') {
+      return { specForValidation: spec };
+    }
+
+    const matched = /^3\.0\.(\d+)$/.exec(openapiVersion);
+    if (!matched) {
+      return { specForValidation: spec };
+    }
+
+    const patch = Number(matched[1]);
+    if (!Number.isFinite(patch) || patch <= 3) {
+      return { specForValidation: spec };
+    }
+
+    return {
+      specForValidation: {
+        ...(spec as any),
+        openapi: '3.0.3',
+      },
+      downgradedFrom: openapiVersion,
     };
   }
 

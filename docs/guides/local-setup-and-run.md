@@ -23,6 +23,51 @@ Required:
 Optional:
 
 - PostgreSQL `>= 14` when using heavy-load or production-oriented mode
+- GitHub CLI (`gh`) when you need to create PRs/releases from command line
+
+### 1.1 Install Node.js and pnpm (if missing)
+
+Windows PowerShell:
+
+```powershell
+winget install OpenJS.NodeJS.LTS
+corepack enable
+corepack prepare pnpm@latest --activate
+```
+
+### 1.2 Install GitHub CLI (optional, for PR/release workflow)
+
+Windows PowerShell:
+
+```powershell
+winget install --id GitHub.cli -e
+gh --version
+gh auth login
+```
+
+Ubuntu:
+
+```bash
+sudo apt update
+sudo apt install -y gh
+gh --version
+gh auth login
+```
+
+Notes:
+
+- `gh auth login` should be completed with an account that has repo push/PR permissions.
+- If `gh` is unavailable in apt source, follow the official package repo guide:
+  [https://cli.github.com/manual/installation](https://cli.github.com/manual/installation)
+
+Ubuntu:
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+corepack enable
+corepack prepare pnpm@latest --activate
+```
 
 Check versions first.
 
@@ -393,6 +438,25 @@ Windows PowerShell:
 
 ```powershell
 pnpm --filter mcp-swagger-server run cli:help
+```
+
+### 7.5 PowerShell blocks npm script execution
+
+Symptoms:
+
+- `npm.ps1` cannot be loaded because running scripts is disabled
+
+Use one of these:
+
+```powershell
+npm.cmd -v
+npm.cmd test
+```
+
+or:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
 Ubuntu:

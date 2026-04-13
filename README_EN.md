@@ -68,6 +68,33 @@ Requirements:
 
 - Node.js `>= 20`
 - pnpm `>= 8`
+- GitHub CLI (`gh`, optional for CLI-based PR/release workflow)
+
+Bootstrap development environment:
+
+Windows PowerShell:
+
+```powershell
+node -v
+corepack enable
+corepack prepare pnpm@latest --activate
+pnpm -v
+```
+
+Ubuntu:
+
+```bash
+node -v
+corepack enable
+corepack prepare pnpm@latest --activate
+pnpm -v
+```
+
+If `corepack` is unavailable, install pnpm with npm:
+
+```bash
+npm install -g pnpm
+```
 
 Install dependencies:
 
@@ -84,6 +111,9 @@ pnpm test
 pnpm lint
 pnpm type-check
 ```
+
+For complete environment setup (SQLite/PostgreSQL, API/UI/server startup), see:
+[docs/guides/local-setup-and-run.md](./docs/guides/local-setup-and-run.md)
 
 ## Auth and Filtering
 

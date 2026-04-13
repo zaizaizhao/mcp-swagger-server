@@ -63,6 +63,22 @@ src/
 
 ## 🛠️ 开发环境
 
+### 环境初始化（推荐先执行）
+
+在仓库根目录先执行以下命令，再进行 UI 包级开发：
+
+```bash
+node -v
+corepack enable
+corepack prepare pnpm@latest --activate
+pnpm -v
+pnpm install
+```
+
+完整本地环境说明见：
+
+- [Local Setup And Run](../../docs/guides/local-setup-and-run.md)
+
 ### 安装依赖
 
 ```bash

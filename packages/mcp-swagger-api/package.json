@@ -110,7 +110,11 @@
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
+      "^.+\\.ts$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "^mcp-swagger-parser$": "<rootDir>/../../mcp-swagger-parser/src/index.ts",
+      "^mcp-swagger-server$": "<rootDir>/../../mcp-swagger-server/src/transform/transformOpenApiToMcpTools.ts"
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"
