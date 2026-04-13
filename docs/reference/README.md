@@ -13,6 +13,7 @@ This directory contains current reference material that is still useful for main
 - [nodejs-module-systems-guide](./nodejs-module-systems-guide.md)
 - [npm-publication-guide](./npm-publication-guide.md)
 - [npm-tslib-issue-fix](./npm-tslib-issue-fix.md)
+- [versioning-policy](./versioning-policy.md)
 - [why-no-type-module](./why-no-type-module.md)
 
 ## Scope

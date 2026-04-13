@@ -6,6 +6,7 @@
   "scripts": {
     "build": "node scripts/build.js",
     "build:packages": "node scripts/build.js --non-ui",
+    "build:parser-chain": "node scripts/verify-parser-propagation.js --build-only --include-consumer-builds",
     "prepack": "node scripts/build.js",
     "pack": "pnpm pack --filter mcp-swagger-server && pnpm pack --filter mcp-swagger-parser",
     "changeset":"changeset",
@@ -18,7 +19,9 @@
     "diagnostic": "node scripts/diagnostic.js",
     "test": "pnpm -r run test",
     "lint": "pnpm -r run lint",
-    "type-check": "pnpm -r run type-check"
+    "type-check": "pnpm -r run type-check",
+    "verify:parser-chain": "node scripts/verify-parser-propagation.js",
+    "verify:parser-chain:full": "node scripts/verify-parser-propagation.js --include-consumer-builds"
   },
   "keywords": [
     "mcp",

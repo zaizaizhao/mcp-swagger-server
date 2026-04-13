@@ -1,245 +1,106 @@
-# MCP Swagger API 🚀
+# MCP Swagger API
 
-<div align="center">
+`mcp-swagger-api` 是本项目的 NestJS 管理后端。
 
-[![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
-[![NestJS](https://img.shields.io/badge/NestJS-10+-red.svg)](https://nestjs.com/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5+-blue.svg)](https://www.typescriptlang.org/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+它负责：
 
-**Enterprise-grade REST API server for seamless OpenAPI to MCP protocol conversion**
+- OpenAPI 文档导入、校验、标准化
+- 文档持久化与管理
+- MCP Server 管理
+- 认证与会话管理
+- 进程状态、日志与部分运维接口
 
-Transform your existing REST APIs into Model Context Protocol (MCP) tools with zero configuration
+## 当前定位
 
-[🚀 Quick Start](#quick-start) • [📚 Documentation](#documentation) • [🔧 API Reference](#api-reference) • [🛠️ Development](#development)
+该包不是一个独立产品，而是整个 `mcp-swagger-server` 产品中的管理后端。
 
-</div>
+默认开发端口：
 
----
+- API: `3001`
 
-## 🎯 What is MCP Swagger API?
+## 当前支持基线
 
-MCP Swagger API is a **NestJS-powered backend service** that bridges the gap between traditional REST APIs and AI assistants through the Model Context Protocol (MCP). It automatically converts OpenAPI/Swagger specifications into MCP-compatible tools, enabling AI assistants to interact with your APIs seamlessly.
+### 数据库
 
-### 🌟 Key Benefits
+- 默认：SQLite
+- 可选：PostgreSQL
 
-- **🔄 Zero Configuration**: Paste your OpenAPI spec and get MCP tools instantly
-- **🎯 AI-Native**: Purpose-built for LLM and AI assistant integration  
-- **🚀 Production Ready**: Enterprise-grade NestJS foundation with monitoring
-- **🔌 Multi-Transport Management**: HTTP API + managed MCP transports (`streamable`, `sse`; `websocket` planned)
-- **📊 Real-time**: Live status monitoring and dynamic tool management
+数据库模式通过环境变量控制，完整说明见：
 
-## ✨ Core Features
-
-### 🎨 Intelligent API Conversion
-- **Multi-format Input**: JSON, YAML, URL, or raw objects
-- **Smart Parsing**: Auto-detection of OpenAPI 2.0/3.x specifications  
-- **Dynamic Tools**: Real-time MCP tool generation from API endpoints
-- **Type Safety**: Full TypeScript support with automatic type inference
-
-### ⚡ Enterprise-Grade Architecture
-- **NestJS Foundation**: Modular, scalable, and maintainable codebase
-- **Built-in Security**: CORS, Helmet, compression, and rate limiting
-- **Health Monitoring**: Comprehensive status checks and diagnostics
-- **Event System**: Real-time updates and notifications
-
-### 🔌 Flexible Integration
-- **Embedded MCP Server**: No external dependencies required
-- **Multiple Transports**: HTTP API with MCP `streamable` / `sse` transports (`websocket` is not yet implemented)
-- **RESTful API**: Clean, documented endpoints for easy integration
-- **Swagger Documentation**: Auto-generated API documentation
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js ≥ 18.0.0
-- pnpm ≥ 8.0.0 (recommended)
-
-Environment bootstrap (from repository root):
-
-```bash
-node -v
-corepack enable
-corepack prepare pnpm@latest --activate
-pnpm -v
-pnpm install
-```
-
-Detailed setup baseline:
-
+- [Database Mode Quickstart](../../docs/guides/database-mode-quickstart.md)
+- [Database Strategy](../../docs/guides/database-strategy.md)
 - [Local Setup And Run](../../docs/guides/local-setup-and-run.md)
 
-### Installation & Setup
+### MCP 传输管理
+
+当前管理面应视为支持：
+
+- `streamable`
+- `sse`
+- `stdio` 主要用于 CLI / MCP 客户端直接接入场景
+
+说明：
+
+- MCP `websocket` transport 目前不应视为发布基线能力
+- 管理监控层 websocket 与 MCP transport websocket 不是同一概念
+
+## 开发启动
+
+在仓库根目录完成依赖安装后：
 
 ```bash
-# Install dependencies
-pnpm install
-
-# Start development server
-pnpm start:dev
-
-# Build for production
-pnpm build
+pnpm --filter mcp-swagger-api run start:dev
 ```
 
-The API server will be available at `http://localhost:3001`
-
-### 🎯 Basic Usage
-
-**Create an MCP Server from OpenAPI:**
+生产构建：
 
 ```bash
-curl -X POST http://localhost:3001/api/openapi/parse \
-  -H "Content-Type: application/json" \
-  -d '{
-    "source": {
-      "type": "url",
-      "content": "https://petstore.swagger.io/v2/swagger.json"
-    }
-  }'
+pnpm --filter mcp-swagger-api run build
+pnpm --filter mcp-swagger-api run start:prod
 ```
 
-**Check Server Status:**
+## 常用脚本
 
 ```bash
-curl http://localhost:3001/health
+pnpm --filter mcp-swagger-api run build
+pnpm --filter mcp-swagger-api run start:dev
+pnpm --filter mcp-swagger-api run test
+pnpm --filter mcp-swagger-api run lint
+pnpm --filter mcp-swagger-api run type-check
 ```
 
-## 🔧 API Reference
+## 主要接口
 
-### Core Endpoints
+常见运行路径：
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/openapi/parse` | Parse and convert an OpenAPI spec into MCP-ready output |
-| `POST` | `/api/openapi/validate` | Validate an OpenAPI specification |
-| `POST` | `/api/openapi/normalize` | Normalize an OpenAPI or Swagger document |
-| `GET` | `/health` | Health probe endpoint |
-| `GET` | `/api/v1/servers` | List managed MCP servers |
-| `POST` | `/api/v1/servers` | Create a managed MCP server instance |
+- `GET /health`
+- `POST /api/openapi/parse`
+- `POST /api/openapi/validate`
+- `POST /api/openapi/normalize`
+- `GET /api/documents`
+- `GET /api/v1/servers`
 
-### Configuration Options
+说明：
 
-```typescript
-interface MCPServerConfig {
-  name: string;           // Server identifier
-  version: string;        // Server version
-  description?: string;   // Optional description
-  port: number;          // Port number (3000-65535)
-  transport: 'streamable' | 'sse' | 'websocket'; // websocket is planned but not implemented yet
-}
-```
+- `/api/docs` 可查看 Swagger UI 文档
+- 实际可用接口以当前控制器实现为准
+- 尚未完成的管理能力不应视为已发布承诺
 
-## 🏗️ Architecture
+## 当前职责边界
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    MCP Swagger API                          │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌──────────────┐  ┌─────────────────┐    │
-│  │   OpenAPI   │  │  NestJS API  │  │   MCP Server    │    │
-│  │   Parser    │→ │  Controller  │→ │   Generator     │    │
-│  └─────────────┘  └──────────────┘  └─────────────────┘    │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌──────────────┐  ┌─────────────────┐    │
-│  │  Validation │  │   Security   │  │   Monitoring    │    │
-│  │   Service   │  │  Middleware  │  │    Service      │    │
-│  └─────────────┘  └──────────────┘  └─────────────────┘    │
-└─────────────────────────────────────────────────────────────┘
-```
+本包当前重点是支撑这条稳定主路径：
 
-## 🛠️ Technology Stack
+1. 导入 OpenAPI 文档
+2. 校验并标准化文档
+3. 管理可转换的文档资产
+4. 创建与管理 MCP Server
+5. 为 UI 提供一致的管理 API
 
-- **Framework**: NestJS 10+ (Node.js/TypeScript)
-- **Protocol**: Model Context Protocol (MCP) 
-- **Parser**: Custom OpenAPI 3.x parser with monorepo integration
-- **Security**: Helmet, CORS, Rate Limiting, Input Validation
-- **Documentation**: Swagger/OpenAPI auto-generation
-- **Testing**: Jest with comprehensive test coverage
-- **DevOps**: TypeScript, ESLint, Prettier
+不应在当前阶段把本包视为已经完成的“全量企业平台”。
 
-## 🌟 Use Cases
+## 相关文档
 
-### 🤖 AI Assistant Integration
-Connect your REST APIs to Claude, ChatGPT, or custom AI assistants through standardized MCP protocol.
-
-### 🔄 API Modernization  
-Transform legacy REST APIs into AI-friendly tools without changing existing infrastructure.
-
-### 🎯 Rapid Prototyping
-Quickly convert API specifications into interactive tools for testing and development.
-
-### 📊 Enterprise Integration
-Scale MCP tool generation across multiple APIs and services in enterprise environments.
-
-## 🛠️ Development
-
-### Project Structure
-```
-src/
-├── modules/           # Feature modules
-│   ├── mcp/          # MCP server management
-│   └── openapi/      # OpenAPI parsing & validation
-├── services/         # Business logic services  
-├── controllers/      # REST API controllers
-├── config/           # Configuration management
-├── common/           # Shared utilities
-└── types/            # TypeScript definitions
-```
-
-### Development Commands
-
-```bash
-# Start development server with hot reload
-pnpm start:dev
-
-# Run tests
-pnpm test
-
-# Run tests with coverage
-pnpm test:cov
-
-# Lint and format code
-pnpm lint
-pnpm format
-
-# Build for production
-pnpm build
-```
-
-## 📚 Documentation
-
-- [📚 Project Documentation Index](../docs/README.md)
-- [🏗️ Project Baseline](../PROJECT_BASELINE.md)
-- [🚀 Release Baseline](../RELEASE_BASELINE_V1.md)
-- [🔧 API Documentation](http://localhost:3001/api/docs) (when server is running)
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](../../CONTRIBUTING.md) for details.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](../../LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- [Model Context Protocol](https://modelcontextprotocol.io/) for the protocol specification
-- [NestJS](https://nestjs.com/) for the fantastic framework
-- [OpenAPI Initiative](https://www.openapis.org/) for API standardization
-
----
-
-<div align="center">
-
-**Made with ❤️ by the MCP Swagger Team**
-
-[⭐ Star this repo](../../stargazers) • [🐛 Report issues](../../issues) • [💡 Request features](../../issues/new)
-
-</div>
+- [Project README](../../README.md)
+- [Documentation Index](../../docs/README.md)
+- [Local Setup And Run](../../docs/guides/local-setup-and-run.md)
+- [Next Phase Development Plan](../../docs/guides/next-phase-development-plan.md)

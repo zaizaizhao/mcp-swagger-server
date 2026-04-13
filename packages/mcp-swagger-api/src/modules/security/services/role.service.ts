@@ -377,6 +377,7 @@ export class RoleService {
   async cloneRole(
     sourceRoleId: string,
     newRoleName: string,
+    description?: string,
     operatorId?: string,
     ipAddress?: string,
   ): Promise<RoleResponseDto> {
@@ -394,7 +395,7 @@ export class RoleService {
     // 创建新角色
     const newRole = this.roleRepository.create({
       name: newRoleName,
-      description: `复制自 ${sourceRole.name}`,
+      description: description || `Cloned from ${sourceRole.name}`,
       type: RoleType.CUSTOM,
       enabled: true,
       priority: sourceRole.priority,

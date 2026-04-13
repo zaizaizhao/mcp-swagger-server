@@ -37,4 +37,34 @@ describe('ParserService', () => {
     });
     expect(normalized.paths).toEqual({});
   });
+
+  it('should generate MCP tools from a normalized OpenAPI 3.0.4 spec', async () => {
+    const parsedSpec = await service.parseSpecification({
+      openapi: '3.0.4',
+      info: {
+        title: 'Pet API',
+        version: '1.0.0',
+      },
+      paths: {
+        '/pets': {
+          get: {
+            operationId: 'listPets',
+            summary: 'List pets',
+            responses: {
+              '200': {
+                description: 'Successful response',
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const tools = await service.generateMCPTools(parsedSpec);
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].name).toBe('listPets');
+    expect(tools[0].description).toContain('List pets');
+    expect(tools[0].inputSchema).toBeDefined();
+  });
 });

@@ -37,7 +37,14 @@ export class AppConfigService {
 
   // CORS配置
   get corsOrigins(): string[] {
-    return this.configService.get<string>('CORS_ORIGINS', 'http://localhost:5173').split(',');
+    return this.configService
+      .get<string>(
+        'CORS_ORIGINS',
+        'http://localhost:5173,http://localhost:3000,http://127.0.0.1:3000',
+      )
+      .split(',')
+      .map(origin => origin.trim())
+      .filter(Boolean);
   }
 
   // 安全配置

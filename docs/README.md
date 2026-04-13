@@ -16,6 +16,10 @@ The current top-level governance documents remain at repository root:
 - [Database Mode Quickstart](./guides/database-mode-quickstart.md)
 - [Database Strategy](./guides/database-strategy.md)
 - [Local Setup And Run](./guides/local-setup-and-run.md)
+- [Parser Change Verification](./guides/parser-change-verification.md)
+- [Release Readiness Checklist](./guides/release-readiness-checklist.md)
+- [Next Phase Development Plan](./guides/next-phase-development-plan.md)
+- [Versioning Policy](./reference/versioning-policy.md)
 - [GitHub Collaboration Workflow](./guides/github-collaboration-workflow.md)
 - [Release v0.2.14](./guides/release-v0.2.14.md)
 
@@ -45,6 +49,7 @@ Use for:
 - usage
 - deployment
 - auth-related operation guides
+- release gating
 - troubleshooting on active product paths
 
 ### Current reference

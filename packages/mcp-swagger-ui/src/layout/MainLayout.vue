@@ -158,6 +158,7 @@
 
           <!-- 设置按钮 -->
           <el-button
+            v-if="showGlobalSettingsEntry"
             :icon="Setting"
             @click="openSettings"
             text
@@ -185,11 +186,17 @@
             </div>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item command="profile">
+                <el-dropdown-item
+                  command="profile"
+                  :disabled="!showUserShortcutEntries"
+                >
                   <el-icon><User /></el-icon>
                   {{ t("userAuth.user.profile") }}
                 </el-dropdown-item>
-                <el-dropdown-item command="settings">
+                <el-dropdown-item
+                  command="settings"
+                  :disabled="!showUserShortcutEntries"
+                >
                   <el-icon><Setting /></el-icon>
                   {{ t("userAuth.user.accountSettings") }}
                 </el-dropdown-item>
@@ -321,6 +328,8 @@ const isDark = computed(() => themeStore.isDark);
 const currentLanguage = computed(() => localeStore.currentLanguage);
 const supportedLocales = computed(() => SUPPORT_LOCALES);
 const currentUser = computed(() => authStore.currentUser);
+const showGlobalSettingsEntry = false;
+const showUserShortcutEntries = false;
 
 const sidebarWidth = computed(() => {
   if (isMobile.value) {
@@ -449,7 +458,6 @@ const handleLanguageChange = (locale: Locale) => {
 const openSettings = () => {
   try {
     measureFunction(() => {
-      // TODO: 实现设置对话框
       ElMessage.info(t("common.info"));
     }, "layout-open-settings");
   } catch (error: any) {
@@ -484,11 +492,9 @@ const handleUserAction = async (command: string) => {
   try {
     switch (command) {
       case "profile":
-        // TODO: 打开个人资料页面
         ElMessage.info(t("userAuth.messages.profileInDevelopment"));
         break;
       case "settings":
-        // TODO: 打开账户设置页面
         ElMessage.info(t("userAuth.messages.settingsInDevelopment"));
         break;
       case "logout":

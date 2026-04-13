@@ -456,6 +456,116 @@ export class PermissionService {
   /**
    * 初始化系统权限
    */
+
+  /**
+   * ?????????????
+   */
+  async getPermissionRoles(permissionId: string, page = 1, limit = 20) {
+    await this.findPermissionById(permissionId);
+
+    const safePage = Math.max(page, 1);
+    const safeLimit = Math.max(limit, 1);
+    const offset = (safePage - 1) * safeLimit;
+
+    const total = await this.roleRepository
+      .createQueryBuilder('role')
+      .innerJoin('role.permissions', 'permission')
+      .where('permission.id = :permissionId', { permissionId })
+      .getCount();
+
+    const rows = await this.roleRepository
+      .createQueryBuilder('role')
+      .innerJoin('role.permissions', 'permission')
+      .leftJoin('role.users', 'user')
+      .where('permission.id = :permissionId', { permissionId })
+      .select('role.id', 'id')
+      .addSelect('role.name', 'name')
+      .addSelect('role.description', 'description')
+      .addSelect('role.type', 'type')
+      .addSelect('role.enabled', 'enabled')
+      .addSelect('role.priority', 'priority')
+      .addSelect('role.createdAt', 'createdAt')
+      .addSelect('role.updatedAt', 'updatedAt')
+      .addSelect('COUNT(DISTINCT user.id)', 'userCount')
+      .groupBy('role.id')
+      .orderBy('role.priority', 'ASC')
+      .addOrderBy('role.name', 'ASC')
+      .skip(offset)
+      .take(safeLimit)
+      .getRawMany();
+
+    const totalPages = total === 0 ? 0 : Math.ceil(total / safeLimit);
+
+    return {
+      data: rows.map(row => ({
+        id: row.id,
+        name: row.name,
+        description: row.description,
+        type: row.type,
+        enabled: row.enabled === true || row.enabled === 'true' || row.enabled === 1,
+        priority: Number(row.priority ?? 0),
+        userCount: Number(row.userCount ?? 0),
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      })),
+      total,
+      page: safePage,
+      limit: safeLimit,
+      totalPages,
+      hasNext: safePage < totalPages,
+      hasPrev: safePage > 1,
+    };
+  }
+
+  /**
+   * ????????
+   */
+  async getPermissionTree() {
+    const permissions = await this.permissionRepository.find({
+      order: {
+        category: 'ASC',
+        action: 'ASC',
+        name: 'ASC',
+      },
+    });
+
+    const categoryMap = new Map<string, any>();
+
+    for (const permission of permissions) {
+      if (!categoryMap.has(permission.category)) {
+        categoryMap.set(permission.category, {
+          category: permission.category,
+          count: 0,
+          actions: new Map<string, any>(),
+        });
+      }
+
+      const categoryNode = categoryMap.get(permission.category);
+      categoryNode.count += 1;
+
+      if (!categoryNode.actions.has(permission.action)) {
+        categoryNode.actions.set(permission.action, {
+          action: permission.action,
+          count: 0,
+          permissions: [],
+        });
+      }
+
+      const actionNode = categoryNode.actions.get(permission.action);
+      actionNode.count += 1;
+      actionNode.permissions.push(this.toResponseDto(permission));
+    }
+
+    return {
+      total: permissions.length,
+      categories: Array.from(categoryMap.values()).map(categoryNode => ({
+        category: categoryNode.category,
+        count: categoryNode.count,
+        actions: Array.from(categoryNode.actions.values()),
+      })),
+    };
+  }
+
   async initializeSystemPermissions(): Promise<void> {
     for (const permissionData of Object.values(SYSTEM_PERMISSIONS)) {
       const existingPermission = await this.permissionRepository.findOne({

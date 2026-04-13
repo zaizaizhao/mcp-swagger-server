@@ -226,7 +226,7 @@ const createMCPServer = async (openApiUrl: string) => {
       openApiData: openApiUrl,
       config: {
         name: 'Dynamic API',
-        transport: 'websocket'
+        transport: 'streamable'
       }
     })
   });

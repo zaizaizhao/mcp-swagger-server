@@ -2,8 +2,13 @@ import { IsString, IsOptional, IsNumber, IsBoolean, IsEnum, IsArray, IsObject, V
 import { Type, Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-import { ServerStatus, TransportType } from '../../../database/entities/mcp-server.entity';
+import { ServerStatus } from '../../../database/entities/mcp-server.entity';
 import { AuthType } from '../../../database/entities/auth-config.entity';
+
+export enum ManagedTransportType {
+  STREAMABLE = 'streamable',
+  SSE = 'sse',
+}
 
 /**
  * 创建服务器DTO
@@ -31,13 +36,13 @@ export class CreateServerDto {
   port?: number;
 
   @ApiPropertyOptional({ 
-    description: '传输类型', 
-    enum: TransportType, 
-    example: TransportType.STREAMABLE 
+    description: '????????????? streamable ? sse?', 
+    enum: ManagedTransportType, 
+    example: ManagedTransportType.STREAMABLE 
   })
   @IsOptional()
-  @IsEnum(TransportType)
-  transport?: TransportType;
+  @IsEnum(ManagedTransportType)
+  transport?: ManagedTransportType;
 
   @ApiProperty({ description: 'OpenAPI规范数据', type: 'object' })
   @IsObject()
@@ -97,13 +102,13 @@ export class UpdateServerDto {
   port?: number;
 
   @ApiPropertyOptional({ 
-    description: '传输类型', 
-    enum: TransportType, 
-    example: TransportType.STREAMABLE 
+    description: '????????????? streamable ? sse?', 
+    enum: ManagedTransportType, 
+    example: ManagedTransportType.STREAMABLE 
   })
   @IsOptional()
-  @IsEnum(TransportType)
-  transport?: TransportType;
+  @IsEnum(ManagedTransportType)
+  transport?: ManagedTransportType;
 
   @ApiPropertyOptional({ description: 'OpenAPI规范数据', type: 'object' })
   @IsOptional()
@@ -166,13 +171,13 @@ export class ServerQueryDto {
   status?: ServerStatus;
 
   @ApiPropertyOptional({ 
-    description: '传输类型过滤', 
-    enum: TransportType, 
-    example: TransportType.STREAMABLE 
+    description: '?????????????????? streamable ? sse?', 
+    enum: ManagedTransportType, 
+    example: ManagedTransportType.STREAMABLE 
   })
   @IsOptional()
-  @IsEnum(TransportType)
-  transport?: TransportType;
+  @IsEnum(ManagedTransportType)
+  transport?: ManagedTransportType;
 
   @ApiPropertyOptional({ description: '搜索关键词（名称或描述）', example: 'api' })
   @IsOptional()
@@ -432,8 +437,11 @@ export class ServerResponseDto {
   @ApiProperty({ description: '服务器端口' })
   port: number;
 
-  @ApiProperty({ description: '传输类型', enum: TransportType })
-  transport: TransportType;
+  @ApiProperty({
+    description: '???????????? streamable ? sse????????????',
+    example: 'streamable'
+  })
+  transport: string;
 
   @ApiProperty({ description: '服务器状态', enum: ServerStatus })
   status: ServerStatus;

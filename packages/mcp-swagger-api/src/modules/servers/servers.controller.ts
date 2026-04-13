@@ -112,7 +112,7 @@ export class ServersController {
   @ApiQuery({ name: 'page', required: false, description: '页码', example: 1 })
   @ApiQuery({ name: 'limit', required: false, description: '每页数量', example: 10 })
   @ApiQuery({ name: 'status', required: false, description: '状态过滤', enum: ['stopped', 'starting', 'running', 'stopping', 'error'] })
-  @ApiQuery({ name: 'transport', required: false, description: '传输类型过滤', enum: ['streamable', 'sse', 'stdio', 'websocket'] })
+  @ApiQuery({ name: 'transport', required: false, description: '传输类型过滤（当前管理面主路径仅支持 streamable 和 sse）', enum: ['streamable', 'sse'] })
   @ApiQuery({ name: 'search', required: false, description: '搜索关键词' })
   @ApiQuery({ name: 'tags', required: false, description: '标签过滤（逗号分隔）' })
   @ApiResponse({ status: 200, description: '获取成功', type: PaginatedResponseDto })

@@ -1,36 +1,67 @@
 # MCP Swagger Server
 
-将 OpenAPI / Swagger 描述的 REST API 转换为可运行的 MCP 工具与服务。
+将 OpenAPI / Swagger 文档转换为可接入大模型应用的 MCP Tools 与 MCP Server。
 
 **Languages**: [English](./README_EN.md) | 中文
 
 ## 当前定位
 
-本仓库当前目标是收敛一个“基本可用、可发布、可接入大模型应用”的版本，而不是继续扩散功能面。
+本项目当前目标是收敛一个可实际运行、可发布、可维护的产品化版本，而不是继续无边界扩展功能面。
 
-当前主链路为：
+当前主路径为：
 
-- OpenAPI/Swagger 输入
-- 解析与标准化
-- 端点提取与过滤
-- MCP 工具生成
-- MCP 运行时暴露
-- API / UI 管理与运维
+- OpenAPI / Swagger 导入
+- 规范解析、校验、标准化
+- 接口路径与操作提取
+- MCP Tools 生成
+- MCP Server 运行与管理
+- API / UI / CLI 统一接入
 
 ## Monorepo 结构
 
 - `packages/mcp-swagger-parser`
-  OpenAPI/Swagger 解析、校验、标准化、端点提取
+  负责 OpenAPI / Swagger 解析、校验、标准化与兼容处理。
 - `packages/mcp-swagger-server`
-  MCP 工具转换与运行时，支持 `stdio`、`sse`、`streamable`
+  负责将 OpenAPI 操作转换为 MCP Tools，并提供 CLI 与 MCP Server 运行能力。
 - `packages/mcp-swagger-api`
-  管理后端，负责编排、持久化、安全边界与运维接口
+  负责管理后端、文档管理、服务器管理、认证与持久化。
 - `packages/mcp-swagger-ui`
-  操作界面，消费后端稳定合同
+  负责操作界面，面向文档导入、校验、转换与服务器管理。
 
-## 当前推荐使用方式
+## 当前支持基线
 
-### 1. 作为 MCP Server 直接接入大模型应用
+### 运行环境
+
+- Node.js `>= 20`
+- pnpm `>= 8`
+- Windows
+- Linux，重点兼容 Ubuntu
+
+### 数据库模式
+
+- 默认模式：SQLite
+- 可选模式：PostgreSQL
+
+SQLite 适用于单机、小规模、低运维成本场景。
+
+PostgreSQL 适用于更高并发、更长期运行、更强可运维性的部署场景。
+
+### MCP 传输支持
+
+当前明确支持：
+
+- `stdio`
+- `streamable`
+- `sse`
+
+说明：
+
+- 监控与管理层存在 websocket 能力
+- MCP `websocket` transport 仍不应视为当前发布基线
+
+## 快速开始
+
+### 1. 作为 CLI / MCP Server 直接运行
 
 先安装：
 
@@ -38,13 +69,13 @@
 npm install -g mcp-swagger-server
 ```
 
-然后以 `stdio` 模式启动：
+然后启动：
 
 ```bash
 mss --openapi https://petstore.swagger.io/v2/swagger.json --transport stdio
 ```
 
-用于 Claude Desktop 一类客户端时，可使用类似配置：
+用于 MCP 客户端时，可参考：
 
 ```json
 {
@@ -62,43 +93,15 @@ mss --openapi https://petstore.swagger.io/v2/swagger.json --transport stdio
 }
 ```
 
-### 2. 本地开发
+### 2. 本地开发运行
 
-环境要求：
-
-- Node.js `>= 20`
-- pnpm `>= 8`
-- GitHub CLI (`gh`，可选，用于命令行创建 PR/发布)
-
-Development environment bootstrap:
-
-Windows PowerShell:
-
-```powershell
-node -v
-corepack enable
-corepack prepare pnpm@latest --activate
-pnpm -v
-```
-
-Ubuntu:
+环境初始化：
 
 ```bash
 node -v
 corepack enable
 corepack prepare pnpm@latest --activate
 pnpm -v
-```
-
-If `corepack` is unavailable, install pnpm via npm:
-
-```bash
-npm install -g pnpm
-```
-
-安装依赖：
-
-```bash
 pnpm install
 ```
 
@@ -112,55 +115,55 @@ pnpm lint
 pnpm type-check
 ```
 
-完整本地安装与运行基线（含 SQLite/PostgreSQL、API/UI/CLI 启动）见：
-[docs/guides/local-setup-and-run.md](./docs/guides/local-setup-and-run.md)
+完整安装、数据库配置、API/UI/CLI 启动命令见：
 
-## 认证与过滤能力
+- [Local Setup And Run](./docs/guides/local-setup-and-run.md)
+- [Database Mode Quickstart](./docs/guides/database-mode-quickstart.md)
+- [Database Strategy](./docs/guides/database-strategy.md)
 
-当前主路径已支持：
+## 当前主要访问路径
 
-- Bearer Token 认证
-- 自定义请求头
-- 基于方法、路径、`operationId`、状态码、参数的端点过滤
+默认开发环境下：
 
-示例：
+- UI: `http://127.0.0.1:3000`
+- API: `http://127.0.0.1:3001`
+- MCP Streamable 示例: `http://127.0.0.1:3322/mcp`
 
-```bash
-mss \
-  --openapi https://api.example.com/openapi.json \
-  --transport streamable \
-  --auth-type bearer \
-  --bearer-env API_TOKEN \
-  --operation-filter-methods GET \
-  --operation-filter-methods POST
-```
+说明：
 
-## 文档入口
+- `/mcp` 是 MCP 协议入口，不是浏览器查看页面
+- 浏览器直接访问时，如果缺少 MCP 会话头，返回 `Mcp-Session-Id header is required` 属于正常行为
 
-当前有效的项目基线与文档入口：
+## 当前已收敛的产品能力
 
-- [产品约束](./PRODUCT_CONSTRAINTS.md)
-- [项目基线](./PROJECT_BASELINE.md)
-- [发布基线](./RELEASE_BASELINE_V1.md)
-- [阶段分析与计划](./PROJECT_ANALYSIS_AND_V1_PLAN.md)
-- [文档索引](./docs/README.md)
+- OpenAPI / Swagger 文档导入
+- URL 导入、文本导入、上传导入
+- 规范校验与标准化
+- Swagger 2.0 到 OpenAPI 3.x 兼容转换
+- OpenAPI `3.0.4` 校验兼容处理
+- 工具列表预览与转换
+- Bearer Token 与自定义请求头配置
+- 服务器管理与进程日志查看
+- SQLite / PostgreSQL 双数据库模式
 
-`docs/` 已区分为：
+## 当前文档入口
 
-- `docs/guides`
-  当前使用、部署、认证、排障文档
-- `docs/reference`
-  当前仍有效的发布与协议参考
-- `docs/archive`
-  历史方案、阶段总结、旧设计文档归档
+项目基线与说明请优先从这里进入：
+
+- [PRODUCT_CONSTRAINTS](./PRODUCT_CONSTRAINTS.md)
+- [PROJECT_BASELINE](./PROJECT_BASELINE.md)
+- [RELEASE_BASELINE_V1](./RELEASE_BASELINE_V1.md)
+- [Documentation Index](./docs/README.md)
+- [Next Phase Development Plan](./docs/guides/next-phase-development-plan.md)
 
 ## 当前工作原则
 
-- 先收敛可发布版本，再扩展新功能
-- 外部设计资料仅作参考，不直接覆盖当前架构
-- Windows 和 Linux/Ubuntu 都必须可运行
-- CLI、API、UI、文档合同必须尽量一致
+- 先保证主路径稳定可发布，再扩展功能
+- 外部需求文档仅作为参考，不直接覆盖当前产品基线
+- Windows 与 Linux / Ubuntu 必须同时可运行
+- 文档、CLI、API、UI 的主路径描述必须尽量一致
+- 长时间运行的稳定性和可靠性优先于功能堆叠
 
-## 许可证
+## License
 
-MIT，见 [LICENSE](./LICENSE)。
+MIT，见 [LICENSE](./LICENSE)

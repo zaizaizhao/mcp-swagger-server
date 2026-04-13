@@ -254,9 +254,7 @@ export class RoleController {
     @Req() req: Request,
   ): Promise<RoleResponseDto> {
     const ipAddress = this.getClientIp(req);
-    // Note: copyRole method not found in RoleService, this functionality might need to be implemented
-    // return this.roleService.copyRole(id, name, description, currentUser.id, ipAddress);
-    throw new Error('Copy role functionality not implemented');
+    return this.roleService.cloneRole(id, name, description, currentUser.id, ipAddress);
   }
 
   @Put(':id/toggle')

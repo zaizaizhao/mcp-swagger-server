@@ -281,8 +281,7 @@ export class PermissionController {
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
   ) {
-    // TODO: 实现获取权限关联角色的逻辑
-    throw new Error('Method not implemented');
+    return this.permissionService.getPermissionRoles(id, Number(page), Number(limit));
   }
 
   @Get('system/init')
@@ -312,8 +311,7 @@ export class PermissionController {
     description: '获取成功',
   })
   async getPermissionTree() {
-    // TODO: 实现获取权限树的逻辑
-    throw new Error('Method not implemented');
+    return this.permissionService.getPermissionTree();
   }
 
   // @Get('check/conflicts')

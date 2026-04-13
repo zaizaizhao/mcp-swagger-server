@@ -1538,29 +1538,30 @@ const formatBytes = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 };
 
-// 获取传输类型
+// ??????
 const getTransportType = () => {
-  // 优先使用配置中的传输类型
+  if (serverInfo.value?.transport) {
+    return serverInfo.value.transport.toUpperCase();
+  }
+
   if (serverInfo.value?.config?.transport) {
     return serverInfo.value.config.transport.toUpperCase();
   }
 
-  // 根据端点URL判断传输类型
   if (serverInfo.value?.endpoint) {
     const endpoint = serverInfo.value.endpoint.toLowerCase();
     if (endpoint.includes("stdio") || endpoint.includes("process")) {
       return "STDIO";
     }
-    if (endpoint.includes("sse") || endpoint.includes("stream")) {
-      return "SSE";
+    if (endpoint.includes("mcp") || endpoint.includes("streamable")) {
+      return "STREAMABLE";
     }
-    if (endpoint.includes("ws") || endpoint.includes("websocket")) {
-      return "WebSocket";
+    if (endpoint.includes("sse")) {
+      return "SSE";
     }
   }
 
-  // 默认返回STDIO（因为大多数MCP服务器使用STDIO）
-  return "STDIO";
+  return "UNKNOWN";
 };
 
 // 获取CPU使用率

@@ -272,6 +272,39 @@ pnpm --filter mcp-swagger-api run build
 pnpm --filter mcp-swagger-ui run build
 ```
 
+### 4.1 Required flow after parser changes
+
+If you change anything under `packages/mcp-swagger-parser`, do not stop at rebuilding the parser alone.
+
+Run the fixed downstream rebuild and verification flow from repository root:
+
+```bash
+pnpm run verify:parser-chain
+```
+
+This is the stable default verification path:
+
+- parser build
+- server build
+- parser type-check
+- server type-check
+- api type-check
+- ui type-check
+
+If you only need downstream rebuild without the full type-check pass:
+
+```bash
+pnpm run build:parser-chain
+```
+
+If you also need consumer build verification for release work:
+
+```bash
+pnpm run verify:parser-chain:full
+```
+
+This is the required baseline for parser compatibility fixes and export/type changes.
+
 ## 5. Start Commands
 
 ### 5.1 Start API
@@ -476,5 +509,6 @@ Currently verified:
 - API can still be configured for PostgreSQL
 - API docs path is `http://localhost:3001/api/docs`
 - CLI can be built and started from the local workspace
+- parser propagation can be re-verified with `pnpm run verify:parser-chain`
 
 If other documents conflict with this file, use this file as the active setup baseline.

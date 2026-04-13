@@ -2,6 +2,7 @@ import axios, { type AxiosInstance, type AxiosResponse } from "axios";
 import type {
   ApiResponse,
   MCPServer,
+  ManagedServerTransport,
   ServerConfig,
   OpenAPISpec,
   MCPTool,
@@ -175,7 +176,7 @@ export const serverAPI = {
     page?: number;
     limit?: number;
     status?: string;
-    transport?: string;
+    transport?: ManagedServerTransport;
     search?: string;
     tags?: string[];
   }): Promise<{
@@ -197,7 +198,7 @@ export const serverAPI = {
     version?: string;
     description?: string;
     port?: number;
-    transport?: "streamable" | "sse" | "stdio" | "websocket";
+    transport?: ManagedServerTransport;
     openApiData: any;
     config?: any;
     authConfig?: string;
@@ -216,7 +217,7 @@ export const serverAPI = {
       version?: string;
       description?: string;
       port?: number;
-      transport?: "streamable" | "sse" | "stdio" | "websocket";
+      transport?: ManagedServerTransport;
       openApiData?: any;
       config?: any;
       authConfig?: string;

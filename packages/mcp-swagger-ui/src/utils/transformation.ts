@@ -191,6 +191,10 @@ export const updateServerConfig = (
   server: MCPServer,
   newConfig: Partial<ServerConfig>,
 ): MCPServer => {
+  const normalizeManagedTransport = (
+    transport?: string,
+  ): ServerConfig["transport"] => (transport === "sse" ? "sse" : "streamable");
+
   // 确保config中的必需字段不为undefined
   const mergedConfig: ServerConfig = {
     name: newConfig.name || server.config?.name || server.name,
@@ -198,8 +202,9 @@ export const updateServerConfig = (
     description:
       newConfig.description || server.config?.description || server.description,
     port: newConfig.port || server.config?.port || server.port,
-    transport:
+    transport: normalizeManagedTransport(
       newConfig.transport || server.config?.transport || server.transport,
+    ),
     openApiData: newConfig.openApiData || server.config?.openApiData || {},
     config: newConfig.config || server.config?.config || {},
     authConfig: newConfig.authConfig || server.config?.authConfig || "",
@@ -381,7 +386,7 @@ export const serversToConfigFile = (
         version: server.version,
         description: server.description,
         port: server.port,
-        transport: server.transport,
+        transport: server.transport === "sse" ? "sse" : "streamable",
         openApiData: {},
         config: {},
         authConfig: "",

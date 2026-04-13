@@ -252,6 +252,9 @@ const InputRef = ref();
 const availableDocuments = ref<OpenAPIDocument[]>([]);
 const documentsLoading = ref(false);
 
+const normalizeManagedTransport = (transport?: string): "streamable" | "sse" =>
+  transport === "sse" ? "sse" : "streamable";
+
 // 表单数据
 const formData = ref<ServerConfig & { openApiDocumentId?: string }>({
   name: "",
@@ -357,7 +360,7 @@ watch(
         version: server.version || "",
         description: server.description || "",
         port: server.port || 3000,
-        transport: server.transport || "streamable",
+        transport: normalizeManagedTransport(server.transport),
         openApiData: {},
         config: {},
         authConfig: "",

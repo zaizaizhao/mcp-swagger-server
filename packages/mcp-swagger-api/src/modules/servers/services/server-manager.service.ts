@@ -506,7 +506,10 @@ export class ServerManagerService implements OnModuleInit, OnApplicationShutdown
       if (updateDto.port && updateDto.port !== server.port) {
         throw new ConflictException('Cannot change port while server is running');
       }
-      if (updateDto.transport && updateDto.transport !== server.transport) {
+      if (
+        updateDto.transport &&
+        updateDto.transport !== (server.transport as unknown as typeof updateDto.transport)
+      ) {
         throw new ConflictException('Cannot change transport while server is running');
       }
     }

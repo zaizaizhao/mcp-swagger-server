@@ -23,6 +23,12 @@ export interface ConvertConfig {
   outputFormat: "json" | "yaml";
 }
 
+export type ManagedServerTransport = "streamable" | "sse";
+export type ServerTransport =
+  | ManagedServerTransport
+  | "stdio"
+  | "websocket";
+
 // ============================================================================
 // 基础类型定义
 // ============================================================================
@@ -63,7 +69,7 @@ export interface ServerConfig {
   version?: string;
   description?: string;
   port?: number;
-  transport?: "streamable" | "sse" | "stdio" | "websocket";
+  transport?: ManagedServerTransport;
   openApiData: any;
   config?: any;
   authConfig?: string;
@@ -104,7 +110,7 @@ export interface MCPServer {
   version: string;
   description?: string;
   port: number;
-  transport: "streamable" | "sse" | "stdio" | "websocket";
+  transport: ServerTransport;
   status: ServerStatus;
   healthy: boolean;
   endpoint?: string;
