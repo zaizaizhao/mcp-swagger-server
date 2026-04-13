@@ -103,3 +103,5 @@ packages/*/.env.production
 .debug/
 debug.log
 debug/
+packages/mcp-swagger-api/.env
+packages/mcp-swagger-api/.env.development
