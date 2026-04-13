@@ -126,7 +126,35 @@ Notes:
 - API startup now performs a writability check for the SQLite parent directory and database file
 - this mode does not require PostgreSQL
 
-### 3.2 Optional: PostgreSQL
+### 3.2 How to confirm the active database mode
+
+If you do not set `DB_TYPE`, the API defaults to `sqlite`.
+
+Current confirmation rules:
+
+- `packages/mcp-swagger-api/.env` does not need `DB_TYPE` for SQLite mode
+- API startup logs will print `Database mode: sqlite` or `Database mode: postgres`
+- in SQLite mode, startup logs also print the resolved SQLite file path
+
+Recommended quick checks:
+
+Windows PowerShell:
+
+```powershell
+Select-String -Path packages\mcp-swagger-api\.env -Pattern '^DB_TYPE='
+pnpm --filter mcp-swagger-api run start:dev
+```
+
+Ubuntu:
+
+```bash
+grep '^DB_TYPE=' packages/mcp-swagger-api/.env
+pnpm --filter mcp-swagger-api run start:dev
+```
+
+If no `DB_TYPE=` line is present, the runtime default is SQLite.
+
+### 3.3 Optional: PostgreSQL
 
 Use PostgreSQL when you need a stronger production posture.
 
@@ -241,6 +269,7 @@ After startup:
 
 - Swagger docs: `http://localhost:3001/api/docs`
 - health endpoint: `http://localhost:3001/health`
+- startup logs show the effective database mode and resolved SQLite path or PostgreSQL target
 
 ### 5.2 Start UI
 
@@ -292,7 +321,7 @@ After startup:
 
 1. `pnpm install`
 2. copy `packages/mcp-swagger-api/.env.example` to `packages/mcp-swagger-api/.env`
-3. set `DB_TYPE=sqlite`
+3. keep `DB_TYPE=sqlite` or leave it unset
 4. build API
 5. start API
 6. visit `http://localhost:3001/api/docs`
@@ -379,6 +408,7 @@ Currently verified:
 - API build passes
 - UI build passes
 - API can initialize with `DB_TYPE=sqlite`
+- API defaults to SQLite when `DB_TYPE` is unset
 - API can still be configured for PostgreSQL
 - API docs path is `http://localhost:3001/api/docs`
 - CLI can be built and started from the local workspace
