@@ -7,6 +7,7 @@ This directory contains current operational and usage-oriented documentation.
 - [database-mode-quickstart](./database-mode-quickstart.md)
 - [database-strategy](./database-strategy.md)
 - [local-setup-and-run](./local-setup-and-run.md)
+- [github-collaboration-workflow](./github-collaboration-workflow.md)
 - [release-v0.2.14](./release-v0.2.14.md)
 - [quick-start-guide](./quick-start-guide.md)
 - [usage-guide](./usage-guide.md)

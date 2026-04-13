@@ -16,6 +16,7 @@ The current top-level governance documents remain at repository root:
 - [Database Mode Quickstart](./guides/database-mode-quickstart.md)
 - [Database Strategy](./guides/database-strategy.md)
 - [Local Setup And Run](./guides/local-setup-and-run.md)
+- [GitHub Collaboration Workflow](./guides/github-collaboration-workflow.md)
 - [Release v0.2.14](./guides/release-v0.2.14.md)
 
 ## Structure
