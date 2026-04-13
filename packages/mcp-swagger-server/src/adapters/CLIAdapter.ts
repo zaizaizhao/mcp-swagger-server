@@ -3,20 +3,36 @@ import { parseArgs } from 'node:util';
 import { startStdioMcpServer, startSseMcpServer, startStreamableMcpServer } from '../transportUtils';
 import type { CLIOptions, AdapterConfig } from '../types';
 
+type SessionServerFactory = () => McpServer | Promise<McpServer>;
+
 /**
- * CLI适配器 - 处理命令行启动
+ * CLI??? - ???????
  */
 export class CLIAdapter {
-  private server: McpServer;
+  private serverOrFactory: McpServer | SessionServerFactory;
   private config: AdapterConfig;
 
-  constructor(server: McpServer, config: AdapterConfig = {}) {
-    this.server = server;
+  constructor(serverOrFactory: McpServer | SessionServerFactory, config: AdapterConfig = {}) {
+    this.serverOrFactory = serverOrFactory;
     this.config = config;
   }
 
+  private isServerFactory(
+    serverOrFactory: McpServer | SessionServerFactory,
+  ): serverOrFactory is SessionServerFactory {
+    return typeof serverOrFactory === 'function';
+  }
+
+  private async createSessionServer(): Promise<McpServer> {
+    if (this.isServerFactory(this.serverOrFactory)) {
+      return await this.serverOrFactory();
+    }
+
+    return this.serverOrFactory;
+  }
+
   /**
-   * 解析命令行参数并启动对应的服务器
+   * ????????????????
    */
   async parseAndRun(argv?: string[]): Promise<void> {
     const args = this.parseArgs(argv);
@@ -24,38 +40,38 @@ export class CLIAdapter {
   }
 
   /**
-   * 解析命令行参数
+   * ???????
    */
   private parseArgs(argv?: string[]): CLIOptions {
     const { values } = parseArgs({
       args: argv,
       options: {
         transport: {
-          type: "string",
-          short: "t",
-          default: "stdio",
+          type: 'string',
+          short: 't',
+          default: 'stdio',
         },
         port: {
-          type: "string",
-          short: "p",
-          default: "3322",
+          type: 'string',
+          short: 'p',
+          default: '3322',
         },
         endpoint: {
-          type: "string",
-          short: "e",
-          default: "",
+          type: 'string',
+          short: 'e',
+          default: '',
         },
-        "auto-restart": {
-          type: "boolean",
+        'auto-restart': {
+          type: 'boolean',
           default: false,
         },
-        "max-retries": {
-          type: "string",
-          default: "5",
+        'max-retries': {
+          type: 'string',
+          default: '5',
         },
         help: {
-          type: "boolean",
-          short: "h",
+          type: 'boolean',
+          short: 'h',
           default: false,
         },
       },
@@ -72,7 +88,7 @@ export class CLIAdapter {
   }
 
   /**
-   * 获取默认端点
+   * ??????
    */
   private getDefaultEndpoint(transport: string): string {
     switch (transport) {
@@ -86,7 +102,7 @@ export class CLIAdapter {
   }
 
   /**
-   * 根据参数运行服务器
+   * ?????????
    */
   private async runServer(options: CLIOptions): Promise<void> {
     if (options.help) {
@@ -99,15 +115,15 @@ export class CLIAdapter {
     try {
       switch (options.transport) {
         case 'stdio':
-          await startStdioMcpServer(this.server);
+          await startStdioMcpServer(await this.createSessionServer());
           break;
         case 'sse':
           console.log(`SSE Server starting on port ${options.port} with endpoint ${options.endpoint}`);
-          await startSseMcpServer(this.server, options.endpoint, options.port);
+          await startSseMcpServer(() => this.createSessionServer(), options.endpoint, options.port);
           break;
         case 'streamable':
           console.log(`Streamable Server starting on port ${options.port} with endpoint ${options.endpoint}`);
-          await startStreamableMcpServer(this.server, options.endpoint, options.port);
+          await startStreamableMcpServer(() => this.createSessionServer(), options.endpoint, options.port);
           break;
         default:
           throw new Error(`Unsupported transport: ${options.transport}`);
@@ -123,7 +139,7 @@ export class CLIAdapter {
   }
 
   /**
-   * 显示帮助信息
+   * ??????
    */
   private showHelp(): void {
     console.log(`

@@ -277,18 +277,21 @@ export class ServerManager extends EventEmitter {
       console.log(`- 未设置operationFilter，将转换所有接口`);
     }
 
-    const mcpServer = await createMcpServer(
-      {
-        openApiData,
-        authConfig,
-        customHeaders,
-        debugHeaders: this.debugMode,
-        operationFilter,
-        baseUrl: config.baseUrl,
-        sourceOrigin
-      },
-      { registerSignalHandlers: false }
-    );
+    const createSessionServer = () =>
+      createMcpServer(
+        {
+          openApiData,
+          authConfig,
+          customHeaders,
+          debugHeaders: this.debugMode,
+          operationFilter,
+          baseUrl: config.baseUrl,
+          sourceOrigin
+        },
+        { registerSignalHandlers: false }
+      );
+
+    const mcpServer = await createSessionServer();
 
     let httpServer: HttpServer | undefined;
     let resolveLifecycle: () => void = () => {};
@@ -314,7 +317,7 @@ export class ServerManager extends EventEmitter {
         );
       case 'sse':
         httpServer = await startSseMcpServer(
-          mcpServer,
+          createSessionServer,
           '/sse',
           config.port || 3322,
           {
@@ -324,7 +327,7 @@ export class ServerManager extends EventEmitter {
         break;
       case 'streamable':
         httpServer = await startStreamableMcpServer(
-          mcpServer,
+          createSessionServer,
           '/mcp',
           config.port || 3322,
           {
