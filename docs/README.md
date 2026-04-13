@@ -19,6 +19,18 @@ The current top-level governance documents remain at repository root:
 - [GitHub Collaboration Workflow](./guides/github-collaboration-workflow.md)
 - [Release v0.2.14](./guides/release-v0.2.14.md)
 
+## Setup First
+
+Before running package-level commands, complete environment bootstrap:
+
+1. Install Node.js `>=20`
+2. Enable Corepack and activate pnpm
+3. Run `pnpm install` at repository root
+
+Primary setup guide:
+
+- [Local Setup And Run](./guides/local-setup-and-run.md)
+
 ## Structure
 
 ### Current guides

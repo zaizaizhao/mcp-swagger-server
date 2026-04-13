@@ -24,6 +24,25 @@ Optional:
 
 - PostgreSQL `>= 14` when using heavy-load or production-oriented mode
 
+### 1.1 Install Node.js and pnpm (if missing)
+
+Windows PowerShell:
+
+```powershell
+winget install OpenJS.NodeJS.LTS
+corepack enable
+corepack prepare pnpm@latest --activate
+```
+
+Ubuntu:
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+corepack enable
+corepack prepare pnpm@latest --activate
+```
+
 Check versions first.
 
 Windows PowerShell:
@@ -393,6 +412,25 @@ Windows PowerShell:
 
 ```powershell
 pnpm --filter mcp-swagger-server run cli:help
+```
+
+### 7.5 PowerShell blocks npm script execution
+
+Symptoms:
+
+- `npm.ps1` cannot be loaded because running scripts is disabled
+
+Use one of these:
+
+```powershell
+npm.cmd -v
+npm.cmd test
+```
+
+or:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
 Ubuntu:

@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { AppConfigService } from '../../../config/app-config.service';
 import {
   EndpointExtractor,
+  OpenAPISpec,
   ParseResult,
   ValidationResult,
   parseAndTransform as parserParseAndTransform,
@@ -115,7 +116,7 @@ export class ParserService {
   async parseSpecification(spec: any, options?: ParserOptions): Promise<any> {
     try {
       this.logger.log('Parsing OpenAPI specification');
-      const normalized = await this.normalizeSpecification(spec);
+      const normalized = await this.normalizeSpecification(spec, options);
       const info = this.extractApiInfo(normalized);
       const endpoints = this.extractEndpoints(normalized);
 
@@ -155,48 +156,21 @@ export class ParserService {
     }
   }
 
-  async normalizeSpecification(spec: any): Promise<any> {
+  async normalizeSpecification(spec: any, options: ParserOptions = {}): Promise<any> {
     try {
-      this.logger.log('Normalizing OpenAPI specification');
+      this.logger.log('Normalizing OpenAPI specification with shared parser');
 
       if (!spec || typeof spec !== 'object') {
         throw new Error('Invalid specification: must be an object');
       }
 
-      const normalized = JSON.parse(JSON.stringify(spec));
-
-      if (!normalized.info) {
-        normalized.info = {
-          title: 'Untitled API',
-          version: '1.0.0',
-        };
-      }
-
-      if (!normalized.paths) {
-        normalized.paths = {};
-      }
-
-      if (normalized.swagger && !normalized.openapi) {
-        normalized.openapi = '3.0.0';
-        delete normalized.swagger;
-
-        if (normalized.host || normalized.basePath) {
-          normalized.servers = [
-            {
-              url: `${normalized.schemes?.[0] || 'https'}://${normalized.host || 'localhost'}${normalized.basePath || ''}`,
-            },
-          ];
-          delete normalized.host;
-          delete normalized.basePath;
-          delete normalized.schemes;
-        }
-
-        if (normalized.definitions) {
-          normalized.components = normalized.components || {};
-          normalized.components.schemas = normalized.definitions;
-          delete normalized.definitions;
-        }
-      }
+      // Keep compatibility defaults, then delegate conversion/normalization to shared parser.
+      const specWithDefaults = this.applyCompatibilityDefaults(spec);
+      const parseResult = await parserParseFromString(
+        JSON.stringify(specWithDefaults),
+        options,
+      );
+      const normalized = parseResult.spec;
 
       this.logger.log('Successfully normalized OpenAPI specification');
       return normalized;
@@ -204,5 +178,26 @@ export class ParserService {
       this.logger.error(`Failed to normalize specification: ${error.message}`, error.stack);
       throw error;
     }
+  }
+
+  private applyCompatibilityDefaults(spec: any): OpenAPISpec {
+    const normalized = JSON.parse(JSON.stringify(spec));
+
+    if (!normalized.info) {
+      normalized.info = {
+        title: 'Untitled API',
+        version: '1.0.0',
+      };
+    }
+
+    if (!normalized.paths) {
+      normalized.paths = {};
+    }
+
+    if (!normalized.openapi && !normalized.swagger) {
+      normalized.openapi = '3.0.0';
+    }
+
+    return normalized;
   }
 }

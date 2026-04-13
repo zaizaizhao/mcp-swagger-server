@@ -69,6 +69,32 @@ mss --openapi https://petstore.swagger.io/v2/swagger.json --transport stdio
 - Node.js `>= 20`
 - pnpm `>= 8`
 
+Development environment bootstrap:
+
+Windows PowerShell:
+
+```powershell
+node -v
+corepack enable
+corepack prepare pnpm@latest --activate
+pnpm -v
+```
+
+Ubuntu:
+
+```bash
+node -v
+corepack enable
+corepack prepare pnpm@latest --activate
+pnpm -v
+```
+
+If `corepack` is unavailable, install pnpm via npm:
+
+```bash
+npm install -g pnpm
+```
+
 安装依赖：
 
 ```bash
@@ -84,6 +110,9 @@ pnpm test
 pnpm lint
 pnpm type-check
 ```
+
+完整本地安装与运行基线（含 SQLite/PostgreSQL、API/UI/CLI 启动）见：
+[docs/guides/local-setup-and-run.md](./docs/guides/local-setup-and-run.md)
 
 ## 认证与过滤能力
 

@@ -66,27 +66,27 @@ Expected characteristics:
 
 ### Product contract
 
-- [ ] root documentation reflects current architecture and scope
-- [ ] release path is documented from install to MCP connection
+- [x] root documentation reflects current architecture and scope
+- [x] release path is documented from install to MCP connection
 - [ ] CLI/API/UI main-path behavior is cross-checked
 
 ### Runtime and security
 
 - [ ] main-path runtime logging is quiet by default
-- [ ] management APIs use explicit auth boundaries
-- [ ] public endpoints are intentionally declared
+- [x] management APIs use explicit auth boundaries
+- [x] public endpoints are intentionally declared
 
 ### Cross-platform
 
-- [ ] Windows setup path is documented
-- [ ] Ubuntu setup path is documented
+- [x] Windows setup path is documented
+- [x] Ubuntu setup path is documented
 - [ ] runtime assumptions are reviewed for platform sensitivity
 
 ### Usability
 
-- [ ] at least one documented end-to-end path exists for direct MCP use
-- [ ] operator can understand what input to provide and what output to expect
-- [ ] major README contradictions are removed
+- [x] at least one documented end-to-end path exists for direct MCP use
+- [x] operator can understand what input to provide and what output to expect
+- [x] major README contradictions are removed
 
 ## Defer List
 
