@@ -41,6 +41,7 @@
 - `sse`
 
 说明：
+- `streamable` supports concurrent multi-session access in the current release baseline
 
 - MCP `websocket` transport 目前不应视为已实现的发布能力
 - 若文档或类型中仍出现 `websocket`，应按“规划中”理解，而不是“当前可用”
@@ -103,6 +104,7 @@ pnpm --filter mcp-swagger-server run build
 pnpm --filter mcp-swagger-server run test
 pnpm --filter mcp-swagger-server run test:smoke
 pnpm --filter mcp-swagger-server run test:cli
+pnpm --filter mcp-swagger-server run test:streamable-session
 ```
 
 ## 与整个项目的关系

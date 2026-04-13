@@ -392,6 +392,8 @@ After startup:
 
 - MCP endpoint: `http://127.0.0.1:3322/mcp`
 - CLI health endpoint: `http://127.0.0.1:3322/health`
+- Streamable HTTP clients may open more than one MCP session against the same server process
+- direct browser access to `/mcp` without MCP headers remains invalid by design
 
 ## 6. Minimal Run Order
 
@@ -498,6 +500,23 @@ Ubuntu:
 pnpm --filter mcp-swagger-server run cli:help
 ```
 
+### 7.6 Verify streamable multi-session behavior
+
+Use this when validating the regression that previously blocked a second Streamable HTTP session.
+
+From repository root:
+
+```bash
+pnpm --filter mcp-swagger-server run test:streamable-session
+```
+
+This smoke test verifies:
+
+- first `initialize` succeeds
+- second independent `initialize` also succeeds
+- both sessions receive different `Mcp-Session-Id` values
+- both sessions can complete `tools/list`
+
 ## 8. Current Baseline
 
 Currently verified:
@@ -509,6 +528,9 @@ Currently verified:
 - API can still be configured for PostgreSQL
 - API docs path is `http://localhost:3001/api/docs`
 - CLI can be built and started from the local workspace
+- `pnpm --filter mcp-swagger-server run test:cli` passes
+- `pnpm --filter mcp-swagger-server run test:smoke` passes
+- `pnpm --filter mcp-swagger-server run test:streamable-session` passes
 - parser propagation can be re-verified with `pnpm run verify:parser-chain`
 
 If other documents conflict with this file, use this file as the active setup baseline.

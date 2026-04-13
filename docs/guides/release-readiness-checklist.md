@@ -14,6 +14,7 @@ It is intentionally practical:
 Confirm that the release only promises the current supported baseline:
 
 - managed server transports are `streamable` and `sse`
+- `streamable` supports more than one concurrent session in the same server process
 - default database mode is `SQLite`
 - `PostgreSQL` remains the heavier deployment mode
 - MCP `websocket` transport is not claimed as supported
@@ -36,6 +37,7 @@ Run from repository root:
 ```bash
 pnpm build
 pnpm type-check
+pnpm --filter mcp-swagger-server run test
 ```
 
 If the release touches `packages/mcp-swagger-parser`, also run:
@@ -90,6 +92,7 @@ Verify these main paths:
 Expected note:
 
 - direct browser access to `/mcp` is not a UI page and requires MCP session headers
+- a second Streamable HTTP client session should not terminate the server or invalidate the first session
 
 ## 6. OpenAPI Product Flow Gate
 
@@ -137,6 +140,7 @@ Minimum checks:
 - UI startup
 - build commands
 - parser-chain verification commands
+- `pnpm --filter mcp-swagger-server run test:streamable-session`
 
 ## 9. Release Decision
 

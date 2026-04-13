@@ -55,6 +55,7 @@ PostgreSQL 适用于更高并发、更长期运行、更强可运维性的部署
 - `sse`
 
 说明：
+- `streamable` now supports concurrent multi-session access in the current product baseline
 
 - 监控与管理层存在 websocket 能力
 - MCP `websocket` transport 仍不应视为当前发布基线
@@ -132,6 +133,7 @@ pnpm type-check
 说明：
 
 - `/mcp` 是 MCP 协议入口，不是浏览器查看页面
+- opening a second or later Streamable HTTP session should work normally in the current baseline
 - 浏览器直接访问时，如果缺少 MCP 会话头，返回 `Mcp-Session-Id header is required` 属于正常行为
 
 ## 当前已收敛的产品能力
@@ -143,6 +145,8 @@ pnpm type-check
 - OpenAPI `3.0.4` 校验兼容处理
 - 工具列表预览与转换
 - Bearer Token 与自定义请求头配置
+- Streamable HTTP multi-session concurrency
+- CLI / Server smoke tests and multi-session regression coverage
 - 服务器管理与进程日志查看
 - SQLite / PostgreSQL 双数据库模式
 

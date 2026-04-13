@@ -22,6 +22,7 @@ The current top-level governance documents remain at repository root:
 - [Versioning Policy](./reference/versioning-policy.md)
 - [GitHub Collaboration Workflow](./guides/github-collaboration-workflow.md)
 - [Release v0.2.14](./guides/release-v0.2.14.md)
+- [Release v0.2.17](./guides/release-v0.2.17.md)
 
 ## Setup First
 

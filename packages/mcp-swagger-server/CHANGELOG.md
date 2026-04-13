@@ -1,5 +1,13 @@
 # mcp-swagger-server
 
+## 1.7.1
+
+### Patch Changes
+
+- add smoke coverage for CLI availability, MCP tool conversion baseline, and Streamable HTTP multi-session behavior
+- fix Streamable HTTP runtime paths so multiple sessions can coexist in the same server process
+- align operator and release documentation with the current multi-session Streamable baseline
+
 ## 1.7.0
 
 ### Minor Changes
