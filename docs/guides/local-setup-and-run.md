@@ -23,6 +23,7 @@ Required:
 Optional:
 
 - PostgreSQL `>= 14` when using heavy-load or production-oriented mode
+- GitHub CLI (`gh`) when you need to create PRs/releases from command line
 
 ### 1.1 Install Node.js and pnpm (if missing)
 
@@ -33,6 +34,31 @@ winget install OpenJS.NodeJS.LTS
 corepack enable
 corepack prepare pnpm@latest --activate
 ```
+
+### 1.2 Install GitHub CLI (optional, for PR/release workflow)
+
+Windows PowerShell:
+
+```powershell
+winget install --id GitHub.cli -e
+gh --version
+gh auth login
+```
+
+Ubuntu:
+
+```bash
+sudo apt update
+sudo apt install -y gh
+gh --version
+gh auth login
+```
+
+Notes:
+
+- `gh auth login` should be completed with an account that has repo push/PR permissions.
+- If `gh` is unavailable in apt source, follow the official package repo guide:
+  [https://cli.github.com/manual/installation](https://cli.github.com/manual/installation)
 
 Ubuntu:
 

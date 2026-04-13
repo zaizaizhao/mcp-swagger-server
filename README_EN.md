@@ -68,6 +68,7 @@ Requirements:
 
 - Node.js `>= 20`
 - pnpm `>= 8`
+- GitHub CLI (`gh`, optional for CLI-based PR/release workflow)
 
 Bootstrap development environment:
 

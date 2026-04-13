@@ -68,6 +68,7 @@ mss --openapi https://petstore.swagger.io/v2/swagger.json --transport stdio
 
 - Node.js `>= 20`
 - pnpm `>= 8`
+- GitHub CLI (`gh`，可选，用于命令行创建 PR/发布)
 
 Development environment bootstrap:
 
