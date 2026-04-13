@@ -43,6 +43,7 @@ out/
 !dist/**/*.js
 !dist/**/*.d.ts
 !dist/**/*.js.map
+!packages/mcp-swagger-server/scripts/*.js
 
 
 # Log files
@@ -74,6 +75,7 @@ temp/
 tmp/
 .cache/
 .temp/
+packages/mcp-swagger-server/.tmp/
 packages/*/dist/
 *.tsbuildinfo
 .eslintcache
