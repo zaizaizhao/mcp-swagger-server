@@ -76,8 +76,9 @@
 
 API 运行前置条件：
 
-- 需要可访问的 PostgreSQL
-- 需要正确的数据库账号与密码，否则 `mcp-swagger-api` 无法完成启动，`/health` 与 `/api/docs` 不会可用
+- 默认模式不需要外部数据库，未设置 `DB_TYPE` 时使用 SQLite
+- SQLite 模式要求 API 进程对 SQLite 文件目录有写权限
+- PostgreSQL 模式要求正确的数据库地址、账号与密码，否则 `mcp-swagger-api` 无法完成启动，`/health` 与 `/api/docs` 不会可用
 
 ### Windows PowerShell
 
