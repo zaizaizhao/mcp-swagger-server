@@ -9,6 +9,12 @@ import {
   Index,
 } from 'typeorm';
 import { MCPServerEntity } from './mcp-server.entity';
+import {
+  getEnumColumnOptions,
+  getJsonColumnOptions,
+  getTimestampColumnOptions,
+  getUuidColumnOptions,
+} from '../db-compat';
 
 export enum TestStatus {
   PENDING = 'pending',
@@ -38,18 +44,17 @@ export class TestCaseEntity {
   @Column({ type: 'varchar', length: 255 })
   toolName: string;
 
-  @Column({ type: 'jsonb' })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE))
   input: any;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }))
   expectedOutput?: any;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }))
   actualOutput?: any;
 
   @Column({
-    type: 'enum',
-    enum: TestStatus,
+    ...getEnumColumnOptions(process.env.DB_TYPE, TestStatus),
     default: TestStatus.PENDING,
   })
   status: TestStatus;
@@ -60,7 +65,7 @@ export class TestCaseEntity {
   @Column({ type: 'int', nullable: true })
   executionTime?: number; // 执行时间（毫秒）
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column(getTimestampColumnOptions(process.env.DB_TYPE, { nullable: true }))
   lastRun?: Date;
 
   @Column({ type: 'int', default: 0 })
@@ -72,7 +77,7 @@ export class TestCaseEntity {
   @Column({ type: 'int', default: 0 })
   failCount: number;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }))
   tags?: string[];
 
   @Column({ type: 'int', default: 0 })
@@ -81,7 +86,7 @@ export class TestCaseEntity {
   @Column({ type: 'boolean', default: true })
   enabled: boolean;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }))
   config?: {
     timeout?: number;
     retries?: number;
@@ -89,7 +94,7 @@ export class TestCaseEntity {
     [key: string]: any;
   };
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }))
   assertions?: {
     type: 'equals' | 'contains' | 'regex' | 'custom';
     field?: string;
@@ -97,7 +102,7 @@ export class TestCaseEntity {
     message?: string;
   }[];
 
-  @Column({ type: 'uuid' })
+  @Column(getUuidColumnOptions(process.env.DB_TYPE))
   serverId: string;
 
   @ManyToOne(() => MCPServerEntity, { onDelete: 'CASCADE' })

@@ -46,7 +46,14 @@ async function bootstrap() {
     app.use(express.static('public'));
 
     // CORS配置
-    const corsOrigins = configService.get<string>('CORS_ORIGINS', 'http://localhost:5173').split(',');
+    const corsOrigins = configService
+      .get<string>(
+        'CORS_ORIGINS',
+        'http://localhost:5173,http://localhost:3000,http://127.0.0.1:3000',
+      )
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean);
     app.use(cors({
       origin: corsOrigins,
       credentials: true,

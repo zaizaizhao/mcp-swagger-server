@@ -358,6 +358,7 @@ export default {
     autoNameTip: "将自动从URL中提取文档名称",
     selectDocument: "选择文档",
     validationResult: "验证结果",
+    noParseResult: "??????",
     conversionResult: "转换结果",
     preview: "预览",
     tools: "工具",

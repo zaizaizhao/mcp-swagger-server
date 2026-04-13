@@ -6,6 +6,11 @@ import {
   UpdateDateColumn,
   Index,
 } from 'typeorm';
+import {
+  getEnumColumnOptions,
+  getJsonColumnOptions,
+  getTimestampColumnOptions,
+} from '../db-compat';
 
 export enum ServerStatus {
   STOPPED = 'stopped',
@@ -41,15 +46,13 @@ export class MCPServerEntity {
   port: number;
 
   @Column({
-    type: 'enum',
-    enum: TransportType,
+    ...getEnumColumnOptions(process.env.DB_TYPE, TransportType),
     default: TransportType.STREAMABLE,
   })
   transport: TransportType;
 
   @Column({
-    type: 'enum',
-    enum: ServerStatus,
+    ...getEnumColumnOptions(process.env.DB_TYPE, ServerStatus),
     default: ServerStatus.STOPPED,
   })
   status: ServerStatus;
@@ -57,16 +60,16 @@ export class MCPServerEntity {
   @Column({ type: 'text', nullable: true })
   endpoint?: string;
 
-  @Column({ type: 'jsonb' })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE))
   openApiData: any;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }))
   tools?: any[];
 
   @Column({ type: 'int', default: 0 })
   toolsCount: number;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }))
   config?: {
     maxRequestSize?: number;
     timeout?: number;
@@ -75,13 +78,13 @@ export class MCPServerEntity {
     [key: string]: any;
   };
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }))
   authConfig?: {
     type: 'none' | 'bearer' | 'apikey' | 'basic' | 'oauth2';
     config: any;
   };
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column(getTimestampColumnOptions(process.env.DB_TYPE, { nullable: true }))
   lastHealthCheck?: Date;
 
   @Column({ type: 'boolean', default: true })
@@ -90,7 +93,7 @@ export class MCPServerEntity {
   @Column({ type: 'text', nullable: true })
   errorMessage?: string;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }))
   metrics?: {
     requestCount?: number;
     errorCount?: number;
@@ -103,7 +106,7 @@ export class MCPServerEntity {
   @Column({ type: 'boolean', default: true })
   autoStart: boolean;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }))
   tags?: string[];
 
   @CreateDateColumn()

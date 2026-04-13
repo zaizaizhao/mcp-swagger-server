@@ -10,6 +10,10 @@ import {
 } from 'typeorm';
 import { User } from './user.entity';
 import { Permission } from './permission.entity';
+import {
+  getEnumColumnOptions,
+  getJsonColumnOptions,
+} from '../db-compat';
 
 export enum RoleType {
   SYSTEM = 'system',
@@ -31,8 +35,7 @@ export class Role {
   description?: string;
 
   @Column({
-    type: 'enum',
-    enum: RoleType,
+    ...getEnumColumnOptions(process.env.DB_TYPE, RoleType),
     default: RoleType.CUSTOM,
   })
   type: RoleType;
@@ -46,7 +49,7 @@ export class Role {
   @Column({ type: 'int', default: 0 })
   priority: number; // 角色优先级，数字越大优先级越高
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }))
   metadata?: {
     color?: string;
     icon?: string;

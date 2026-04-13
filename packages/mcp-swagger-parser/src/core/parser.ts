@@ -24,6 +24,7 @@ import { Validator } from './validator';
 import { Normalizer } from './normalizer';
 import { VersionDetector } from './version-detector';
 import { Swagger2OpenAPIConverter } from './swagger2openapi-converter';
+import { parserDebugLog, parserWarnLog } from '../utils/logger';
 
 /**
  * Default parser configuration
@@ -170,7 +171,7 @@ export class OpenAPIParser {
       const version = VersionDetector.detect(spec);
       
       if (version === 'swagger2') {
-        console.log('检测到 Swagger 2.0 规范，正在转换为 OpenAPI 3.0...');
+        parserDebugLog('Detected Swagger 2.0 spec, converting to OpenAPI 3.0');
         try {
           conversionResult = await this.swagger2Converter.convert(spec);
           processedSpec = conversionResult.openapi;
@@ -183,14 +184,16 @@ export class OpenAPIParser {
           metadata.patchesApplied = conversionResult.patches;
           metadata.conversionWarnings = conversionResult.warnings;
           
-          console.log(`✓ 转换完成: ${metadata.originalVersion} -> ${metadata.targetVersion} (${metadata.conversionDuration}ms)`);
+          parserDebugLog(
+            `Converted spec: ${metadata.originalVersion} -> ${metadata.targetVersion} (${metadata.conversionDuration}ms)`,
+          );
           
           if (conversionResult.patches && conversionResult.patches > 0) {
-            console.log(`✓ 应用了 ${conversionResult.patches} 个补丁修复`);
+            parserDebugLog(`Applied ${conversionResult.patches} conversion patches`);
           }
           
           if (conversionResult.warnings && conversionResult.warnings.length > 0) {
-            console.log(`⚠ 转换过程中产生了 ${conversionResult.warnings.length} 个警告`);
+            parserWarnLog(`Conversion produced ${conversionResult.warnings.length} warnings`);
           }
           
         } catch (error) {
@@ -273,7 +276,7 @@ export class OpenAPIParser {
       schemaCount,
       securitySchemeCount,
       openApiVersion: spec.openapi,
-      parserVersion: '1.0.0', // TODO: Get from package.json
+      parserVersion: '1.7.0', // TODO: Load from package metadata
       // Enhanced metadata
       conversionPerformed: partial.conversionPerformed || false,
       originalVersion: partial.originalVersion,

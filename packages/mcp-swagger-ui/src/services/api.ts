@@ -56,10 +56,7 @@ api.interceptors.request.use(
 
     return config;
   },
-  (error) => {
-    console.error("Request interceptor error:", error);
-    return Promise.reject(error);
-  },
+  (error) => Promise.reject(error),
 );
 
 // 响应拦截器
@@ -71,11 +68,6 @@ api.interceptors.response.use(
     const duration = endTime - startTime;
 
     // 记录慢请求
-    if (duration > 3000) {
-      console.warn(
-        `Slow API request detected: ${response.config.url} took ${duration}ms`,
-      );
-    }
 
     // 添加响应元数据
     if (response.data && typeof response.data === "object") {
@@ -91,8 +83,6 @@ api.interceptors.response.use(
   },
   (error) => {
     // 统一错误处理
-    console.error("API Error:", error);
-
     // 计算请求耗时（即使失败）
     const endTime = Date.now();
     const startTime = (error.config as any)?.metadata?.startTime || endTime;
@@ -252,30 +242,13 @@ export const serverAPI = {
     action: "start" | "stop" | "restart",
     force?: boolean,
   ): Promise<{ success: boolean; message: string }> {
-    console.log("🛑 [API DEBUG] performServerAction called with:", {
-      id,
+    const response = await api.post(`/v1/servers/${id}/actions`, {
       action,
       force,
     });
-    console.log(
-      "🛑 [API DEBUG] Making POST request to:",
-      `/v1/servers/${id}/actions`,
-    );
-
-    const requestData = { action, force };
-    console.log("🛑 [API DEBUG] Request data:", requestData);
-
-    try {
-      const response = await api.post(`/v1/servers/${id}/actions`, requestData);
-      console.log("🛑 [API DEBUG] Response received:", response.data);
-      return response.data;
-    } catch (error) {
-      console.error("🛑 [API DEBUG] Request failed:", error);
-      throw error;
-    }
+    return response.data;
   },
 
-  // 批量服务器操作
   async performBatchAction(
     serverIds: string[],
     action: "start" | "stop" | "restart",
@@ -291,8 +264,8 @@ export const serverAPI = {
 
   // 启动/停止服务器（兼容旧接口）
   async toggleServer(id: string, enabled: boolean): Promise<MCPServer> {
-    const response = await api.post(`/servers/${id}/toggle`, { enabled });
-    return response.data;
+    await serverAPI.performServerAction(id, enabled ? "start" : "stop");
+    return serverAPI.getServerDetails(id);
   },
 
   // 获取服务器详情
@@ -742,7 +715,7 @@ export const openApiAPI = {
     const response = await api.post("/openapi/parse", {
       source: {
         type: "content",
-        content: JSON.stringify(content),
+        content,
       },
     });
     return response.data;
@@ -800,7 +773,7 @@ export const openApiAPI = {
   }> {
     const formData = new FormData();
     formData.append("file", file);
-    const response = await api.post("/openapi/upload-parse", formData, {
+    const response = await api.post("/openapi/upload", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
     return response.data;
@@ -810,7 +783,7 @@ export const openApiAPI = {
   async uploadAndValidateSpec(file: File): Promise<ValidationResult> {
     const formData = new FormData();
     formData.append("file", file);
-    const response = await api.post("/openapi/upload-validate", formData, {
+    const response = await api.post("/openapi/validate-upload", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
     return response.data;
@@ -818,7 +791,27 @@ export const openApiAPI = {
 
   // 从URL验证OpenAPI规范
   async validateSpecFromUrl(url: string): Promise<ValidationResult> {
-    const response = await api.post("/openapi/validate-url", { url });
+    const response = await api.get("/openapi/validate-url", {
+      params: { url },
+    });
+    return response.data;
+  },
+
+  // 从 URL 解析 OpenAPI 规范，避免浏览器直接跨域抓取
+  async parseSpecFromUrl(url: string): Promise<{
+    info: any;
+    paths: Record<string, any>;
+    endpoints: any[];
+    tools: any[];
+    servers: any[];
+    openapi: string;
+    components: any;
+    parsedAt: string;
+    parseId?: string;
+  }> {
+    const response = await api.get("/openapi/parse-url", {
+      params: { url },
+    });
     return response.data;
   },
 };

@@ -5,6 +5,8 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD, APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
+import { resolve } from 'path';
+import { getDatabaseType, verifySqliteDatabasePath } from './database/db-compat';
 
 // 配置
 import { AppConfigService } from './config/app-config.service';
@@ -31,17 +33,28 @@ import { MCPExceptionFilter } from './common/filters/mcp-exception.filter';
 // 控制器
 import { AppController } from './app.controller';
 
+
+const packageRoot = resolve(__dirname, '..', '..');
+const workspaceRoot = resolve(packageRoot, '..', '..');
+const envFiles = [
+  '.env.local',
+  '.env.development',
+  '.env.production',
+  '.env',
+];
+const envFilePath = [
+  ...envFiles.map(file => resolve(packageRoot, file)),
+  ...envFiles.map(file => resolve(process.cwd(), file)),
+  ...envFiles.map(file => resolve(workspaceRoot, file)),
+];
+
+
 @Module({
   imports: [
     // 全局配置模块
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: [
-        '.env.local',
-        '.env.development',
-        '.env.production',
-        '.env',
-      ],
+      envFilePath,
       validationSchema,
       validationOptions: {
         allowUnknown: true,
@@ -130,16 +143,27 @@ export class AppModule {
 
   onModuleInit() {
     const logger = new (require('@nestjs/common').Logger)('AppModule');
-    
-    logger.log('🎯 Application modules initialized');
-    logger.log(`📊 Environment: ${this.configService.get('NODE_ENV')}`);
-    logger.log(`🚪 API Port: ${this.configService.get('PORT')}`);
-    logger.log(`🎛️ MCP Port: ${this.configService.get('MCP_PORT')}`);
-    
-    if (this.configService.get('METRICS_ENABLED')) {
-      logger.log('📈 Metrics collection enabled');
+    const dbType = getDatabaseType(this.configService.get<string>('DB_TYPE'));
+
+    logger.log('Application modules initialized');
+    logger.log(`Environment: ${this.configService.get('NODE_ENV')}`);
+    logger.log(`API Port: ${this.configService.get('PORT')}`);
+    logger.log(`MCP Port: ${this.configService.get('MCP_PORT')}`);
+    logger.log(`Database mode: ${dbType}`);
+
+    if (dbType === 'sqlite') {
+      const sqlitePath = verifySqliteDatabasePath(this.configService);
+      logger.log(`SQLite database path: ${sqlitePath}`);
+    } else {
+      logger.log(
+        `PostgreSQL database: ${this.configService.get('DB_HOST')}:${this.configService.get('DB_PORT')}/${this.configService.get('DB_DATABASE')}`,
+      );
     }
-    
-    logger.log('🔐 JWT authentication enabled');
+
+    if (this.configService.get('METRICS_ENABLED')) {
+      logger.log('Metrics collection enabled');
+    }
+
+    logger.log('JWT authentication enabled');
   }
 }

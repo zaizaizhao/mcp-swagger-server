@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { parseFromString, ValidationError, ValidationWarning } from 'mcp-swagger-parser';
+import { load } from 'js-yaml';
+import {
+  validate,
+  ValidationError,
+  ValidationWarning,
+} from 'mcp-swagger-parser';
 
 // Keep local interface for backward compatibility
 export interface LocalValidationResult {
@@ -12,25 +17,56 @@ export interface LocalValidationResult {
 export class ValidatorService {
   private readonly logger = new Logger(ValidatorService.name);
 
+  private sanitizeSpecification(spec: any): any {
+    if (!spec || typeof spec !== 'object' || Array.isArray(spec)) {
+      return spec;
+    }
+
+    const sanitized = { ...spec };
+    delete sanitized.metadata;
+    delete sanitized.tools;
+    delete sanitized.endpoints;
+    delete sanitized.parsedAt;
+    delete sanitized.parseId;
+    delete sanitized._metadata;
+
+    return sanitized;
+  }
+
+  private parseSpecificationString(content: string): any {
+    const trimmed = content.trim();
+
+    if (!trimmed) {
+      throw new Error('OpenAPI content cannot be empty');
+    }
+
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      return load(trimmed);
+    }
+  }
+
   async validateSpecification(spec: any): Promise<LocalValidationResult> {
     try {
       this.logger.log('Starting OpenAPI specification validation');
 
-      // Use mcp-swagger-parser's parseFromString functionality (consistent with server package)
-      const dataString = typeof spec === 'string' ? spec : JSON.stringify(spec);
-      const parseResult = await parseFromString(dataString, {
+      const parsedSpec =
+        typeof spec === 'string' ? this.parseSpecificationString(spec) : spec;
+      const sanitizedSpec = this.sanitizeSpecification(parsedSpec);
+      const validationResult = await validate(sanitizedSpec, {
         strictMode: false,
         resolveReferences: true,
         validateSchema: true
       });
 
-      this.logger.log(`OpenAPI validation completed: ${parseResult.validation.valid ? 'valid' : 'invalid'} with ${parseResult.validation.errors.length} errors and ${parseResult.validation.warnings.length} warnings`);
+      this.logger.log(`OpenAPI validation completed: ${validationResult.valid ? 'valid' : 'invalid'} with ${validationResult.errors.length} errors and ${validationResult.warnings.length} warnings`);
 
       // Convert ValidationError[] and ValidationWarning[] to string[] for compatibility
       return {
-        valid: parseResult.validation.valid,
-        errors: parseResult.validation.errors.map((err: ValidationError) => err.message),
-        warnings: parseResult.validation.warnings.map((warn: ValidationWarning) => warn.message)
+        valid: validationResult.valid,
+        errors: validationResult.errors.map((err: ValidationError) => err.message),
+        warnings: validationResult.warnings.map((warn: ValidationWarning) => warn.message)
       };
     } catch (error) {
       this.logger.error(`Error during OpenAPI validation: ${error.message}`, error.stack);

@@ -8,8 +8,10 @@ import {
 } from '@nestjs/terminus';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AppConfigService } from '../../config/app-config.service';
+import { Public } from '../security/decorators/public.decorator';
 
 @ApiTags('Health')
+@Public()
 @Controller('health')
 export class HealthController {
   private readonly logger = new Logger(HealthController.name);

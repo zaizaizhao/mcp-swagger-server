@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as http from 'http';
 import * as https from 'https';
+import { dirname, join } from 'path';
 import { firstValueFrom } from 'rxjs';
 
 import { MCPServerEntity, TransportType } from '../../../database/entities/mcp-server.entity';
@@ -22,9 +23,7 @@ import { ParserService } from '../../openapi/services/parser.service';
 import { ValidatorService } from '../../openapi/services/validator.service';
 
 // 导入mcp-swagger-server包中的transport实现
-import { createMcpServer } from 'mcp-swagger-server/dist/server.js';
-import { startStreamableMcpServer } from 'mcp-swagger-server/dist/transportUtils/stream.js';
-import { startSseMcpServer } from 'mcp-swagger-server/dist/transportUtils/sse.js';
+import { createMcpServer, startStreamableMcpServer, startSseMcpServer } from 'mcp-swagger-server';
 
 export interface ServerStartResult {
   mcpServer: any;
@@ -36,6 +35,11 @@ export interface ServerStartResult {
 export class ServerLifecycleService {
   private readonly logger = new Logger(ServerLifecycleService.name);
   private readonly serverTimeouts = new Map<string, NodeJS.Timeout>();
+
+  private resolveManagedCliPath(): string {
+    const packageJsonPath = require.resolve('mcp-swagger-server/package.json');
+    return join(dirname(packageJsonPath), 'dist', 'cli.js');
+  }
 
   constructor(
     private readonly httpService: HttpService,
@@ -86,8 +90,8 @@ export class ServerLifecycleService {
         ...DEFAULT_PROCESS_CONFIG,
         id: serverEntity.id,
         name: serverEntity.name,
-        scriptPath: 'mcp-swagger-server', // 使用CLI可执行文件
-        args: cliArgs,
+        scriptPath: process.execPath,
+        args: [this.resolveManagedCliPath(), ...cliArgs],
         env: {
           ...process.env,
           NODE_ENV: this.configService.get('NODE_ENV', 'development'),

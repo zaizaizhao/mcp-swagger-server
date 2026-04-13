@@ -29,6 +29,7 @@ import { SystemLogEntity } from '../../database/entities/system-log.entity';
 import { MCPModule } from '../mcp/mcp.module';
 import { OpenAPIModule } from '../openapi/openapi.module';
 import { DocumentsModule } from '../documents/documents.module';
+import { SecurityModule } from '../security/security.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { DocumentsModule } from '../documents/documents.module';
     MCPModule,
     OpenAPIModule,
     DocumentsModule,
+    SecurityModule,
   ],
   controllers: [ServersController],
   providers: [

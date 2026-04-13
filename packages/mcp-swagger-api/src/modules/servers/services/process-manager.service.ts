@@ -1,12 +1,13 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { LessThan, Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import { spawn, ChildProcess, exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { ProcessInfoEntity } from '../entities/process-info.entity';
 import { ProcessLogEntity } from '../entities/process-log.entity';
 import {
@@ -51,6 +52,13 @@ export class ProcessManagerService implements OnModuleDestroy {
   private readonly processInfo = new Map<string, ProcessInfo>();
   private readonly config: ProcessManagerConfig;
   private readonly execAsync = promisify(exec);
+  private readonly gbkDecoder =
+    process.platform === 'win32' ? new TextDecoder('gbk') : null;
+  private readonly processLogPersistEnabled: boolean;
+  private readonly processLogPersistMinIntervalMs: number;
+  private readonly processLogMaxMessageLength: number;
+  private readonly processLogRetentionDays: number;
+  private readonly recentPersistedLogs = new Map<string, number>();
   
   // MCP连接统计缓存
   private readonly mcpConnectionStats = new Map<string, MCPConnectionStats>();
@@ -78,6 +86,22 @@ export class ProcessManagerService implements OnModuleDestroy {
       pidDirectory: this.configService.get<string>('PID_DIRECTORY', DEFAULT_PROCESS_CONFIG.pidDirectory),
       logDirectory: this.configService.get<string>('LOG_DIRECTORY', DEFAULT_PROCESS_CONFIG.logDirectory),
     };
+    this.processLogPersistEnabled = this.configService.get<boolean>(
+      'PROCESS_LOG_PERSIST_ENABLED',
+      true,
+    );
+    this.processLogPersistMinIntervalMs = this.configService.get<number>(
+      'PROCESS_LOG_PERSIST_MIN_INTERVAL_MS',
+      1000,
+    );
+    this.processLogMaxMessageLength = this.configService.get<number>(
+      'PROCESS_LOG_MAX_MESSAGE_LENGTH',
+      4000,
+    );
+    this.processLogRetentionDays = this.configService.get<number>(
+      'PROCESS_LOG_RETENTION_DAYS',
+      7,
+    );
 
     this.ensureDirectories();
     this.setupEventListeners();
@@ -462,13 +486,31 @@ export class ProcessManagerService implements OnModuleDestroy {
   /**
    * 监控进程输出
    */
+  private decodeProcessOutput(data: Buffer): string {
+    const utf8Text = data.toString('utf8');
+
+    if (process.platform !== 'win32' || !this.gbkDecoder) {
+      return utf8Text;
+    }
+
+    if (!utf8Text.includes('\uFFFD')) {
+      return utf8Text;
+    }
+
+    try {
+      return this.gbkDecoder.decode(data);
+    } catch {
+      return utf8Text;
+    }
+  }
+
   private setupProcessOutputMonitoring(processInfo: ProcessInfo): void {
     const { id: serverId, pid, process: childProcess } = processInfo;
     
     // 监控标准输出
     if (childProcess.stdout) {
       childProcess.stdout.on('data', async (data: Buffer) => {
-        const message = data.toString().trim();
+        const message = this.decodeProcessOutput(data).trim();
         if (message) {
           // 尝试解析MCP连接事件
           await this.handleProcessOutput(serverId, message);
@@ -493,7 +535,7 @@ export class ProcessManagerService implements OnModuleDestroy {
     // 监控标准错误
     if (childProcess.stderr) {
       childProcess.stderr.on('data', async (data: Buffer) => {
-        const message = data.toString().trim();
+        const message = this.decodeProcessOutput(data).trim();
         if (message) {
           // 添加到日志监控器
           const logEntry: ProcessLogEntry = {
@@ -521,6 +563,8 @@ export class ProcessManagerService implements OnModuleDestroy {
     childProcess.on('exit', async (code, signal) => {
       this.logger.log(`Process ${serverId} exited with code ${code} and signal ${signal}`);
       await this.logProcess(serverId, LogLevel.INFO, `Process exited with code ${code} and signal ${signal}`);
+      this.resourceMonitor.stopMonitoring(serverId);
+      this.logMonitor.stopLogMonitoring(serverId);
       
       const processInfo = this.processInfo.get(serverId);
       if (processInfo) {
@@ -543,6 +587,8 @@ export class ProcessManagerService implements OnModuleDestroy {
     childProcess.on('error', async (error) => {
       this.logger.error(`Process ${serverId} encountered an error:`, error);
       await this.logProcess(serverId, LogLevel.ERROR, `Process error: ${error.message}`);
+      this.resourceMonitor.stopMonitoring(serverId);
+      this.logMonitor.stopLogMonitoring(serverId);
       
       const event: ProcessEvent = {
         processId: serverId,
@@ -625,57 +671,136 @@ export class ProcessManagerService implements OnModuleDestroy {
   /**
    * 记录进程日志
    */
-  private async logProcess(serverId: string, level: LogLevel, message: string, metadata?: Record<string, any>): Promise<void> {
-    // 添加调试日志：方法开始
-    this.logger.debug(`[logProcess] Starting to log process for serverId: ${serverId}, level: ${level}, message: ${message}`);
-    
+  private async logProcess(
+    serverId: string,
+    level: LogLevel,
+    message: string,
+    metadata?: Record<string, any>,
+  ): Promise<void> {
+    this.logger.debug(
+      `[logProcess] Starting to log process for serverId: ${serverId}, level: ${level}, message: ${message}`,
+    );
+
+    const normalizedMessage = this.normalizePersistedMessage(message);
+    const eventTimestamp = new Date();
+
     try {
-      const logEntity = this.processLogRepository.create({
-        serverId: serverId,
-        level,
-        message,
-        metadata,
-        timestamp: new Date(),
-      });
-      
-      await this.processLogRepository.save(logEntity);
-      
-      // 添加调试日志：成功保存日志实体
-      this.logger.debug(`[logProcess] Successfully saved log entity for serverId: ${serverId}, logId: ${logEntity.id}`);
-      
-      // 发射进程日志更新事件
-      const eventData = {
-        serverId: serverId,
-        logData: {
-          level,
-          message,
-          metadata,
-          timestamp: logEntity.timestamp
-        },
-        timestamp: new Date()
-      };
-      
-      this.eventEmitter.emit('process.logs.updated', eventData);
-      
-      // 添加调试日志：成功发射事件
-      this.logger.debug(`[logProcess] Successfully emitted process.logs.updated event for serverId: ${serverId}`, eventData);
-      
-    } catch (error) {
-      // 添加更详细的错误日志
-      this.logger.error(`[logProcess] Failed to save process log for serverId: ${serverId}, level: ${level}, message: ${message}`, {
-        error: error.message,
-        stack: error.stack,
+      const shouldPersist = this.shouldPersistProcessLog(
         serverId,
         level,
-        message,
-        metadata
+        normalizedMessage,
+      );
+
+      if (!shouldPersist) {
+        this.eventEmitter.emit('process.logs.updated', {
+          serverId,
+          logData: {
+            level,
+            message: normalizedMessage,
+            metadata: { ...metadata, persisted: false, throttled: true },
+            timestamp: eventTimestamp,
+          },
+          timestamp: eventTimestamp,
+        });
+        return;
+      }
+
+      const logEntity = this.processLogRepository.create({
+        serverId,
+        level,
+        message: normalizedMessage,
+        metadata,
+        timestamp: eventTimestamp,
       });
+
+      await this.processLogRepository.save(logEntity);
+
+      const eventData = {
+        serverId,
+        logData: {
+          level,
+          message: normalizedMessage,
+          metadata,
+          timestamp: logEntity.timestamp,
+        },
+        timestamp: eventTimestamp,
+      };
+
+      this.eventEmitter.emit('process.logs.updated', eventData);
+      this.logger.debug(
+        `[logProcess] Successfully emitted process.logs.updated event for serverId: ${serverId}`,
+        eventData,
+      );
+    } catch (error) {
+      this.logger.error(
+        `[logProcess] Failed to save process log for serverId: ${serverId}, level: ${level}, message: ${normalizedMessage}`,
+        {
+          error: error.message,
+          stack: error.stack,
+          serverId,
+          level,
+          message: normalizedMessage,
+          metadata,
+        },
+      );
     }
   }
 
-  /**
-   * 写入PID文件
-   */
+  private normalizePersistedMessage(message: string): string {
+    if (message.length <= this.processLogMaxMessageLength) {
+      return message;
+    }
+
+    return `${message.slice(0, this.processLogMaxMessageLength)}... [truncated]`;
+  }
+
+  private shouldPersistProcessLog(
+    serverId: string,
+    level: LogLevel,
+    message: string,
+  ): boolean {
+    if (!this.processLogPersistEnabled) {
+      return false;
+    }
+
+    if (this.processLogPersistMinIntervalMs <= 0) {
+      return true;
+    }
+
+    const key = `${serverId}:${level}:${message}`;
+    const now = Date.now();
+    const lastPersistedAt = this.recentPersistedLogs.get(key);
+
+    if (
+      lastPersistedAt !== undefined &&
+      now - lastPersistedAt < this.processLogPersistMinIntervalMs
+    ) {
+      return false;
+    }
+
+    this.recentPersistedLogs.set(key, now);
+    return true;
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_3AM)
+  async cleanupOldProcessLogs(): Promise<void> {
+    try {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - this.processLogRetentionDays);
+
+      const result = await this.processLogRepository.delete({
+        timestamp: LessThan(cutoffDate),
+      });
+
+      this.logger.log(
+        `Cleaned up ${result.affected || 0} old process logs older than ${this.processLogRetentionDays} days`,
+      );
+      this.recentPersistedLogs.clear();
+    } catch (error) {
+      this.logger.error('Failed to cleanup old process logs:', error);
+    }
+  }
+
   private async writePidFile(serverId: string, pid: number): Promise<void> {
     try {
       const pidFilePath = path.join(this.config.pidDirectory, `${serverId}.pid`);

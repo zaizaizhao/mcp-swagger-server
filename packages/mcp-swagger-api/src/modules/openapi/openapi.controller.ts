@@ -20,27 +20,23 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBody,
-  ApiBearerAuth,
-  ApiSecurity,
   ApiConsumes,
   ApiQuery,
   ApiParam,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Express } from 'express';
-import { ThrottlerGuard } from '@nestjs/throttler';
-import { JwtAuthGuard } from '../security/guards/jwt-auth.guard';
 import { LoggingInterceptor } from '../../common/interceptors/logging.interceptor';
 import { OpenAPIService } from './services/openapi.service';
 import { ConfigureOpenAPIDto, InputSourceType } from './dto/configure-openapi.dto';
 import { OpenAPIResponseDto } from './dto/openapi-response.dto';
 import { AppConfigService } from '../../config/app-config.service';
+import { Public } from '../security/decorators/public.decorator';
 
 @ApiTags('OpenAPI')
+@Public()
 @Controller('openapi')
-// @UseGuards(JwtAuthGuard)
 @UseInterceptors(LoggingInterceptor)
-// @ApiBearerAuth()
 export class OpenAPIController {
   private readonly logger = new Logger(OpenAPIController.name);
 
@@ -99,10 +95,9 @@ export class OpenAPIController {
         hasContent: !!configureDto.source.content,
         options: configureDto.options ? Object.keys(configureDto.options) : [],
       })}`);
-      configureDto.source.content = JSON.parse(configureDto.source.content)
       const result = await this.openApiService.parseOpenAPI(configureDto);
 
-      this.logger.log(`Successfully parsed OpenAPI specification with ${result.paths?.length || 0} endpoints`);
+      this.logger.log(`Successfully parsed OpenAPI specification with ${result.endpoints?.length || 0} endpoints`);
 
       return result;
     } catch (error) {
@@ -278,7 +273,7 @@ export class OpenAPIController {
 
       const result = await this.openApiService.parseOpenAPI(configDto);
 
-      this.logger.log(`Successfully parsed uploaded OpenAPI specification with ${result.paths?.length || 0} endpoints`);
+      this.logger.log(`Successfully parsed uploaded OpenAPI specification with ${result.endpoints?.length || 0} endpoints`);
 
       return result;
     } catch (error) {
@@ -446,8 +441,6 @@ export class OpenAPIController {
       if (!url) {
         throw new BadRequestException('URL parameter is required');
       }
-      console.log(url);
-      
       this.logger.log(`Parsing OpenAPI specification from URL: ${url}`);
 
       const configDto = {
@@ -459,7 +452,7 @@ export class OpenAPIController {
 
       const result = await this.openApiService.parseOpenAPI(configDto);
 
-      this.logger.log(`Successfully parsed OpenAPI specification with ${result.paths?.length || 0} endpoints`);
+      this.logger.log(`Successfully parsed OpenAPI specification with ${result.endpoints?.length || 0} endpoints`);
 
       return result;
     } catch (error) {

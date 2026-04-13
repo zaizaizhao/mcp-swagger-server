@@ -951,6 +951,7 @@ import {
   type CreateDocumentDto,
   type UpdateDocumentDto,
 } from "../../api/documents";
+import { openApiAPI } from "../../services/api";
 
 // 导入全局功能
 import { useConfirmation } from "../../composables/useConfirmation";
@@ -1281,14 +1282,17 @@ const selectDocument = async (doc: Document) => {
     const fullDocument = await documentsApi.getDocument(doc.id);
 
     // 更新选中的文档和编辑器内容
+    const sanitizedContent = sanitizeOpenApiContent(fullDocument.content || "");
+
     selectedDocument.value = fullDocument;
-    editorContent.value = fullDocument.content || "";
+    selectedDocument.value.content = sanitizedContent;
+    editorContent.value = sanitizedContent;
 
     // 自动解析OpenAPI内容并填充数据
-    if (fullDocument.content && fullDocument.content.trim()) {
+    if (sanitizedContent && sanitizedContent.trim()) {
       try {
         // 解析API路径和详细信息
-        const { data: parsedData } = parseOpenAPI(fullDocument.content);
+        const { data: parsedData } = parseOpenAPI(sanitizedContent);
         if (parsedData && parsedData.paths) {
           const apis: any[] = [];
           Object.entries(parsedData.paths).forEach(
@@ -1329,9 +1333,8 @@ const selectDocument = async (doc: Document) => {
 
         // 解析MCP工具
         try {
-          const parseResult = await openApiStore.parseOpenAPIContent(
-            fullDocument.content,
-          );
+          const parseResult =
+            await openApiStore.parseOpenAPIContent(sanitizedContent);
           mcpTools.value = parseResult.tools || [];
           mcpServerUrl.value = parseResult.servers[0]?.url || "";
         } catch (mcpError) {
@@ -1586,6 +1589,26 @@ const handleSpecAction = async (command: {
   }
 };
 
+const sanitizeOpenApiContent = (content: string): string => {
+  try {
+    const parsed = JSON.parse(content);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return content;
+    }
+
+    const sanitized = { ...parsed } as Record<string, any>;
+    delete sanitized.metadata;
+    delete sanitized.tools;
+    delete sanitized.endpoints;
+    delete sanitized.parsedAt;
+    delete sanitized.parseId;
+
+    return JSON.stringify(sanitized, null, 2);
+  } catch {
+    return content;
+  }
+};
+
 const downloadSpec = (spec?: OpenAPISpec) => {
   const content = spec?.content || editorContent.value;
   if (!content) {
@@ -1628,8 +1651,16 @@ const saveDocumentContent = async () => {
     saving.value = true;
 
     // 准备更新数据
+    const sanitizedContent = sanitizeOpenApiContent(editorContent.value);
+    if (sanitizedContent !== editorContent.value) {
+      editorContent.value = sanitizedContent;
+      if (selectedDocument.value) {
+        selectedDocument.value.content = sanitizedContent;
+      }
+    }
+
     const updateData: UpdateDocumentDto = {
-      content: editorContent.value,
+      content: sanitizedContent,
     };
 
     // 调用API更新文档
@@ -1697,8 +1728,16 @@ const validateSpec = async () => {
 
   validating.value = true;
   try {
+    const sanitizedContent = sanitizeOpenApiContent(editorContent.value);
+    if (sanitizedContent !== editorContent.value) {
+      editorContent.value = sanitizedContent;
+      if (selectedDocument.value) {
+        selectedDocument.value.content = sanitizedContent;
+      }
+    }
+
     const result = await measureFunction("validateSpec", async () => {
-      return await openApiStore.validateSpec(editorContent.value);
+      return await openApiStore.validateOpenAPIContent(sanitizedContent);
     });
 
     // 更新验证结果
@@ -1724,7 +1763,7 @@ const validateSpec = async () => {
     if (result.valid) {
       try {
         // 使用 extractApiPaths 函数从内容中提取API路径
-        const apiPaths = extractApiPaths(editorContent.value);
+        const apiPaths = extractApiPaths(sanitizedContent);
         parsedApis.value = apiPaths.map((api, index) => ({
           id: index,
           method: api.method.toUpperCase(),
@@ -1999,28 +2038,33 @@ const convertToMCP = async () => {
 
   converting.value = true;
   try {
-    // 首先验证当前规范
-    const validation = await openApiStore.validateSpec(editorContent.value);
+    const sanitizedContent = sanitizeOpenApiContent(editorContent.value);
+    if (sanitizedContent !== editorContent.value) {
+      editorContent.value = sanitizedContent;
+      if (selectedDocument.value) {
+        selectedDocument.value.content = sanitizedContent;
+      }
+    }
+
+    const validation =
+      await openApiStore.validateOpenAPIContent(sanitizedContent);
     if (!validation.valid) {
-      ElMessage.error(t("openapi.fixErrorsFirst"));
+      ElMessage.error(t("openapi.validateFirst"));
       return;
     }
 
-    // 解析内容并获取工具
-    const parseResult = await openApiStore.parseOpenAPIContent(
-      editorContent.value,
-    );
+    const parseResult = await openApiStore.parseOpenAPIContent(sanitizedContent);
     mcpTools.value = parseResult.tools || [];
-    mcpServerUrl.value = parseResult.servers[0]?.url || "";
     activeTab.value = "tools";
 
     ElMessage.success(
       t("openapi.convertSuccess", { count: mcpTools.value.length }),
     );
   } catch (error) {
+    console.error("Converting to MCP failed:", error);
     ElMessage.error(
       t("openapi.convertFailed", {
-        error: error instanceof Error ? error.message : error,
+        error: error instanceof Error ? error.message : String(error),
       }),
     );
   } finally {
@@ -2040,39 +2084,55 @@ const importFromUrl = async () => {
     await urlFormRef.value.validate();
     importing.value = true;
 
-    // 获取URL内容
-    const rawContentResponse = await fetch(urlForm.value.url);
-    if (!rawContentResponse.ok) {
-      throw new Error(
-        `HTTP ${rawContentResponse.status}: ${rawContentResponse.statusText}`,
-      );
+    const authHeaders: Record<string, string> = {};
+    if (urlForm.value.authType === "bearer" && urlForm.value.token) {
+      authHeaders.Authorization = `Bearer ${urlForm.value.token}`;
     }
-    let rawContent = await rawContentResponse.text();
-
-    // 尝试格式化JSON内容
-    try {
-      const jsonContent = JSON.parse(rawContent);
-      rawContent = JSON.stringify(jsonContent, null, 2);
-    } catch (e) {
-      // 如果不是JSON格式，保持原样（可能是YAML）
-      console.log("Content is not JSON, keeping original format");
+    if (
+      urlForm.value.authType === "basic" &&
+      urlForm.value.username &&
+      urlForm.value.password
+    ) {
+      authHeaders.Authorization = `Basic ${btoa(
+        `${urlForm.value.username}:${urlForm.value.password}`,
+      )}`;
     }
 
-    // 准备创建数据
+    const parsedSpec = await openApiAPI.parseOpenAPIFromUrl(
+      urlForm.value.url,
+      Object.keys(authHeaders).length > 0 ? authHeaders : undefined,
+    );
+
+    const normalizedContent = JSON.stringify(
+      {
+        openapi: parsedSpec.openapi,
+        info: parsedSpec.info,
+        servers: parsedSpec.servers,
+        paths: parsedSpec.paths,
+        components: parsedSpec.components,
+      },
+      null,
+      2,
+    );
+
     const createData: CreateDocumentDto = {
       name: urlForm.value.name || "imported_spec",
       description: t("openapi.importedFromUrl"),
-      content: rawContent,
+      content: normalizedContent,
+      status: "valid",
+      version: parsedSpec.info?.version || "1.0.0",
+      metadata: {
+        originalUrl: urlForm.value.url,
+        importSource: "url",
+        lastValidated: new Date(),
+      },
     };
 
-    // 调用API创建文档
     const newDoc = await documentsApi.createDocument(createData);
 
-    // 添加到本地文档列表
     documents.value.push(newDoc);
     selectDocument(newDoc);
 
-    // 重置表单
     urlForm.value = {
       url: "",
       name: "",
@@ -2082,18 +2142,16 @@ const importFromUrl = async () => {
       password: "",
     };
 
-    // 重置表单验证状态
     if (urlFormRef.value) {
       urlFormRef.value.resetFields();
       urlFormRef.value.clearValidate();
     }
 
-    // 关闭对话框
     showUrlDialog.value = false;
 
     ElMessage.success(t("openapi.importSuccessValidate"));
   } catch (error) {
-    console.error("从URL导入文档失败:", error);
+    console.error("Importing document from URL failed:", error);
     ElMessage.error(
       t("openapi.importFailed", {
         error: error instanceof Error ? error.message : String(error),

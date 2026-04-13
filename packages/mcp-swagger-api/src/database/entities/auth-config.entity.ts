@@ -9,6 +9,12 @@ import {
   Index,
 } from 'typeorm';
 import { MCPServerEntity } from './mcp-server.entity';
+import {
+  getEnumColumnOptions,
+  getJsonColumnOptions,
+  getTimestampColumnOptions,
+  getUuidColumnOptions,
+} from '../db-compat';
 
 export enum AuthType {
   NONE = 'none',
@@ -31,13 +37,12 @@ export class AuthConfigEntity {
   description?: string;
 
   @Column({
-    type: 'enum',
-    enum: AuthType,
+    ...getEnumColumnOptions(process.env.DB_TYPE, AuthType),
     default: AuthType.NONE,
   })
   type: AuthType;
 
-  @Column({ type: 'jsonb' })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE))
   config: {
     // Bearer Token
     token?: string;
@@ -66,13 +71,13 @@ export class AuthConfigEntity {
   @Column({ type: 'boolean', default: true })
   enabled: boolean;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column(getTimestampColumnOptions(process.env.DB_TYPE, { nullable: true }))
   expiresAt?: Date;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column(getTimestampColumnOptions(process.env.DB_TYPE, { nullable: true }))
   lastUsed?: Date;
 
-  @Column({ type: 'uuid' })
+  @Column(getUuidColumnOptions(process.env.DB_TYPE))
   serverId: string;
 
   @ManyToOne(() => MCPServerEntity, { onDelete: 'CASCADE' })

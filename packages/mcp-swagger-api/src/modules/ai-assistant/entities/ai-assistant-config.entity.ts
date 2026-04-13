@@ -10,6 +10,11 @@ import {
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { AiAssistantTemplateEntity } from './ai-assistant-template.entity';
+import {
+  getEnumColumnOptions,
+  getJsonColumnOptions,
+  getUuidColumnOptions,
+} from '../../../database/db-compat';
 
 export enum ConfigStatus {
   GENERATED = 'generated',
@@ -42,7 +47,7 @@ export class AiAssistantConfigEntity {
   description: string;
 
   @ApiProperty({ description: '模板ID' })
-  @Column('uuid')
+  @Column(getUuidColumnOptions(process.env.DB_TYPE))
   templateId: string;
 
   @ApiProperty({ description: '关联的模板', type: () => AiAssistantTemplateEntity })
@@ -51,26 +56,25 @@ export class AiAssistantConfigEntity {
   template: AiAssistantTemplateEntity;
 
   @ApiProperty({ description: '生成的配置内容' })
-  @Column({ type: 'jsonb' })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE))
   generatedConfig: Record<string, any>;
 
   @ApiProperty({ description: '用户自定义参数' })
-  @Column({ type: 'jsonb', nullable: true })
+  @Column(getJsonColumnOptions(process.env.DB_TYPE, { nullable: true }))
   customParameters: Record<string, any>;
 
   @ApiProperty({ description: '配置状态', enum: ConfigStatus })
   @Column({
-    type: 'enum',
-    enum: ConfigStatus,
+    ...getEnumColumnOptions(process.env.DB_TYPE, ConfigStatus),
     default: ConfigStatus.GENERATED,
   })
   status: ConfigStatus;
 
   @ApiProperty({ description: '导出格式', enum: ExportFormat })
   @Column({
-    type: 'enum',
-    enum: ExportFormat,
-    nullable: true,
+    ...getEnumColumnOptions(process.env.DB_TYPE, ExportFormat, {
+      nullable: true,
+    }),
   })
   exportFormat: ExportFormat;
 

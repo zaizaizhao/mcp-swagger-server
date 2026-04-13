@@ -9,6 +9,11 @@ import {
   Index,
 } from 'typeorm';
 import { User } from './user.entity';
+import {
+  getIpColumnOptions,
+  getTimestampColumnOptions,
+  getUuidColumnOptions,
+} from '../db-compat';
 
 @Entity('refresh_tokens')
 @Index(['token'], { unique: true })
@@ -21,14 +26,14 @@ export class RefreshToken {
   @Column({ type: 'varchar', length: 500, unique: true })
   token: string;
 
-  @Column({ type: 'uuid' })
+  @Column(getUuidColumnOptions(process.env.DB_TYPE))
   userId: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
   user: User;
 
-  @Column({ type: 'timestamp' })
+  @Column(getTimestampColumnOptions(process.env.DB_TYPE))
   expiresAt: Date;
 
   @Column({ type: 'boolean', default: false })
@@ -37,13 +42,13 @@ export class RefreshToken {
   @Column({ type: 'varchar', length: 255, nullable: true })
   deviceInfo?: string;
 
-  @Column({ type: 'inet', nullable: true })
+  @Column(getIpColumnOptions(process.env.DB_TYPE, { nullable: true }))
   ipAddress?: string;
 
   @Column({ type: 'varchar', length: 500, nullable: true })
   userAgent?: string;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column(getTimestampColumnOptions(process.env.DB_TYPE, { nullable: true }))
   lastUsedAt?: Date;
 
   @CreateDateColumn()
