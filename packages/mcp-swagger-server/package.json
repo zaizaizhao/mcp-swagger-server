@@ -10,9 +10,10 @@
     "mss": "./dist/cli-interactive.js"
   },
   "scripts": {
-    "test": "pnpm run build && node scripts/cli-smoke.js && node scripts/smoke-test.js",
+    "test": "pnpm run build && node scripts/cli-smoke.js && node scripts/smoke-test.js && node scripts/streamable-session-smoke.js",
     "test:smoke": "pnpm run build && node scripts/smoke-test.js",
     "test:cli": "pnpm run build && node scripts/cli-smoke.js",
+    "test:streamable-session": "pnpm run build && node scripts/streamable-session-smoke.js",
     "build": "tsc",
     "type-check": "tsc --noEmit",
     "dev": "nodemon --exec ts-node src/index.ts --transport streamable --port 3322",
