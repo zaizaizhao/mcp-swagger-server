@@ -157,15 +157,15 @@
           />
 
           <!-- 设置按钮 -->
+
+          <!-- 用户信息 -->
           <el-button
-            v-if="showGlobalSettingsEntry"
             :icon="Setting"
             @click="openSettings"
             text
             :title="$t('common.settings')"
           />
 
-          <!-- 用户信息 -->
           <el-dropdown
             @command="handleUserAction"
             trigger="click"
@@ -186,21 +186,15 @@
             </div>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item
-                  command="profile"
-                  :disabled="!showUserShortcutEntries"
-                >
+                <el-dropdown-item command="profile">
                   <el-icon><User /></el-icon>
                   {{ t("userAuth.user.profile") }}
                 </el-dropdown-item>
-                <el-dropdown-item
-                  command="settings"
-                  :disabled="!showUserShortcutEntries"
-                >
+                <el-dropdown-item command="settings">
                   <el-icon><Setting /></el-icon>
                   {{ t("userAuth.user.accountSettings") }}
                 </el-dropdown-item>
-                <el-dropdown-item divided command="logout">
+                <el-dropdown-item command="logout">
                   <el-icon><SwitchButton /></el-icon>
                   {{ t("userAuth.user.logout") }}
                 </el-dropdown-item>
@@ -328,8 +322,6 @@ const isDark = computed(() => themeStore.isDark);
 const currentLanguage = computed(() => localeStore.currentLanguage);
 const supportedLocales = computed(() => SUPPORT_LOCALES);
 const currentUser = computed(() => authStore.currentUser);
-const showGlobalSettingsEntry = false;
-const showUserShortcutEntries = false;
 
 const sidebarWidth = computed(() => {
   if (isMobile.value) {
@@ -455,19 +447,6 @@ const handleLanguageChange = (locale: Locale) => {
   }
 };
 
-const openSettings = () => {
-  try {
-    measureFunction(() => {
-      ElMessage.info(t("common.info"));
-    }, "layout-open-settings");
-  } catch (error: any) {
-    globalErrorHandler?.captureError(error, {
-      context: "layout-open-settings",
-      action: "open_settings",
-    });
-  }
-};
-
 const showSystemStatus = () => {
   try {
     if (systemStatus.value.isHealthy) {
@@ -488,6 +467,10 @@ const showSystemStatus = () => {
 };
 
 // 处理用户操作
+const openSettings = () => {
+  ElMessage.info(t("common.info"));
+};
+
 const handleUserAction = async (command: string) => {
   try {
     switch (command) {

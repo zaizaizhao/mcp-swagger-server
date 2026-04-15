@@ -24,6 +24,10 @@ Earlier architecture proposal material retained for traceability.
 
 HTML prototypes and exploratory artifacts.
 
+### `guides`
+
+Former active guides that became stale, drifted from the current baseline, or were replaced by tighter documentation.
+
 ## Rules
 
 - Archived documents are read-only by default.

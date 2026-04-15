@@ -1,15 +1,15 @@
 # Database Mode Quickstart
 
-## Default mode: SQLite
+This project supports two database modes:
 
-The API now defaults to `DB_TYPE=sqlite`.
+- `SQLite`: default, simplest local path
+- `PostgreSQL`: optional, stronger operational path for heavier deployment
 
-Use this for:
+They are complementary modes, not replacement relationships.
 
-- local development
-- single-machine deployment
-- light operational load
-- low-friction evaluation
+## SQLite
+
+Use SQLite when you want the fastest single-machine setup.
 
 Example `packages/mcp-swagger-api/.env`:
 
@@ -22,44 +22,28 @@ DB_TYPE=sqlite
 DB_SQLITE_PATH=data/mcp-swagger.db
 
 JWT_SECRET=change-this-jwt-secret
+JWT_REFRESH_SECRET=change-this-refresh-secret
 API_KEY=change-this-api-key
 ```
 
-Build and run:
+Start:
 
 ```bash
 pnpm --filter mcp-swagger-api run build
 node packages/mcp-swagger-api/dist/src/main.js
 ```
 
-## Production-capable mode: PostgreSQL
+Notes:
 
-Use this for:
+- if `DB_TYPE` is omitted, the API still defaults to SQLite
+- startup logs should print `Database mode: sqlite`
+- this is the recommended baseline for local development and light-load use
 
-- long-running production deployment
-- multi-user operation
-- higher write volume
-- heavier log and monitoring load
+## PostgreSQL
 
-Example `packages/mcp-swagger-api/.env`:
+Use PostgreSQL when you need a stronger long-running deployment posture.
 
-```env
-NODE_ENV=production
-PORT=3001
-MCP_PORT=3322
-
-DB_TYPE=postgres
-DB_HOST=localhost
-DB_PORT=5432
-DB_USERNAME=postgres
-DB_PASSWORD=your-postgres-password
-DB_DATABASE=mcp_swagger_api
-
-JWT_SECRET=change-this-jwt-secret
-API_KEY=change-this-api-key
-```
-
-Create the database if needed:
+Create the database:
 
 Windows PowerShell:
 
@@ -73,10 +57,46 @@ Ubuntu:
 sudo -u postgres psql -c "CREATE DATABASE mcp_swagger_api;"
 ```
 
-## Current implementation note
+Example `packages/mcp-swagger-api/.env`:
 
-The current SQLite path is implemented with TypeORM `sql.js` persistence, still exposed as product-level `sqlite` mode.
+```env
+NODE_ENV=development
+PORT=3001
+MCP_PORT=3322
 
-This is suitable for the single-machine default path. PostgreSQL remains the recommended option for heavier and longer-running production use.
+DB_TYPE=postgres
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=your-postgres-password
+DB_DATABASE=mcp_swagger_api
 
-SQLite path validation is active at startup. WAL and busy-timeout tuning are not exposed as active runtime switches in the current `sql.js` path and should not be assumed to be in effect.
+JWT_SECRET=change-this-jwt-secret
+JWT_REFRESH_SECRET=change-this-refresh-secret
+API_KEY=change-this-api-key
+```
+
+Notes:
+
+- startup logs should print `Database mode: postgres`
+- PostgreSQL is recommended for heavier write volume and multi-user operation
+
+## Product Guidance
+
+Choose SQLite when:
+
+- the service is deployed on a single machine
+- write volume is light
+- simplicity matters more than shared concurrency
+
+Choose PostgreSQL when:
+
+- the service is expected to run long term
+- multiple operators or higher write concurrency are expected
+- stronger operational isolation and recovery behavior are needed
+
+## Concurrency Position
+
+SQLite is acceptable for the current small-scale single-machine path, especially when simplicity is the priority.
+
+PostgreSQL remains the better choice when concurrency, operational durability, and heavier background activity become more important.

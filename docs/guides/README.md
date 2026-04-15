@@ -1,29 +1,34 @@
 # Guides
 
-This directory contains current operational and usage-oriented documentation.
+This directory contains active operational and usage-oriented documentation for the current product baseline.
 
-## Included
+## Active Guides
 
 - [database-mode-quickstart](./database-mode-quickstart.md)
 - [database-strategy](./database-strategy.md)
 - [local-setup-and-run](./local-setup-and-run.md)
 - [parser-change-verification](./parser-change-verification.md)
 - [release-readiness-checklist](./release-readiness-checklist.md)
+- [current-convergence-plan](./current-convergence-plan.md)
 - [next-phase-development-plan](./next-phase-development-plan.md)
 - [github-collaboration-workflow](./github-collaboration-workflow.md)
-- [release-v0.2.14](./release-v0.2.14.md)
-- [quick-start-guide](./quick-start-guide.md)
-- [usage-guide](./usage-guide.md)
-- [deployment-guide](./deployment-guide.md)
-- [api-authentication-guide](./api-authentication-guide.md)
-- [bearer-token-quickstart](./bearer-token-quickstart.md)
-- [bearer-token-usage-guide](./bearer-token-usage-guide.md)
-- [custom-headers-quickstart](./custom-headers-quickstart.md)
-- [restart-guide](./restart-guide.md)
-- [websocket-troubleshooting](./websocket-troubleshooting.md)
 
-## Scope
+## Guide Inclusion Rule
 
-These documents should describe how to use, operate, configure, or troubleshoot currently supported product paths.
+A guide belongs here only if it describes a currently supported product path or a currently required engineering workflow.
 
-If a guide becomes historical, move it into `docs/archive` rather than letting the active guide set grow stale.
+If a guide becomes stale, historical, or too drifted from the current baseline, move it into `docs/archive` instead of leaving it in the active set.
+
+## Current Narrow Baseline
+
+The active guide set is intentionally narrow during product convergence.
+
+It should primarily cover:
+
+- setup and run
+- database mode selection
+- parser-change verification
+- release verification
+- current planning and engineering workflow
+
+Feature-specific experiments, release notes, troubleshooting deep dives, and historical implementation guides should live in `docs/archive/guides`.

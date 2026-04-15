@@ -51,9 +51,50 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          "element-plus": ["element-plus"],
-          monaco: ["monaco-editor"],
+        manualChunks(id) {
+          if (id.includes("monaco-editor")) {
+            return "vendor-monaco";
+          }
+
+          if (id.includes("element-plus") || id.includes("@element-plus")) {
+            return "vendor-element-plus";
+          }
+
+          if (id.includes("echarts") || id.includes("vue-echarts")) {
+            return "vendor-charts";
+          }
+
+          if (id.includes("socket.io-client")) {
+            return "vendor-realtime";
+          }
+
+          if (id.includes("/src/modules/monitoring/")) {
+            return "feature-monitoring";
+          }
+
+          if (id.includes("/src/modules/ai/")) {
+            return "feature-ai";
+          }
+
+          if (id.includes("/src/modules/config/")) {
+            return "feature-config";
+          }
+
+          if (id.includes("/src/modules/testing/")) {
+            return "feature-testing";
+          }
+
+          if (id.includes("/src/modules/openapi/")) {
+            return "feature-openapi";
+          }
+
+          if (id.includes("/src/modules/servers/")) {
+            return "feature-servers";
+          }
+
+          if (id.includes("/node_modules/")) {
+            return "vendor-misc";
+          }
         },
       },
     },

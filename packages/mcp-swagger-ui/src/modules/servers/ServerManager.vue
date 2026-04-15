@@ -77,7 +77,7 @@
           <el-card class="stat-card">
             <div class="stat-content">
               <div class="stat-icon stopped">
-                <el-icon><CircleClosure /></el-icon>
+                <el-icon><CircleClose /></el-icon>
               </div>
               <div class="stat-text">
                 <div class="stat-number">{{ stoppedServers }}</div>
@@ -160,12 +160,11 @@
                           >
                             {{ t("servers.restartServer") }}
                           </el-dropdown-item>
-                          <el-dropdown-item divided>
-                            <el-dropdown-item
-                              :command="{ action: 'edit', server }"
-                            >
-                              {{ t("servers.editServer") }}
-                            </el-dropdown-item>
+                          <el-dropdown-item
+                            divided
+                            :command="{ action: 'edit', server }"
+                          >
+                            {{ t("servers.editServer") }}
                           </el-dropdown-item>
                           <el-dropdown-item
                             :command="{ action: 'delete', server }"

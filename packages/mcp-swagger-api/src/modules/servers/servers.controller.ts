@@ -22,6 +22,8 @@ import {
 } from '@nestjs/swagger';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtAuthGuard } from '../security/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../security/guards/permissions.guard';
+import { RequirePermissions } from '../security/decorators/permissions.decorator';
 
 import { ServerManagerService } from './services/server-manager.service';
 import { SystemLogService } from './services/system-log.service';
@@ -56,8 +58,8 @@ import {
 
 @ApiTags('服务器管理')
 @Controller('v1/servers')
-// @UseGuards(AuthGuard) // TODO: 添加认证守卫
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@RequirePermissions('server:read', 'server:manage')
 @ApiBearerAuth('JWT')
 export class ServersController {
   private readonly logger = new Logger(ServersController.name);
@@ -80,6 +82,7 @@ export class ServersController {
    * 创建新的MCP服务器
    */
   @Post()
+  @RequirePermissions('server:create', 'server:manage')
   @ApiOperation({ summary: '创建MCP服务器', description: '根据OpenAPI规范创建新的MCP服务器' })
   @ApiResponse({ status: 201, description: '服务器创建成功', type: ServerResponseDto })
   @ApiResponse({ status: 400, description: '请求参数错误' })
@@ -263,6 +266,7 @@ export class ServersController {
    * 更新服务器配置
    */
   @Put(':id')
+  @RequirePermissions('server:update', 'server:manage')
   @ApiOperation({ summary: '更新服务器配置', description: '更新指定MCP服务器的配置信息' })
   @ApiParam({ name: 'id', description: '服务器ID' })
   @ApiResponse({ status: 200, description: '更新成功', type: ServerResponseDto })
@@ -300,6 +304,7 @@ export class ServersController {
    * 删除服务器
    */
   @Delete(':id')
+  @RequirePermissions('server:delete', 'server:manage')
   @ApiOperation({ summary: '删除服务器', description: '删除指定的MCP服务器' })
   @ApiParam({ name: 'id', description: '服务器ID' })
   @ApiResponse({ status: 200, description: '删除成功', type: OperationResultDto })
@@ -332,6 +337,7 @@ export class ServersController {
    * 服务器操作（启动/停止/重启）
    */
   @Post(':id/actions')
+  @RequirePermissions('server:execute', 'server:manage')
   @ApiOperation({ summary: '服务器操作', description: '对指定服务器执行启动、停止或重启操作' })
   @ApiParam({ name: 'id', description: '服务器ID' })
   @ApiResponse({ status: 200, description: '操作成功', type: OperationResultDto })
@@ -390,6 +396,7 @@ export class ServersController {
    * 批量服务器操作
    */
   @Post('batch/actions')
+  @RequirePermissions('server:execute', 'server:manage')
   @ApiOperation({ summary: '批量服务器操作', description: '对多个服务器执行批量操作' })
   @ApiResponse({ status: 200, description: '批量操作完成', type: OperationResultDto })
   async performBatchAction(@Body() batchDto: BatchServerActionDto): Promise<OperationResultDto> {
@@ -511,6 +518,7 @@ export class ServersController {
    * 手动执行健康检查
    */
   @Post(':id/health/check')
+  @RequirePermissions('server:execute', 'server:manage')
   @ApiOperation({ summary: '手动健康检查', description: '手动触发指定服务器的健康检查' })
   @ApiParam({ name: 'id', description: '服务器ID' })
   @ApiResponse({ status: 200, description: '健康检查完成' })
@@ -531,6 +539,7 @@ export class ServersController {
    * 调试端点：获取所有服务器状态
    */
   @Get('debug/states')
+  @RequirePermissions('server:manage', 'system:view')
   @ApiOperation({ summary: '调试：获取所有服务器状态', description: '获取数据库和内存中的所有服务器状态信息' })
   @ApiResponse({ status: 200, description: '获取成功' })
   async debugGetAllServerStates() {
@@ -754,6 +763,7 @@ export class ServersController {
    * 重置进程重启计数器
    */
   @Post(':id/process/reset-restart-counter')
+  @RequirePermissions('server:manage')
   @ApiOperation({ summary: '重置重启计数器', description: '重置指定服务器的进程重启计数器' })
   @ApiParam({ name: 'id', description: '服务器ID' })
   @ApiResponse({ status: 200, description: '重置成功', type: OperationResultDto })
@@ -777,6 +787,7 @@ export class ServersController {
    * 取消进程重启
    */
   @Post(':id/process/cancel-restart')
+  @RequirePermissions('server:manage')
   @ApiOperation({ summary: '取消进程重启', description: '取消指定服务器的待重启进程' })
   @ApiParam({ name: 'id', description: '服务器ID' })
   @ApiResponse({ status: 200, description: '取消成功', type: OperationResultDto })
@@ -895,6 +906,7 @@ export class ServersController {
    * 启动进程资源监控
    */
   @Post(':id/process/resources/monitor/start')
+  @RequirePermissions('server:manage', 'monitoring:manage')
   @ApiOperation({ summary: '启动进程资源监控', description: '启动指定服务器进程的资源监控' })
   @ApiParam({ name: 'id', description: '服务器ID' })
   @ApiQuery({ name: 'interval', required: false, description: '监控间隔（毫秒）', example: 5000 })
@@ -932,6 +944,7 @@ export class ServersController {
    * 停止进程资源监控
    */
   @Post(':id/process/resources/monitor/stop')
+  @RequirePermissions('server:manage', 'monitoring:manage')
   @ApiOperation({ summary: '停止进程资源监控', description: '停止指定服务器进程的资源监控' })
   @ApiParam({ name: 'id', description: '服务器ID' })
   @ApiResponse({ status: 200, description: '停止成功', type: OperationResultDto })
@@ -1078,6 +1091,7 @@ export class ServersController {
    * 启动进程日志监控
    */
   @Post(':id/process/logs/monitor/start')
+  @RequirePermissions('server:manage', 'monitoring:manage')
   @ApiOperation({ summary: '启动进程日志监控', description: '启动指定服务器进程的日志监控' })
   @ApiParam({ name: 'id', description: '服务器ID' })
   @ApiQuery({ name: 'logFile', required: false, description: '日志文件路径' })
@@ -1115,6 +1129,7 @@ export class ServersController {
    * 停止进程日志监控
    */
   @Post(':id/process/logs/monitor/stop')
+  @RequirePermissions('server:manage', 'monitoring:manage')
   @ApiOperation({ summary: '停止进程日志监控', description: '停止指定服务器进程的日志监控' })
   @ApiParam({ name: 'id', description: '服务器ID' })
   @ApiResponse({ status: 200, description: '停止成功', type: OperationResultDto })
@@ -1148,6 +1163,7 @@ export class ServersController {
    * 清空进程日志缓冲区
    */
   @Post(':id/process/logs/clear')
+  @RequirePermissions('server:manage', 'monitoring:manage')
   @ApiOperation({ summary: '清空进程日志缓冲区', description: '清空指定服务器进程的日志缓冲区' })
   @ApiParam({ name: 'id', description: '服务器ID' })
   @ApiResponse({ status: 200, description: '清空成功', type: OperationResultDto })

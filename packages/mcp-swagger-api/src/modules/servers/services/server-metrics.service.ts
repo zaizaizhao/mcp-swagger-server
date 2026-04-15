@@ -23,7 +23,9 @@ export interface ServerMetrics {
   responseTime: number; // 平均响应时间（毫秒）
   
   // 性能指标
-  cpuUsage: number; // CPU使用率（百分比）
+  cpuUsage: number | null; // CPU使用率（百分比）
+  cpuUsageAvailable: boolean;
+  cpuUsageNote?: string;
   memoryUsage: number; // 内存使用量（MB）
   memoryUsagePercent: number; // 内存使用率（百分比）
   
@@ -50,7 +52,9 @@ export interface SystemMetrics {
   
   // 进程信息
   processMemory: number; // 进程内存使用（MB）
-  processCpuUsage: number; // 进程CPU使用率
+  processCpuUsage: number | null; // 进程CPU使用率
+  processCpuUsageAvailable: boolean;
+  processCpuUsageNote?: string;
   
   // 服务器统计
   totalServers: number; // 总服务器数
@@ -230,9 +234,8 @@ export class ServerMetricsService {
       ? Math.floor((Date.now() - instance.startTime.getTime()) / 1000)
       : 0;
     
-    // 获取系统资源使用情况（简化版，实际应该通过进程监控获取）
+    // Keep memory metrics, but do not claim CPU telemetry until a real sampling path is wired in.
     const memoryUsage = process.memoryUsage();
-    const cpuUsage = process.cpuUsage();
     
     const metrics: ServerMetrics = {
       serverId,
@@ -242,7 +245,9 @@ export class ServerMetricsService {
       requestCount: currentStats.requestCount,
       errorCount: currentStats.errorCount,
       responseTime: averageResponseTime,
-      cpuUsage: 0, // TODO: 实现真实的CPU使用率计算
+      cpuUsage: null,
+      cpuUsageAvailable: false,
+      cpuUsageNote: 'Unavailable in ServerMetricsService; use process resource monitoring for real CPU telemetry.',
       memoryUsage: Math.round(memoryUsage.heapUsed / 1024 / 1024), // MB
       memoryUsagePercent: (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100,
       activeConnections: currentStats.connections.size,
@@ -280,7 +285,9 @@ export class ServerMetricsService {
       cpuCount: os.cpus().length,
       loadAverage: os.loadavg(),
       processMemory: Math.round(processMemoryUsage.heapUsed / 1024 / 1024),
-      processCpuUsage: 0, // TODO: 实现进程CPU使用率计算
+      processCpuUsage: null,
+      processCpuUsageAvailable: false,
+      processCpuUsageNote: 'Unavailable in ServerMetricsService; use process resource monitoring for real CPU telemetry.',
       totalServers: allServers.length,
       runningServers,
       healthyServers,

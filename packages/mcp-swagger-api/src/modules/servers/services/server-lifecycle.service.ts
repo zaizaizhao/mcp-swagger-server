@@ -251,9 +251,7 @@ export class ServerLifecycleService {
         return `http://localhost:${serverEntity.port}${endpoint}`;
       }
       
-      case TransportType.WEBSOCKET:
-        return `ws://localhost:${serverEntity.port}`;
-      
+
       default:
         throw new Error(`Unsupported transport type: ${serverEntity.transport}`);
     }
@@ -377,14 +375,6 @@ export class ServerLifecycleService {
   }
 
 
-
-  /**
-   * 启动WebSocket传输的MCP服务器
-   */
-  private async startWebSocketServer(config: any): Promise<{ mcpServer: any; httpServer: any }> {
-    // WebSocket传输暂未实现
-    throw new Error('WebSocket transport not yet implemented');
-  }
 
   /**
    * 停止HTTP服务器
@@ -554,11 +544,5 @@ export class ServerLifecycleService {
     }
   }
 
-  /**
-   * WebSocket健康检查
-   */
-  private async websocketHealthCheck(endpoint: string): Promise<boolean> {
-    // TODO: 实现WebSocket健康检查
-    return true;
-  }
+  
 }

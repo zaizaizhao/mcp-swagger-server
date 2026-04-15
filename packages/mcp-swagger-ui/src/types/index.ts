@@ -26,8 +26,7 @@ export interface ConvertConfig {
 export type ManagedServerTransport = "streamable" | "sse";
 export type ServerTransport =
   | ManagedServerTransport
-  | "stdio"
-  | "websocket";
+  | "stdio";
 
 // ============================================================================
 // 基础类型定义

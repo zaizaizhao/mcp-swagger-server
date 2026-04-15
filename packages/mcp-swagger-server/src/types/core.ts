@@ -1,5 +1,5 @@
 // 核心类型定义
-import { AuthConfig, TransformerOptions, OperationFilter } from 'mcp-swagger-parser';
+import { AuthConfig, TransformerOptions, OperationFilter, OpenAPISpec } from 'mcp-swagger-parser';
 
 export interface MCPTool {
   id: string;
@@ -142,6 +142,7 @@ export interface IMCPRegistry {
 export interface ITransformer {
   transformFromFile(filePath?: string, options?: TransformOptions): Promise<MCPTool[]>;
   transformFromUrl(url: string, options?: TransformOptions): Promise<MCPTool[]>;
+  transformFromSpec(spec: OpenAPISpec, options?: TransformOptions): Promise<MCPTool[]>;
   validateTools(tools: MCPTool[]): ValidationResult;
   normalizeTools(tools: MCPTool[]): MCPTool[];
   analyzeTools(tools: MCPTool[]): {

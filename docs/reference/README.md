@@ -1,9 +1,10 @@
 # Reference
 
-This directory contains current reference material that is still useful for maintenance and release work, but is not the primary project baseline.
+This directory contains durable reference material used for maintenance, release work, and architecture tracking, but it is not the primary product baseline.
 
 ## Included
 
+- [open-items](./open-items.md)
 - [changelog-field-guide](./changelog-field-guide.md)
 - [changesets-implementation-guide](./changesets-implementation-guide.md)
 - [changesets-integration-guide](./changesets-integration-guide.md)
@@ -20,4 +21,4 @@ This directory contains current reference material that is still useful for main
 
 Keep only durable reference material here.
 
-Do not store temporary plans, execution logs, or milestone summaries in this directory.
+Do not store temporary plans, execution logs, milestone summaries, or active operator guides in this directory.

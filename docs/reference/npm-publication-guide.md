@@ -138,7 +138,7 @@ npm install -g mcp-swagger-server
 mcp-swagger-server --help
 
 # 从 URL 启动 HTTP 服务器
-mcp-swagger-server --transport http --port 3322 --openapi https://api.github.com/openapi.json
+mcp-swagger-server --transport streamable --port 3322 --openapi https://api.github.com/openapi.json
 
 # 从本地文件启动并监控变化
 mcp-swagger-server --transport streamable --openapi ./api.json --watch

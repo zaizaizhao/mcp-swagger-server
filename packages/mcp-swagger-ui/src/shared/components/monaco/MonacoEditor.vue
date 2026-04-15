@@ -8,7 +8,8 @@
 
 <script lang="ts" setup>
 import { ref, onMounted, onBeforeUnmount, watch, nextTick } from "vue";
-import * as monaco from "monaco-editor";
+import type * as Monaco from "monaco-editor";
+import { ensureMonacoReady } from "./monacoLoader";
 
 interface Props {
   modelValue?: string;
@@ -16,7 +17,7 @@ interface Props {
   theme?: string;
   height?: number;
   readOnly?: boolean;
-  options?: monaco.editor.IStandaloneEditorConstructionOptions;
+  options?: Monaco.editor.IStandaloneEditorConstructionOptions;
 }
 
 interface Emits {
@@ -38,15 +39,18 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>();
 
 const monacoContainer = ref<HTMLElement>();
-let editor: monaco.editor.IStandaloneCodeEditor | null = null;
-let model: monaco.editor.ITextModel | null = null;
+let monaco: typeof Monaco | null = null;
+let editor: Monaco.editor.IStandaloneCodeEditor | null = null;
+let model: Monaco.editor.ITextModel | null = null;
 
 // 初始化Monaco编辑器
 const initMonaco = async () => {
   if (!monacoContainer.value) return;
 
+  monaco = await ensureMonacoReady();
+
   // 默认编辑器选项
-  const defaultOptions: monaco.editor.IStandaloneEditorConstructionOptions = {
+  const defaultOptions: Monaco.editor.IStandaloneEditorConstructionOptions = {
     value: props.modelValue,
     language: props.language,
     theme: props.theme,
@@ -123,14 +127,16 @@ const setValue = (value: string) => {
 
 // 设置编辑器语言
 const setLanguage = (language: string) => {
-  if (model) {
+  if (monaco && model) {
     monaco.editor.setModelLanguage(model, language);
   }
 };
 
 // 设置编辑器主题
 const setTheme = (theme: string) => {
-  monaco.editor.setTheme(theme);
+  if (monaco) {
+    monaco.editor.setTheme(theme);
+  }
 };
 
 // 格式化代码

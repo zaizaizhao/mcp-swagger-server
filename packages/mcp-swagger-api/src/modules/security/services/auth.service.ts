@@ -143,6 +143,10 @@ export class AuthService {
         user.id,
       );
 
+      this.logger.warn(
+        `Email verification delivery is not configured in the current baseline; user ${user.id} remains pending until verification is completed through an operator-managed flow.`,
+      );
+
       // TODO: 发送验证邮件
       // await this.emailService.sendVerificationEmail(user.email, verificationToken);
 
@@ -286,6 +290,10 @@ export class AuthService {
     try {
       // 生成密码重置令牌
       const resetToken = await this.userService.generatePasswordResetToken(email);
+
+      this.logger.warn(
+        `Password reset email delivery is not configured in the current baseline; request for ${email} only generated an internal reset token.`,
+      );
 
       // TODO: 发送重置邮件
       // await this.emailService.sendPasswordResetEmail(email, resetToken);
