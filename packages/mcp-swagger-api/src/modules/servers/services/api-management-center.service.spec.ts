@@ -5,6 +5,7 @@ import { of, throwError } from 'rxjs';
 import { ApiManagementCenterService } from './api-management-center.service';
 import { MCPServerEntity } from '../../../database/entities/mcp-server.entity';
 import { EndpointProbeLogEntity } from '../entities/endpoint-probe-log.entity';
+import { EndpointSourceType } from '../dto/api-management.dto';
 import { ServerManagerService } from './server-manager.service';
 
 describe('ApiManagementCenterService', () => {
@@ -156,6 +157,43 @@ describe('ApiManagementCenterService', () => {
 
     expect(result.ready).toBe(true);
     expect(result.reasons).toEqual([]);
+  });
+
+  it('filters overview results by source type for lightweight governance views', async () => {
+    serverRepository.find.mockResolvedValue([
+      {
+        id: 'manual-1',
+        name: 'manual-health',
+        openApiData: { paths: { '/health': { get: {} } } },
+        config: {
+          management: {
+            sourceType: 'manual',
+            sourceRef: 'http://localhost:3001',
+          },
+        },
+      },
+      {
+        id: 'imported-1',
+        name: 'petstore-imported',
+        openApiData: {
+          paths: { '/pets': { get: {} } },
+        },
+        config: {
+          management: {
+            sourceType: 'imported',
+            sourceRef: 'petstore.json',
+          },
+        },
+      },
+    ]);
+
+    const manualResult = await service.getOverview({ sourceType: EndpointSourceType.MANUAL });
+    const importedResult = await service.getOverview({ sourceType: EndpointSourceType.IMPORTED });
+
+    expect(manualResult.total).toBe(1);
+    expect(manualResult.data[0].id).toBe('manual-1');
+    expect(importedResult.total).toBe(1);
+    expect(importedResult.data[0].id).toBe('imported-1');
   });
 
   it('publishes when readiness check passes', async () => {

@@ -158,7 +158,7 @@ Notes:
 Current operator boundary note:
 
 - OpenAPI Management remains the import and specification workflow
-- Endpoint Registry is a peer management surface for manually registered endpoints grouped by `Server URL`
+- Endpoint Registry is a peer management surface for manually registered endpoints and lightweight governance of imported endpoints
 - the semantic-layer enhancement discussed in planning is still deferred and tracked as an open item
 
 ## Documentation Entry Points

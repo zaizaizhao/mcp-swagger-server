@@ -4,11 +4,15 @@
       <div>
         <h1>{{ t("endpointRegistry.title") }}</h1>
         <p class="muted">
-          {{ t("endpointRegistry.subtitle") }}
+          {{ activeSubtitle }}
         </p>
       </div>
       <div class="header-actions">
-        <el-button type="warning" @click="openCreateDialog">
+        <el-button
+          v-if="selectedSourceType === 'manual'"
+          type="warning"
+          @click="openCreateDialog"
+        >
           {{ t("endpointRegistry.actions.addManualEndpoint") }}
         </el-button>
         <el-button type="primary" @click="loadOverview" :loading="loading">
@@ -19,6 +23,16 @@
 
     <el-card shadow="never" class="toolbar-card">
       <el-row :gutter="12">
+        <el-col :xs="24" :md="12">
+            <el-radio-group v-model="selectedSourceType" size="small">
+            <el-radio-button label="manual">
+              {{ sourceTypeLabel.manual }}
+            </el-radio-button>
+            <el-radio-button label="imported">
+              {{ sourceTypeLabel.imported }}
+            </el-radio-button>
+          </el-radio-group>
+        </el-col>
         <el-col :xs="24" :md="12">
           <el-input
             v-model="search"
@@ -140,6 +154,7 @@
                   {{ t("endpointRegistry.actions.offline") }}
                 </el-button>
                 <el-button
+                  v-if="row.sourceType === 'manual'"
                   size="small"
                   type="primary"
                   plain
@@ -151,6 +166,7 @@
                   {{ t("endpointRegistry.actions.edit") }}
                 </el-button>
                 <el-button
+                  v-if="row.sourceType === 'manual'"
                   size="small"
                   type="danger"
                   plain
@@ -246,7 +262,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import type { FormInstance } from "element-plus";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
@@ -258,9 +274,12 @@ import {
   Delete as DeleteIcon,
 } from "@element-plus/icons-vue";
 import { useI18n } from "vue-i18n";
+import { useRoute, useRouter } from "vue-router";
 import { serverAPI } from "@/services/api";
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
+const route = useRoute();
+const router = useRouter();
 
 type ApiCenterRow = {
   id: string;
@@ -271,6 +290,7 @@ type ApiCenterRow = {
     path?: string;
   };
   profile?: {
+    sourceType?: "manual" | "imported";
     sourceRef?: string;
     probeUrl?: string;
     lifecycleStatus?: string;
@@ -284,6 +304,7 @@ type EndpointRow = {
   name: string;
   baseUrl: string;
   methodPath: string;
+  sourceType: "manual" | "imported";
   lifecycleStatus: string;
   publishEnabled: boolean;
   lastProbeStatus: string;
@@ -301,6 +322,7 @@ const errorMessage = ref("");
 const search = ref("");
 const rows = ref<EndpointRow[]>([]);
 const expandedGroupKeys = ref<string[]>([]);
+const selectedSourceType = ref<"manual" | "imported">("manual");
 const actionLoading = ref<Record<string, string>>({});
 const showCreateDialog = ref(false);
 const creating = ref(false);
@@ -382,6 +404,22 @@ const setActionLoading = (
 
 const dialogTitle = computed(() =>
   t(formMode.value === "edit" ? "endpointRegistry.dialog.editTitle" : "endpointRegistry.dialog.title"),
+);
+
+const activeSubtitle = computed(() =>
+  locale.value.startsWith("zh")
+    ? selectedSourceType.value === "manual"
+      ? "按 Server URL 分组管理手工 Endpoint，与 OpenAPI 文档管理隔离。"
+      : "对导入 Endpoint 提供轻量生命周期治理，与手工录入分开管理。"
+    : selectedSourceType.value === "manual"
+      ? "Manual endpoints grouped by Server URL (baseUrl), isolated from OpenAPI specs."
+      : "Imported endpoints with lightweight lifecycle governance, kept separate from manual registration.",
+);
+
+const sourceTypeLabel = computed(() =>
+  locale.value.startsWith("zh")
+    ? { manual: "手工", imported: "导入" }
+    : { manual: "Manual", imported: "Imported" },
 );
 
 const openCreateDialog = () => {
@@ -501,6 +539,7 @@ const mapRow = (item: ApiCenterRow): EndpointRow => {
     name: item.name,
     baseUrl,
     methodPath: detectMethodPath(item),
+    sourceType: (item.profile?.sourceType as "manual" | "imported") || "imported",
     lifecycleStatus: item.profile?.lifecycleStatus || "draft",
     publishEnabled: Boolean(item.profile?.publishEnabled),
     lastProbeStatus: item.profile?.lastProbeStatus || "unknown",
@@ -545,7 +584,9 @@ const loadOverview = async () => {
   loading.value = true;
   errorMessage.value = "";
   try {
-    const result = await serverAPI.getApiCenterOverview({ sourceType: "manual" });
+    const result = await serverAPI.getApiCenterOverview({
+      sourceType: selectedSourceType.value,
+    });
     const data = Array.isArray(result?.data) ? result.data : [];
     rows.value = data.map((item) => mapRow(item as ApiCenterRow));
     expandedGroupKeys.value = grouped.value.map((g) => g.groupKey);
@@ -761,6 +802,20 @@ const handleOffline = async (row: EndpointRow) => {
 };
 
 onMounted(async () => {
+  const sourceType = route.query.sourceType;
+  if (sourceType === "imported" || sourceType === "manual") {
+    selectedSourceType.value = sourceType;
+  }
+  await loadOverview();
+});
+
+watch(selectedSourceType, async (value) => {
+  await router.replace({
+    query: {
+      ...route.query,
+      sourceType: value,
+    },
+  });
   await loadOverview();
 });
 </script>

@@ -1174,7 +1174,12 @@ const filteredDocuments = computed(() => {
 });
 
 const goToEndpointRegistry = () => {
-  router.push("/endpoint-registry");
+  router.push({
+    path: "/endpoint-registry",
+    query: {
+      sourceType: "imported",
+    },
+  });
 };
 
 // 璁＄畻缂栬緫鍣ㄩ珮搴?

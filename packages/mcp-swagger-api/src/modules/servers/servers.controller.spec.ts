@@ -18,6 +18,10 @@ import { PermissionsGuard } from '../security/guards/permissions.guard';
 
 describe('ServersController', () => {
   let controller: ServersController;
+  const serverManager = {
+    updateServer: jest.fn(),
+    deleteServer: jest.fn(),
+  };
 
   const apiManagementCenter = {
     getOverview: jest.fn(),
@@ -32,7 +36,7 @@ describe('ServersController', () => {
     const builder = Test.createTestingModule({
       controllers: [ServersController],
       providers: [
-        { provide: ServerManagerService, useValue: {} },
+        { provide: ServerManagerService, useValue: serverManager },
         { provide: SystemLogService, useValue: {} },
         { provide: OpenAPIService, useValue: {} },
         { provide: ServerHealthService, useValue: {} },
@@ -120,6 +124,42 @@ describe('ServersController', () => {
       serverId: 'server-1',
       ready: true,
       reasons: [],
+    });
+  });
+
+  it('updates a manual endpoint through the existing server update flow', async () => {
+    serverManager.updateServer.mockResolvedValue({
+      id: 'server-1',
+      name: 'health-endpoint',
+      description: 'updated',
+    });
+
+    await expect(
+      controller.updateServer('server-1', {
+        name: 'health-endpoint',
+        description: 'updated',
+        openApiData: {
+          openapi: '3.0.3',
+        },
+        config: {
+          management: {
+            sourceType: 'manual',
+          },
+        },
+      } as any),
+    ).resolves.toEqual({
+      id: 'server-1',
+      name: 'health-endpoint',
+      description: 'updated',
+    });
+  });
+
+  it('deletes a manual endpoint through the server delete flow', async () => {
+    serverManager.deleteServer.mockResolvedValue(undefined);
+
+    await expect(controller.deleteServer('server-1')).resolves.toEqual({
+      success: true,
+      message: 'Server deleted successfully',
     });
   });
 });

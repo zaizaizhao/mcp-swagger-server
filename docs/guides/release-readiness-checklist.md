@@ -134,6 +134,12 @@ Verify the manual endpoint lifecycle path:
 - run `publish` and `offline` and confirm lifecycle status changes match the operator action
 - delete the manual endpoint and confirm it disappears from the grouped registry view
 
+Verify the imported endpoint governance path:
+
+- enter the registry from OpenAPI Management and confirm the `imported` source view opens
+- confirm imported endpoints can be listed and grouped without exposing manual create/edit/delete actions
+- run `probe`, `publish readiness`, `publish`, and `offline` on an imported endpoint and confirm the lifecycle state updates correctly
+
 ## 9. Windows And Ubuntu Verification
 
 Check the documented run path on both:

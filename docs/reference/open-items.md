@@ -249,7 +249,7 @@ Status:
 Why it remains open:
 
 - the current API Center and Endpoint Registry now provide a usable control path for manually registered endpoints
-- imported OpenAPI endpoints still do not have the same operator-facing registry workflow, selective publication controls, or lifecycle review surface end to end
+- imported OpenAPI endpoints now have a lightweight registry view with probe/readiness/publish/offline controls, but they still do not have the same operator-facing editing, selective publication policy, or lifecycle review depth as the manual path
 - this is an intentional scope boundary for the current convergence pass, but it must remain visible so the product is not misrepresented as a full API governance platform
 
 Impact:

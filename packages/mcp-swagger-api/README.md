@@ -114,7 +114,8 @@ Current API-management endpoints in active use include:
 Current scope note:
 
 - the API Center implementation is intentionally lightweight
-- it currently covers manual endpoint registration, grouping, probe status, readiness checks, and publish/offline lifecycle controls
+- it currently covers manual endpoint registration plus lightweight governance views for imported endpoints
+- grouping, probe status, readiness checks, and publish/offline lifecycle controls are available in the current governance surface
 - semantic endpoint enrichment and broader imported-endpoint governance are still deferred and tracked in `docs/reference/open-items.md`
 
 ## Responsibility Boundary
