@@ -28,10 +28,16 @@ export function getEnumColumnOptions<T extends Record<string, string>>(
   enumObject: T,
   options: ColumnOptions = {},
 ): ColumnOptions {
+  const normalizedOptions = isSqliteDatabase(dbType)
+    ? options
+    : Object.fromEntries(
+        Object.entries(options).filter(([key]) => key !== 'length'),
+      );
+
   return {
     type: isSqliteDatabase(dbType) ? 'simple-enum' : 'enum',
     enum: enumObject,
-    ...options,
+    ...normalizedOptions,
   };
 }
 

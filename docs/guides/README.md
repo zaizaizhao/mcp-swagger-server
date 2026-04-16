@@ -21,6 +21,8 @@ This directory contains current operational and usage-oriented documentation.
 - [custom-headers-quickstart](./custom-headers-quickstart.md)
 - [restart-guide](./restart-guide.md)
 - [websocket-troubleshooting](./websocket-troubleshooting.md)
+- [endpoint-semantic-layer-requirements](./endpoint-semantic-layer-requirements.md)
+- [lightweight-api-access-management-requirements](./lightweight-api-access-management-requirements.md)
 
 ## Scope
 

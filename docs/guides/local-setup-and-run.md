@@ -245,6 +245,39 @@ Notes:
 - `DB_DATABASE` must match the created database name
 - PostgreSQL remains the recommended path for heavier and longer-running production use
 
+Recommended validation after switching to PostgreSQL:
+
+Windows PowerShell:
+
+```powershell
+cd E:\CodexDev\mcp-swagger-server
+pnpm --filter mcp-swagger-api run build
+$env:DB_TYPE="postgres"
+pnpm --filter mcp-swagger-api run test -- --runInBand
+node packages\mcp-swagger-api\dist\src\main.js
+```
+
+Ubuntu:
+
+```bash
+cd /path/to/mcp-swagger-server
+pnpm --filter mcp-swagger-api run build
+DB_TYPE=postgres pnpm --filter mcp-swagger-api run test -- --runInBand
+DB_TYPE=postgres node packages/mcp-swagger-api/dist/src/main.js
+```
+
+Validation points:
+
+- startup log prints `Database mode: postgres`
+- startup log prints the target PostgreSQL host, port, and database
+- `GET http://localhost:3001/api/health/live` returns `200`
+- `GET http://localhost:3001/api/api/system/initialization` returns initialized status
+
+Current verified baseline:
+
+- SQLite default path: build + test + startup
+- PostgreSQL path: database recreation, schema initialization, seed initialization, health endpoint, initialization endpoint, and full package test pass
+
 ## 4. Build Commands
 
 Run from repository root.
@@ -458,6 +491,36 @@ Check:
 - API is running on `3001`
 - UI is running on `3000`
 - `http://localhost:3001/health` responds
+
+### 7.2 PostgreSQL database exists but API still fails at startup
+
+Symptoms:
+
+- database credentials are correct
+- PostgreSQL is reachable
+- API still fails during TypeORM metadata validation or schema initialization
+
+Check:
+
+- use the latest codebase after the enum compatibility fix for dual-database mode
+- rebuild the API package before restart:
+
+Windows PowerShell:
+
+```powershell
+pnpm --filter mcp-swagger-api run build
+```
+
+Ubuntu:
+
+```bash
+pnpm --filter mcp-swagger-api run build
+```
+
+If startup succeeds, logs should include:
+
+- `Database mode: postgres`
+- `PostgreSQL database: <host>:<port>/<database>`
 
 ### 7.3 SQLite mode starts but data path is wrong
 

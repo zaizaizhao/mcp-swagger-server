@@ -42,7 +42,7 @@
               </el-icon>
               <template #title>
                 <span>{{
-                  $t(`menu.${String(route.name)}`) || route.meta?.title
+                  getMenuLabel(route)
                 }}</span>
                 <el-tooltip
                   v-if="route.meta?.description && !sidebarCollapsed"
@@ -92,8 +92,7 @@
             }}</el-breadcrumb-item>
             <el-breadcrumb-item v-if="currentRoute?.meta?.title">
               {{
-                $t(`menu.${String(currentRoute.name)}`) ||
-                currentRoute.meta.title
+                getMenuLabel(currentRoute)
               }}
             </el-breadcrumb-item>
           </el-breadcrumb>
@@ -225,6 +224,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, inject } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import type { RouteRecordName, RouteLocationNormalizedLoaded, RouteRecordNormalized } from "vue-router";
 import { ElMessage } from "element-plus";
 import { useI18n } from "vue-i18n";
 import {
@@ -366,6 +366,21 @@ const getIconComponent = (iconName?: string | unknown) => {
     return Monitor;
   }
   return iconComponents[iconName as keyof typeof iconComponents];
+};
+
+const getMenuLabel = (
+  routeItem:
+    | RouteLocationNormalizedLoaded
+    | RouteRecordNormalized
+    | { name?: RouteRecordName | null; meta?: Record<string, any> },
+) => {
+  const routeName = routeItem?.name ? String(routeItem.name) : "";
+  const key = routeName ? `menu.${routeName}` : "";
+  const translated = key ? t(key) : "";
+  if (!translated || translated === key) {
+    return String(routeItem?.meta?.title || "");
+  }
+  return translated;
 };
 
 const toggleSidebar = () => {

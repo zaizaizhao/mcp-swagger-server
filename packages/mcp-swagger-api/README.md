@@ -31,6 +31,17 @@
 - [Database Strategy](../../docs/guides/database-strategy.md)
 - [Local Setup And Run](../../docs/guides/local-setup-and-run.md)
 
+当前数据库基线说明：
+
+- 默认模式：`SQLite`
+- 切换 PostgreSQL：在 `packages/mcp-swagger-api/.env` 中设置 `DB_TYPE=postgres`
+- 当前基线已经验证 PostgreSQL 可完成：
+  - 应用启动
+  - 自动建表
+  - 系统初始化与种子写入
+  - 测试通过
+- 为兼容双数据库，枚举字段会在 PostgreSQL 模式下自动忽略不受支持的 `length` 选项
+
 ### MCP 传输管理
 
 当前管理面应视为支持：
@@ -67,6 +78,13 @@ pnpm --filter mcp-swagger-api run start:dev
 pnpm --filter mcp-swagger-api run test
 pnpm --filter mcp-swagger-api run lint
 pnpm --filter mcp-swagger-api run type-check
+```
+
+数据库模式验证示例：
+
+```bash
+pnpm --filter mcp-swagger-api run test -- --runInBand
+DB_TYPE=postgres pnpm --filter mcp-swagger-api run test -- --runInBand
 ```
 
 ## 主要接口

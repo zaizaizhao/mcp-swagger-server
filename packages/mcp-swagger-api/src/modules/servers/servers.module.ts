@@ -24,6 +24,8 @@ import { ProcessInfoEntity } from './entities/process-info.entity';
 import { HealthCheckResultEntity } from './entities/health-check-result.entity';
 import { ProcessLogEntity } from './entities/process-log.entity';
 import { SystemLogEntity } from '../../database/entities/system-log.entity';
+import { EndpointProbeLogEntity } from './entities/endpoint-probe-log.entity';
+import { ApiManagementCenterService } from './services/api-management-center.service';
 
 // 导入其他模块的服务
 import { MCPModule } from '../mcp/mcp.module';
@@ -41,6 +43,7 @@ import { SecurityModule } from '../security/security.module';
       HealthCheckResultEntity,
       ProcessLogEntity,
       SystemLogEntity,
+      EndpointProbeLogEntity,
     ]),
     EventEmitterModule,
     HttpModule.register({
@@ -66,6 +69,7 @@ import { SecurityModule } from '../security/security.module';
     ProcessResourceMonitorService,
     ProcessLogMonitorService,
     SystemLogService,
+    ApiManagementCenterService,
   ],
   exports: [
     ServerManagerService,
@@ -78,6 +82,7 @@ import { SecurityModule } from '../security/security.module';
     ProcessResourceMonitorService,
     ProcessLogMonitorService,
     SystemLogService,
+    ApiManagementCenterService,
   ],
 })
 export class ServersModule {}

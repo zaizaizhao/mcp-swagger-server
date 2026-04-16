@@ -243,20 +243,51 @@ const handleChartClick = (params: any) => {
   emit("pointClick", params);
 };
 
+const resolveChartInstance = () => {
+  const chartComponent = chartRef.value as any;
+  if (!chartComponent) return null;
+
+  if (typeof chartComponent.getChart === "function") {
+    return chartComponent.getChart();
+  }
+
+  if (typeof chartComponent.getEchartsInstance === "function") {
+    return chartComponent.getEchartsInstance();
+  }
+
+  if (chartComponent.chart) {
+    return chartComponent.chart;
+  }
+
+  if (chartComponent.$?.exposed?.chart) {
+    return chartComponent.$.exposed.chart;
+  }
+
+  return null;
+};
+
+const scrollToLatest = () => {
+  try {
+    const chart = resolveChartInstance();
+    if (!chart || typeof chart.dispatchAction !== "function") {
+      return;
+    }
+
+    chart.dispatchAction({
+      type: "dataZoom",
+      end: 100,
+    });
+  } catch {
+    // Swallow chart instance incompatibility errors to avoid global Promise rejection spam.
+  }
+};
+
 // 当实时模式时，自动滚动到最新数据
 watch(
   () => props.isRealtime,
   (newVal) => {
     if (newVal && chartRef.value) {
-      nextTick(() => {
-        const chart = chartRef.value.getChart();
-        if (chart) {
-          chart.dispatchAction({
-            type: "dataZoom",
-            end: 100,
-          });
-        }
-      });
+      nextTick(scrollToLatest);
     }
   },
 );
@@ -266,15 +297,7 @@ watch(
   () => props.series,
   () => {
     if (props.isRealtime && chartRef.value) {
-      nextTick(() => {
-        const chart = chartRef.value.getChart();
-        if (chart) {
-          chart.dispatchAction({
-            type: "dataZoom",
-            end: 100,
-          });
-        }
-      });
+      nextTick(scrollToLatest);
     }
   },
   { deep: true },

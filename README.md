@@ -122,6 +122,16 @@ pnpm type-check
 - [Database Mode Quickstart](./docs/guides/database-mode-quickstart.md)
 - [Database Strategy](./docs/guides/database-strategy.md)
 
+数据库模式快速确认：
+
+- 默认不设置 `DB_TYPE` 时，`mcp-swagger-api` 走 `SQLite`
+- 设置 `DB_TYPE=postgres` 后，`mcp-swagger-api` 走 `PostgreSQL`
+- API 启动日志会打印 `Database mode: sqlite` 或 `Database mode: postgres`
+- 当前基线已经验证：
+  - `SQLite` 默认模式可正常运行
+  - `PostgreSQL` 模式可完成建表、初始化与启动
+  - 双模式回归已纳入 CI
+
 ## 当前主要访问路径
 
 默认开发环境下：

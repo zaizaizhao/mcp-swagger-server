@@ -1,6 +1,6 @@
-<template>
+﻿<template>
   <div class="openapi-manager">
-    <!-- 认证检查加载状态 -->
+    <!-- 璁よ瘉妫€鏌ュ姞杞界姸鎬?-->
     <div
       v-if="authChecking"
       class="auth-loading"
@@ -19,7 +19,7 @@
       </div>
     </div>
 
-    <!-- 未认证状态 -->
+    <!-- 鏈璇佺姸鎬?-->
     <div
       v-else-if="!isAuthenticated"
       class="auth-required"
@@ -43,9 +43,9 @@
       </el-result>
     </div>
 
-    <!-- 已认证状态 - 正常页面内容 -->
+    <!-- 宸茶璇佺姸鎬?- 姝ｅ父椤甸潰鍐呭 -->
     <template v-else>
-      <!-- 页面头部 -->
+      <!-- 椤甸潰澶撮儴 -->
       <div class="header-section">
         <div class="header-content">
           <h1>
@@ -65,6 +65,9 @@
           <el-button type="success" @click="showUrlDialog = true" :icon="Link">
             {{ t("openapi.importFromUrl") }}
           </el-button>
+          <el-button type="warning" @click="goToEndpointRegistry" :icon="Plus">
+            Endpoint Registry
+          </el-button>
           <el-button
             @click="refreshDocuments"
             :loading="loading"
@@ -75,10 +78,10 @@
         </div>
       </div>
 
-      <!-- 主要内容区域 -->
+      <!-- 涓昏鍐呭鍖哄煙 -->
       <div class="manager-content">
         <el-row :gutter="24" style="height: calc(100vh - 80px)">
-          <!-- 左侧：文档列表 -->
+          <!-- 宸︿晶锛氭枃妗ｅ垪琛?-->
           <el-col :span="8">
             <el-card
               shadow="always"
@@ -94,7 +97,7 @@
                 </div>
               </template>
 
-              <!-- 搜索框 -->
+              <!-- 鎼滅储妗?-->
               <div class="search-container">
                 <el-input
                   v-model="searchQuery"
@@ -108,7 +111,7 @@
                 </el-input>
               </div>
 
-              <!-- 文档列表 -->
+              <!-- 鏂囨。鍒楄〃 -->
               <div class="document-list">
                 <el-empty
                   v-if="!filteredDocuments.length"
@@ -161,7 +164,7 @@
             </el-card>
           </el-col>
 
-          <!-- 右侧：文档详情 -->
+          <!-- 鍙充晶锛氭枃妗ｈ鎯?-->
           <el-col :span="16">
             <el-card shadow="always" class="detail-card" style="height: 100%">
               <template #header>
@@ -256,7 +259,7 @@
                 class="detail-content"
                 style="height: calc(100% - 60px); overflow: hidden"
               >
-                <!-- 空状态 -->
+                <!-- 绌虹姸鎬?-->
                 <div
                   v-if="!selectedDocument"
                   class="empty-state"
@@ -281,7 +284,7 @@
                   </el-empty>
                 </div>
 
-                <!-- 错误状态 -->
+                <!-- 閿欒鐘舵€?-->
                 <div
                   v-else-if="
                     selectedDocument.status === 'invalid' &&
@@ -316,7 +319,7 @@
                   </el-result>
                 </div>
 
-                <!-- 加载状态 -->
+                <!-- 鍔犺浇鐘舵€?-->
                 <div
                   v-else-if="selectedDocument.status === 'pending'"
                   class="loading-state"
@@ -341,7 +344,7 @@
                   </div>
                 </div>
 
-                <!-- 正常状态或编辑状态 -->
+                <!-- 姝ｅ父鐘舵€佹垨缂栬緫鐘舵€?-->
                 <div v-else class="content-tabs" style="height: 100%">
                   <div
                     v-show="activeTab === 'editor'"
@@ -349,7 +352,7 @@
                     class="editor-container"
                     style="height: 100%; position: relative"
                   >
-                    <!-- 验证错误提示 -->
+                    <!-- 楠岃瘉閿欒鎻愮ず -->
                     <div
                       v-if="
                         selectedDocument.status === 'invalid' &&
@@ -422,7 +425,7 @@
                       :description="t('openapi.noParseResult')"
                     />
                     <div v-else class="api-list">
-                      <!-- API卡片列表 -->
+                      <!-- API鍗＄墖鍒楄〃 -->
                       <div
                         v-for="(api, index) in parsedApis"
                         :key="`${api.method}-${api.path}-${index}`"
@@ -459,7 +462,7 @@
                           </div>
                         </div>
 
-                        <!-- 可展开的详细信息 -->
+                        <!-- 鍙睍寮€鐨勮缁嗕俊鎭?-->
                         <el-collapse-transition>
                           <div
                             v-show="expandedApis.includes(index)"
@@ -473,12 +476,12 @@
                                 "
                                 class="detail-item"
                               >
-                                <label>{{ t("openapi.description") }}：</label>
+                                <label>{{ t("openapi.description") }}:</label>
                                 <span>{{ api.description }}</span>
                               </div>
 
                               <div v-if="api.operationId" class="detail-item">
-                                <label>{{ t("openapi.operationId") }}：</label>
+                                <label>{{ t("openapi.operationId") }}:</label>
                                 <span>{{ api.operationId }}</span>
                               </div>
 
@@ -486,7 +489,7 @@
                                 v-if="api.tags && api.tags.length"
                                 class="detail-item"
                               >
-                                <label>{{ t("openapi.tags") }}：</label>
+                                <label>{{ t("openapi.tags") }}:</label>
                                 <div class="tag-list">
                                   <el-tag
                                     v-for="tag in api.tags"
@@ -504,7 +507,7 @@
                                 v-if="api.parameters && api.parameters.length"
                                 class="detail-item"
                               >
-                                <label>{{ t("openapi.parameters") }}：</label>
+                                <label>{{ t("openapi.parameters") }}:</label>
                                 <div class="parameter-list">
                                   <div
                                     v-for="param in api.parameters"
@@ -529,7 +532,7 @@
                               </div>
 
                               <div v-if="api.responses" class="detail-item">
-                                <label>{{ t("openapi.responses") }}：</label>
+                                <label>{{ t("openapi.responses") }}:</label>
                                 <div class="response-list">
                                   <div
                                     v-for="(response, code) in api.responses"
@@ -574,7 +577,7 @@
         </el-row>
       </div>
 
-      <!-- 创建规范对话框 -->
+      <!-- 鍒涘缓瑙勮寖瀵硅瘽妗?-->
       <el-dialog
         v-model="showCreateDialog"
         :title="t('openapi.createSpec')"
@@ -649,7 +652,7 @@
         </template>
       </el-dialog>
 
-      <!-- 上传对话框 -->
+      <!-- 涓婁紶瀵硅瘽妗?-->
       <el-dialog
         v-model="showUploadDialog"
         :title="t('openapi.uploadFile')"
@@ -741,7 +744,7 @@
         </template>
       </el-dialog>
 
-      <!-- URL导入对话框 -->
+      <!-- URL瀵煎叆瀵硅瘽妗?-->
       <el-dialog
         v-model="showUrlDialog"
         :title="t('openapi.importFromUrl')"
@@ -852,7 +855,93 @@
         </template>
       </el-dialog>
 
-      <!-- 编辑文档对话框 -->
+      <!-- 缂栬緫鏂囨。瀵硅瘽妗?-->
+      <el-dialog
+        v-model="showManualDialog"
+        :title="`${t('common.add')} Endpoint`"
+        width="640px"
+        align-center
+      >
+        <el-form
+          ref="manualFormRef"
+          :model="manualForm"
+          :rules="manualFormRules"
+          label-width="120px"
+        >
+          <el-form-item :label="t('servers.serverName')" prop="name">
+            <el-input
+              v-model="manualForm.name"
+              :placeholder="t('openapi.enterDocName')"
+              clearable
+            />
+          </el-form-item>
+          <el-form-item :label="t('servers.serverUrl')" prop="baseUrl">
+            <el-input
+              v-model="manualForm.baseUrl"
+              :placeholder="t('openapi.enterDocUrl')"
+              clearable
+            />
+          </el-form-item>
+          <el-form-item label="HTTP Method" prop="method">
+            <el-select v-model="manualForm.method" style="width: 100%">
+              <el-option label="GET" value="GET" />
+              <el-option label="POST" value="POST" />
+              <el-option label="PUT" value="PUT" />
+              <el-option label="PATCH" value="PATCH" />
+              <el-option label="DELETE" value="DELETE" />
+            </el-select>
+          </el-form-item>
+          <el-form-item :label="t('openapi.paths')" prop="path">
+            <el-input
+              v-model="manualForm.path"
+              placeholder="e.g. /pets/{id}"
+              clearable
+            />
+          </el-form-item>
+          <el-form-item :label="t('common.description')">
+            <el-input
+              v-model="manualForm.description"
+              type="textarea"
+              :rows="2"
+              :placeholder="t('openapi.enterDocDescription')"
+            />
+          </el-form-item>
+          <el-form-item :label="t('common.tags')">
+            <el-input
+              v-model="manualForm.businessDomain"
+              placeholder="e.g. pet/order/user"
+              clearable
+            />
+          </el-form-item>
+          <el-form-item :label="t('common.status')">
+            <el-select v-model="manualForm.riskLevel" style="width: 100%">
+              <el-option label="low" value="low" />
+              <el-option label="medium" value="medium" />
+              <el-option label="high" value="high" />
+            </el-select>
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <div class="dialog-footer">
+            <el-button @click="handleManualDialogClose" size="large">
+              {{ t("common.cancel") }}
+            </el-button>
+            <el-button
+              type="primary"
+              @click="registerManualEndpoint"
+              :loading="manualSubmitting"
+              size="large"
+            >
+              {{
+                manualSubmitting
+                  ? t("common.loading")
+                  : t("common.create")
+              }}
+            </el-button>
+          </div>
+        </template>
+      </el-dialog>
+
       <el-dialog
         v-model="showEditDialog"
         :title="t('openapi.editDocument')"
@@ -913,6 +1002,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { useI18n } from "vue-i18n";
+import { useRouter } from "vue-router";
 import {
   Plus,
   Upload,
@@ -951,21 +1041,22 @@ import {
   type CreateDocumentDto,
   type UpdateDocumentDto,
 } from "../../api/documents";
-import { openApiAPI } from "../../services/api";
+import { openApiAPI, serverAPI } from "../../services/api";
 
-// 导入全局功能
+// 瀵煎叆鍏ㄥ眬鍔熻兘
 import { useConfirmation } from "../../composables/useConfirmation";
 import { useFormValidation } from "../../composables/useFormValidation";
 import { usePerformanceMonitor } from "../../composables/usePerformance";
 
-// 国际化
+// 鍥介檯鍖?
 const { t } = useI18n();
-// import LoadingOverlay from '@/shared/components/ui/LoadingOverlay.vue' // 暂时注释掉，如果需要可以创建这个组件
+const router = useRouter();
+// import LoadingOverlay from '@/shared/components/ui/LoadingOverlay.vue' // 鏆傛椂娉ㄩ噴鎺夛紝濡傛灉闇€瑕佸彲浠ュ垱寤鸿繖涓粍浠?
 
-// 状态管理
+// 鐘舵€佺鐞?
 const openApiStore = useOpenAPIStore();
 
-// 全局功能
+// 鍏ㄥ眬鍔熻兘
 const {
   confirmDelete: globalConfirmDelete,
   confirmDangerousAction,
@@ -975,7 +1066,7 @@ const {
 const { startMonitoring, stopMonitoring, measureFunction } =
   usePerformanceMonitor();
 
-// 响应式数据
+// 鍝嶅簲寮忔暟鎹?
 const specsLoading = ref(false);
 const loading = ref(false);
 const searchQuery = ref("");
@@ -986,36 +1077,39 @@ const saving = ref(false);
 const validating = ref(false);
 const converting = ref(false);
 const validationResults = ref<ValidationResult | null>(null);
-const mcpTools = ref<any[]>([]); // MCP工具列表
+const mcpTools = ref<any[]>([]); // MCP宸ュ叿鍒楄〃
 const mcpServerUrl = ref("");
-const documents = ref<Document[]>([]); // 文档列表
-const parsedApis = ref<any[]>([]); // 解析的API列表
+const documents = ref<Document[]>([]); // 鏂囨。鍒楄〃
+const parsedApis = ref<any[]>([]); // 瑙ｆ瀽鐨凙PI鍒楄〃
 const uploadFile = ref<File | null>(null);
-const editorContainerRef = ref<HTMLElement>(); // 编辑器容器引用
-const expandedApis = ref<number[]>([]); // 展开的API卡片索引列表
-const isAuthenticated = ref(false); // 用户认证状态
-const authChecking = ref(true); // 认证检查状态
+const editorContainerRef = ref<HTMLElement>(); // 缂栬緫鍣ㄥ鍣ㄥ紩鐢?
+const expandedApis = ref<number[]>([]); // 灞曞紑鐨凙PI鍗＄墖绱㈠紩鍒楄〃
+const isAuthenticated = ref(false); // 鐢ㄦ埛璁よ瘉鐘舵€?
+const authChecking = ref(true); // 璁よ瘉妫€鏌ョ姸鎬?
 
-// 对话框状态
+// 瀵硅瘽妗嗙姸鎬?
 const showCreateDialog = ref(false);
 const showUploadDialog = ref(false);
 const showUrlDialog = ref(false);
+const showManualDialog = ref(false);
 const showEditDialog = ref(false);
 const creating = ref(false);
 const uploading = ref(false);
 const importing = ref(false);
+const manualSubmitting = ref(false);
 const editing = ref(false);
 
-// 表单引用
+// 琛ㄥ崟寮曠敤
 const createFormRef = ref<FormInstance>();
 const urlFormRef = ref<FormInstance>();
+const manualFormRef = ref<FormInstance>();
 const uploadRef = ref();
 const editFormRef = ref<FormInstance>();
 
-// 上传文件列表
+// 涓婁紶鏂囦欢鍒楄〃
 const uploadFileList = ref<UploadFile[]>([]);
 
-// 表单数据
+// 琛ㄥ崟鏁版嵁
 const createForm = ref({
   name: "",
   version: "1.0.0",
@@ -1037,13 +1131,23 @@ const urlForm = ref({
   password: "",
 });
 
+const manualForm = ref({
+  name: "",
+  baseUrl: "",
+  method: "GET",
+  path: "",
+  description: "",
+  businessDomain: "",
+  riskLevel: "medium",
+});
+
 const editForm = ref({
   id: "",
   name: "",
   description: "",
 });
 
-// 表单验证规则
+// 琛ㄥ崟楠岃瘉瑙勫垯
 const createFormRules = {
   name: [
     {
@@ -1121,7 +1225,53 @@ const editFormRules = {
   ],
 };
 
-// Monaco编辑器选项
+const manualFormRules = {
+  name: [
+    {
+      required: true,
+      message: t("openapi.validation.docNameRequired"),
+      trigger: "blur",
+    },
+  ],
+  baseUrl: [
+    {
+      required: true,
+      message: t("openapi.validation.urlRequired"),
+      trigger: "blur",
+    },
+    {
+      type: "url",
+      message: t("openapi.validation.urlInvalid"),
+      trigger: "blur",
+    },
+  ],
+  method: [
+    {
+      required: true,
+      message: t("openapi.validation.specNameRequired"),
+      trigger: "change",
+    },
+  ],
+  path: [
+    {
+      required: true,
+      message: t("openapi.validation.specNameRequired"),
+      trigger: "blur",
+    },
+    {
+      validator: (_: any, value: string, callback: (err?: Error) => void) => {
+        if (!value || value.startsWith("/")) {
+          callback();
+          return;
+        }
+        callback(new Error("Path must start with /"));
+      },
+      trigger: "blur",
+    },
+  ],
+};
+
+// Monaco缂栬緫鍣ㄩ€夐」
 const editorOptions: any = {
   theme: "vs-dark",
   fontSize: 14,
@@ -1130,34 +1280,34 @@ const editorOptions: any = {
   automaticLayout: true,
   tabSize: 2,
   wordWrap: "on" as const,
-  // 支持大型文件
+  // 鏀寔澶у瀷鏂囦欢
   largeFileOptimizations: false,
-  // 大幅增加内容长度限制 - 提升到更大的值
+  // 澶у箙澧炲姞鍐呭闀垮害闄愬埗 - 鎻愬崌鍒版洿澶х殑鍊?
   maxTokenizationLineLength: 500000,
-  // 提高渲染性能
+  // 鎻愰珮娓叉煋鎬ц兘
   renderValidationDecorations: "on",
-  // 支持更多行数渲染 - 大幅提升行数限制
+  // 鏀寔鏇村琛屾暟娓叉煋 - 澶у箙鎻愬崌琛屾暟闄愬埗
   stopRenderingLineAfter: 200000,
-  // 禁用语法检查以提高性能
+  // 绂佺敤璇硶妫€鏌ヤ互鎻愰珮鎬ц兘
   validate: false,
-  // 增加滚动性能
+  // 澧炲姞婊氬姩鎬ц兘
   smoothScrolling: true,
-  // 禁用不必要的功能以提高性能
+  // 绂佺敤涓嶅繀瑕佺殑鍔熻兘浠ユ彁楂樻€ц兘
   folding: false,
   lineNumbers: "on",
-  // 增加更多大文件支持配置
+  // 澧炲姞鏇村澶ф枃浠舵敮鎸侀厤缃?
   scrollbar: {
     vertical: "auto",
     horizontal: "auto",
     handleMouseWheel: true,
   },
-  // 禁用代码折叠以提高性能
+  // 绂佺敤浠ｇ爜鎶樺彔浠ユ彁楂樻€ц兘
   glyphMargin: false,
-  // 优化大文件渲染
+  // 浼樺寲澶ф枃浠舵覆鏌?
   renderLineHighlight: "none",
 };
 
-// 计算属性
+// 璁＄畻灞炴€?
 const filteredDocuments = computed(() => {
   if (!searchQuery.value) return documents.value;
 
@@ -1169,20 +1319,24 @@ const filteredDocuments = computed(() => {
   );
 });
 
-// 计算编辑器高度
+const goToEndpointRegistry = () => {
+  router.push("/endpoint-registry");
+};
+
+// 璁＄畻缂栬緫鍣ㄩ珮搴?
 const editorHeight = computed(() => {
-  // 如果容器引用存在，动态计算可用高度
+  // 濡傛灉瀹瑰櫒寮曠敤瀛樺湪锛屽姩鎬佽绠楀彲鐢ㄩ珮搴?
   if (editorContainerRef.value) {
     const containerHeight = editorContainerRef.value.clientHeight;
-    // 减去一些边距和其他元素的高度
-    return Math.max(containerHeight - 20, 300); // 最小高度300px
+    // 鍑忓幓涓€浜涜竟璺濆拰鍏朵粬鍏冪礌鐨勯珮搴?
+    return Math.max(containerHeight - 20, 300); // 鏈€灏忛珮搴?00px
   }
-  // 默认使用视窗高度的计算值
+  // 榛樿浣跨敤瑙嗙獥楂樺害鐨勮绠楀€?
   return Math.max(window.innerHeight - 300, 400);
 });
 
-// 方法
-// 检查用户认证状态
+// 鏂规硶
+// 妫€鏌ョ敤鎴疯璇佺姸鎬?
 const checkAuthentication = async () => {
   try {
     authChecking.value = true;
@@ -1208,7 +1362,7 @@ const checkAuthentication = async () => {
   }
 };
 
-// 加载文档列表
+// 鍔犺浇鏂囨。鍒楄〃
 const loadDocuments = async () => {
   try {
     loading.value = true;
@@ -1265,33 +1419,33 @@ const selectDocument = async (doc: Document) => {
     return;
   }
 
-  // 设置加载状态
+  // 璁剧疆鍔犺浇鐘舵€?
   loading.value = true;
   selectedDocument.value = doc;
   editorContent.value = "";
   validationResults.value = null;
   activeTab.value = "editor";
 
-  // 清空之前的解析数据
+  // 娓呯┖涔嬪墠鐨勮В鏋愭暟鎹?
   parsedApis.value = [];
   mcpTools.value = [];
   mcpServerUrl.value = "";
 
   try {
-    // 调用API获取完整的文档内容
+    // 璋冪敤API鑾峰彇瀹屾暣鐨勬枃妗ｅ唴瀹?
     const fullDocument = await documentsApi.getDocument(doc.id);
 
-    // 更新选中的文档和编辑器内容
+    // 鏇存柊閫変腑鐨勬枃妗ｅ拰缂栬緫鍣ㄥ唴瀹?
     const sanitizedContent = sanitizeOpenApiContent(fullDocument.content || "");
 
     selectedDocument.value = fullDocument;
     selectedDocument.value.content = sanitizedContent;
     editorContent.value = sanitizedContent;
 
-    // 自动解析OpenAPI内容并填充数据
+    // 鑷姩瑙ｆ瀽OpenAPI鍐呭骞跺～鍏呮暟鎹?
     if (sanitizedContent && sanitizedContent.trim()) {
       try {
-        // 解析API路径和详细信息
+        // 瑙ｆ瀽API璺緞鍜岃缁嗕俊鎭?
         const { data: parsedData } = parseOpenAPI(sanitizedContent);
         if (parsedData && parsedData.paths) {
           const apis: any[] = [];
@@ -1331,24 +1485,24 @@ const selectDocument = async (doc: Document) => {
           parsedApis.value = [];
         }
 
-        // 解析MCP工具
+        // 瑙ｆ瀽MCP宸ュ叿
         try {
           const parseResult =
             await openApiStore.parseOpenAPIContent(sanitizedContent);
           mcpTools.value = parseResult.tools || [];
           mcpServerUrl.value = parseResult.servers[0]?.url || "";
         } catch (mcpError) {
-          console.warn("解析MCP工具失败:", mcpError);
+          console.warn("瑙ｆ瀽MCP宸ュ叿澶辫触:", mcpError);
           mcpTools.value = [];
           mcpServerUrl.value = "";
         }
 
-        // 保持在编辑标签页，不自动切换
+        // 淇濇寔鍦ㄧ紪杈戞爣绛鹃〉锛屼笉鑷姩鍒囨崲
         // if (parsedApis.value.length > 0) {
         //   activeTab.value = 'apis'
         // }
       } catch (parseError) {
-        console.error("解析OpenAPI内容失败:", parseError);
+        console.error("瑙ｆ瀽OpenAPI鍐呭澶辫触:", parseError);
         ElMessage.warning(t("openapi.parseContentFailed"));
         parsedApis.value = [];
         mcpTools.value = [];
@@ -1356,7 +1510,7 @@ const selectDocument = async (doc: Document) => {
       }
     }
   } catch (error) {
-    console.error("获取文档内容失败:", error);
+    console.error("鑾峰彇鏂囨。鍐呭澶辫触:", error);
     ElMessage.error(
       t("openapi.fetchDocumentFailed", {
         error:
@@ -1364,7 +1518,7 @@ const selectDocument = async (doc: Document) => {
       }),
     );
 
-    // 重置状态
+    // 閲嶇疆鐘舵€?
     selectedDocument.value = null;
     editorContent.value = "";
     parsedApis.value = [];
@@ -1376,7 +1530,7 @@ const selectDocument = async (doc: Document) => {
 };
 
 const editDocument = (doc: Document) => {
-  // 填充编辑表单数据
+  // 濉厖缂栬緫琛ㄥ崟鏁版嵁
   editForm.value = {
     id: doc.id,
     name: doc.name,
@@ -1392,14 +1546,14 @@ const deleteDocument = async (docId: string) => {
   }
 
   try {
-    // 查找要删除的文档
+    // 鏌ユ壘瑕佸垹闄ょ殑鏂囨。
     const docToDelete = documents.value.find((doc) => doc.id === docId);
     if (!docToDelete) {
       ElMessage.error(t("openapi.documentNotFound"));
       return;
     }
 
-    // 显示确认对话框，包含文档名称
+    // 鏄剧ず纭瀵硅瘽妗嗭紝鍖呭惈鏂囨。鍚嶇О
     const confirmed = await ElMessageBox.confirm(
       t("openapi.confirmDeleteDocument", { name: docToDelete.name }),
       t("openapi.confirmDelete"),
@@ -1414,13 +1568,13 @@ const deleteDocument = async (docId: string) => {
       .catch(() => false);
     if (!confirmed) return;
 
-    // 调用API删除文档
+    // 璋冪敤API鍒犻櫎鏂囨。
     await documentsApi.deleteDocument(docId);
 
-    // 从本地文档列表中删除
+    // 浠庢湰鍦版枃妗ｅ垪琛ㄤ腑鍒犻櫎
     documents.value = documents.value.filter((doc) => doc.id !== docId);
 
-    // 如果删除的是当前选中的文档，清空相关状态
+    // 濡傛灉鍒犻櫎鐨勬槸褰撳墠閫変腑鐨勬枃妗ｏ紝娓呯┖鐩稿叧鐘舵€?
     if (selectedDocument.value?.id === docId) {
       selectedDocument.value = null;
       editorContent.value = "";
@@ -1432,7 +1586,7 @@ const deleteDocument = async (docId: string) => {
 
     ElMessage.success(t("openapi.deleteSuccess", { name: docToDelete.name }));
   } catch (error) {
-    console.error("删除文档失败:", error);
+    console.error("鍒犻櫎鏂囨。澶辫触:", error);
     ElMessage.error(
       t("openapi.deleteFailed", {
         error:
@@ -1456,19 +1610,19 @@ const saveEditDocument = async () => {
 
     editing.value = true;
 
-    // 准备更新数据
+    // 鍑嗗鏇存柊鏁版嵁
     const updateData: UpdateDocumentDto = {
       name: editForm.value.name,
       description: editForm.value.description,
     };
 
-    // 调用API更新文档
+    // 璋冪敤API鏇存柊鏂囨。
     const updatedDoc = await documentsApi.updateDocument(
       editForm.value.id,
       updateData,
     );
 
-    // 更新本地文档列表
+    // 鏇存柊鏈湴鏂囨。鍒楄〃
     const docIndex = documents.value.findIndex(
       (doc) => doc.id === editForm.value.id,
     );
@@ -1476,7 +1630,7 @@ const saveEditDocument = async () => {
       documents.value[docIndex] = updatedDoc;
     }
 
-    // 如果当前选中的是被编辑的文档，也要更新选中文档的信息
+    // 濡傛灉褰撳墠閫変腑鐨勬槸琚紪杈戠殑鏂囨。锛屼篃瑕佹洿鏂伴€変腑鏂囨。鐨勪俊鎭?
     if (selectedDocument.value?.id === editForm.value.id) {
       selectedDocument.value = updatedDoc;
     }
@@ -1484,7 +1638,7 @@ const saveEditDocument = async () => {
     showEditDialog.value = false;
     ElMessage.success(t("openapi.updateSuccess"));
   } catch (error) {
-    console.error("更新文档失败:", error);
+    console.error("鏇存柊鏂囨。澶辫触:", error);
     ElMessage.error(
       t("openapi.saveFailed", {
         error:
@@ -1506,7 +1660,7 @@ const refreshDocuments = async () => {
     await loadDocuments();
     ElMessage.success(t("openapi.refreshSuccess"));
   } catch (error) {
-    console.error("刷新文档失败:", error);
+    console.error("鍒锋柊鏂囨。澶辫触:", error);
     ElMessage.error(
       t("openapi.refreshFailed", {
         error:
@@ -1533,7 +1687,7 @@ const handleSpecAction = async (command: {
 
   switch (action) {
     case "edit":
-      // 选择文档进行编辑
+      // 閫夋嫨鏂囨。杩涜缂栬緫
       const doc = documents.value.find((d) => d.id === spec.id);
       if (doc) {
         selectDocument(doc);
@@ -1574,12 +1728,12 @@ const handleSpecAction = async (command: {
           await openApiStore.deleteSpec(spec.id);
         });
 
-        // 如果删除的是当前选中的文档，清空选择
+        // 濡傛灉鍒犻櫎鐨勬槸褰撳墠閫変腑鐨勬枃妗ｏ紝娓呯┖閫夋嫨
         if (selectedDocument.value?.id === spec.id) {
           selectedDocument.value = null;
           editorContent.value = "";
         }
-        // 从文档列表中移除
+        // 浠庢枃妗ｅ垪琛ㄤ腑绉婚櫎
         documents.value = documents.value.filter((doc) => doc.id !== spec.id);
         ElMessage.success(t("openapi.deleteSpecSuccess"));
       } catch (error) {
@@ -1638,7 +1792,7 @@ const handleContentChange = (content: string) => {
   validationResults.value = null;
 };
 
-// 保存文档内容
+// 淇濆瓨鏂囨。鍐呭
 const saveDocumentContent = async () => {
   if (!selectedDocument.value || !isAuthenticated.value) {
     if (!isAuthenticated.value) {
@@ -1650,7 +1804,7 @@ const saveDocumentContent = async () => {
   try {
     saving.value = true;
 
-    // 准备更新数据
+    // 鍑嗗鏇存柊鏁版嵁
     const sanitizedContent = sanitizeOpenApiContent(editorContent.value);
     if (sanitizedContent !== editorContent.value) {
       editorContent.value = sanitizedContent;
@@ -1663,13 +1817,13 @@ const saveDocumentContent = async () => {
       content: sanitizedContent,
     };
 
-    // 调用API更新文档
+    // 璋冪敤API鏇存柊鏂囨。
     const updatedDoc = await documentsApi.updateDocument(
       selectedDocument.value.id,
       updateData,
     );
 
-    // 更新本地文档列表
+    // 鏇存柊鏈湴鏂囨。鍒楄〃
     const docIndex = documents.value.findIndex(
       (doc) => doc.id === selectedDocument.value!.id,
     );
@@ -1677,37 +1831,37 @@ const saveDocumentContent = async () => {
       documents.value[docIndex] = updatedDoc;
     }
 
-    // 更新选中的文档
+    // 鏇存柊閫変腑鐨勬枃妗?
     selectedDocument.value = updatedDoc;
 
     ElMessage.success(t("openapi.saveSuccess"));
   } catch (error: any) {
-    console.error("保存文档内容失败:", error);
+    console.error("淇濆瓨鏂囨。鍐呭澶辫触:", error);
 
-    // 处理400错误，显示更具体的错误信息
+    // 澶勭悊400閿欒锛屾樉绀烘洿鍏蜂綋鐨勯敊璇俊鎭?
     if (error.response && error.response.status === 400) {
       const errorData = error.response.data;
       let errorMessage = "";
 
       if (errorData && errorData.message) {
-        // 检查是否是OpenAPI规范验证错误
+        // 妫€鏌ユ槸鍚︽槸OpenAPI瑙勮寖楠岃瘉閿欒
         if (
           errorData.message.includes("OpenAPI") ||
           errorData.message.includes("Swagger")
         ) {
-          errorMessage = `OpenAPI规范验证失败: ${errorData.message}`;
+          errorMessage = `OpenAPI瑙勮寖楠岃瘉澶辫触: ${errorData.message}`;
         } else if (errorData.message.includes("JSON")) {
-          errorMessage = `JSON格式错误: ${errorData.message}`;
+          errorMessage = `JSON鏍煎紡閿欒: ${errorData.message}`;
         } else {
-          errorMessage = `请求参数错误: ${errorData.message}`;
+          errorMessage = `璇锋眰鍙傛暟閿欒: ${errorData.message}`;
         }
       } else {
-        errorMessage = "文档内容格式不正确，请检查OpenAPI规范格式";
+        errorMessage = "鏂囨。鍐呭鏍煎紡涓嶆纭紝璇锋鏌penAPI瑙勮寖鏍煎紡";
       }
 
       ElMessage.error(errorMessage);
     } else {
-      // 其他错误使用原有逻辑
+      // 鍏朵粬閿欒浣跨敤鍘熸湁閫昏緫
       ElMessage.error(
         t("openapi.saveFailed", {
           error:
@@ -1740,29 +1894,29 @@ const validateSpec = async () => {
       return await openApiStore.validateOpenAPIContent(sanitizedContent);
     });
 
-    // 更新验证结果
+    // 鏇存柊楠岃瘉缁撴灉
     validationResults.value = result;
 
-    // 更新文档状态
+    // 鏇存柊鏂囨。鐘舵€?
     if (selectedDocument.value) {
       const newStatus = result.valid ? "valid" : "invalid";
       selectedDocument.value.status = newStatus;
 
-      // 调用后端API更新文档状态
+      // 璋冪敤鍚庣API鏇存柊鏂囨。鐘舵€?
       try {
         await documentsApi.updateDocument(selectedDocument.value.id, {
           status: newStatus as any,
         });
       } catch (statusUpdateError) {
-        console.error("更新文档状态失败:", statusUpdateError);
-        // 状态更新失败不影响验证流程，只记录错误
+        console.error("鏇存柊鏂囨。鐘舵€佸け璐?", statusUpdateError);
+        // 鐘舵€佹洿鏂板け璐ヤ笉褰卞搷楠岃瘉娴佺▼锛屽彧璁板綍閿欒
       }
     }
 
-    // 如果验证成功，解析API路径并更新parsedApis
+    // 濡傛灉楠岃瘉鎴愬姛锛岃В鏋怉PI璺緞骞舵洿鏂皃arsedApis
     if (result.valid) {
       try {
-        // 使用 extractApiPaths 函数从内容中提取API路径
+        // 浣跨敤 extractApiPaths 鍑芥暟浠庡唴瀹逛腑鎻愬彇API璺緞
         const apiPaths = extractApiPaths(sanitizedContent);
         parsedApis.value = apiPaths.map((api, index) => ({
           id: index,
@@ -1772,18 +1926,18 @@ const validateSpec = async () => {
           description: api.description || "",
         }));
 
-        // 自动切换到APIs标签页显示API列表
+        // 鑷姩鍒囨崲鍒癆PIs鏍囩椤垫樉绀篈PI鍒楄〃
         activeTab.value = "apis";
       } catch (parseError) {
-        console.error("解析API路径失败:", parseError);
+        console.error("瑙ｆ瀽API璺緞澶辫触:", parseError);
         parsedApis.value = [];
       }
     } else {
-      // 验证失败时清空API列表
+      // 楠岃瘉澶辫触鏃舵竻绌篈PI鍒楄〃
       parsedApis.value = [];
     }
 
-    // 显示验证结果消息
+    // 鏄剧ず楠岃瘉缁撴灉娑堟伅
     if (result.valid) {
       const warningCount = result.warnings?.length || 0;
       const apiCount = parsedApis.value.length;
@@ -1811,11 +1965,11 @@ const validateSpec = async () => {
         ElMessage.error(t("openapi.validationFailedDetail", { errorCount }));
       }
 
-      // 如果有验证错误，切换到编辑器标签页显示错误信息
+      // 濡傛灉鏈夐獙璇侀敊璇紝鍒囨崲鍒扮紪杈戝櫒鏍囩椤垫樉绀洪敊璇俊鎭?
       activeTab.value = "editor";
     }
   } catch (error) {
-    console.error("验证失败:", error);
+    console.error("楠岃瘉澶辫触:", error);
     ElMessage.error(
       t("openapi.validationError", {
         error: error instanceof Error ? error.message : String(error),
@@ -1826,14 +1980,14 @@ const validateSpec = async () => {
     if (selectedDocument.value) {
       selectedDocument.value.status = "invalid";
 
-      // 调用后端API更新文档状态为invalid
+      // 璋冪敤鍚庣API鏇存柊鏂囨。鐘舵€佷负invalid
       try {
         await documentsApi.updateDocument(selectedDocument.value.id, {
           status: "invalid" as any,
         });
       } catch (statusUpdateError) {
-        console.error("更新文档状态失败:", statusUpdateError);
-        // 状态更新失败不影响验证流程，只记录错误
+        console.error("鏇存柊鏂囨。鐘舵€佸け璐?", statusUpdateError);
+        // 鐘舵€佹洿鏂板け璐ヤ笉褰卞搷楠岃瘉娴佺▼锛屽彧璁板綍閿欒
       }
     }
   } finally {
@@ -1853,22 +2007,22 @@ const createNewSpec = async () => {
     await createFormRef.value.validate();
     creating.value = true;
 
-    // 准备创建数据
+    // 鍑嗗鍒涘缓鏁版嵁
     const createData: CreateDocumentDto = {
       name: createForm.value.name,
       description: createForm.value.description,
       content: generateTemplateContent(createForm.value.template),
     };
 
-    // 调用API创建文档
+    // 璋冪敤API鍒涘缓鏂囨。
     const newDoc = await documentsApi.createDocument(createData);
 
-    // 添加到本地文档列表
+    // 娣诲姞鍒版湰鍦版枃妗ｅ垪琛?
     documents.value.push(newDoc);
     selectDocument(newDoc);
     showCreateDialog.value = false;
 
-    // 重置表单
+    // 閲嶇疆琛ㄥ崟
     createForm.value = {
       name: "",
       version: "1.0.0",
@@ -1878,7 +2032,7 @@ const createNewSpec = async () => {
 
     ElMessage.success(t("openapi.createSuccess"));
   } catch (error) {
-    console.error("创建文档失败:", error);
+    console.error("鍒涘缓鏂囨。澶辫触:", error);
     ElMessage.error(
       t("openapi.createFailed", {
         error:
@@ -1963,9 +2117,61 @@ const handleUploadDialogClose = () => {
   uploadFile.value = null;
   uploadForm.value = { name: "", description: "" };
   uploadFileList.value = [];
-  // 清空上传组件的文件列表
+  // 娓呯┖涓婁紶缁勪欢鐨勬枃浠跺垪琛?
   if (uploadRef.value) {
     uploadRef.value.clearFiles();
+  }
+};
+
+const handleManualDialogClose = () => {
+  showManualDialog.value = false;
+  manualForm.value = {
+    name: "",
+    baseUrl: "",
+    method: "GET",
+    path: "",
+    description: "",
+    businessDomain: "",
+    riskLevel: "medium",
+  };
+  if (manualFormRef.value) {
+    manualFormRef.value.clearValidate();
+  }
+};
+
+const registerManualEndpoint = async () => {
+  if (!manualFormRef.value || !isAuthenticated.value) {
+    if (!isAuthenticated.value) {
+      ElMessage.error(t("openapi.authRequired"));
+    }
+    return;
+  }
+
+  try {
+    await manualFormRef.value.validate();
+    manualSubmitting.value = true;
+
+    const payload = {
+      name: manualForm.value.name.trim(),
+      baseUrl: manualForm.value.baseUrl.trim().replace(/\/+$/, ""),
+      method: manualForm.value.method.toUpperCase(),
+      path: manualForm.value.path.trim(),
+      description: manualForm.value.description?.trim() || undefined,
+      businessDomain: manualForm.value.businessDomain?.trim() || undefined,
+      riskLevel: manualForm.value.riskLevel || undefined,
+    };
+
+    const result = await serverAPI.registerManualEndpoint(payload);
+
+    handleManualDialogClose();
+    ElMessage.success(t("openapi.createSuccess"));
+  } catch (error: any) {
+    console.error("Manual endpoint registration failed:", error);
+    ElMessage.error(
+      `${t("common.error")}: ${error?.message || error?.error || "Unknown error"}`,
+    );
+  } finally {
+    manualSubmitting.value = false;
   }
 };
 
@@ -1979,29 +2185,29 @@ const confirmUpload = async () => {
 
   uploading.value = true;
   try {
-    // 读取文件内容
+    // 璇诲彇鏂囦欢鍐呭
     const rawContent = await readFileContent(uploadFile.value);
 
-    // 准备创建数据
+    // 鍑嗗鍒涘缓鏁版嵁
     const createData: CreateDocumentDto = {
       name: uploadForm.value.name,
       description: uploadForm.value.description,
       content: rawContent,
     };
 
-    // 调用API创建文档
+    // 璋冪敤API鍒涘缓鏂囨。
     const newDoc = await documentsApi.createDocument(createData);
 
-    // 添加到本地文档列表
+    // 娣诲姞鍒版湰鍦版枃妗ｅ垪琛?
     documents.value.push(newDoc);
     selectDocument(newDoc);
 
-    // 确保对话框关闭
+    // 纭繚瀵硅瘽妗嗗叧闂?
     handleUploadDialogClose();
 
     ElMessage.success(t("openapi.uploadSuccessValidate"));
   } catch (error) {
-    console.error("上传文档失败:", error);
+    console.error("涓婁紶鏂囨。澶辫触:", error);
     ElMessage.error(
       t("openapi.uploadFailed", {
         error: error instanceof Error ? error.message : String(error),
@@ -2012,9 +2218,9 @@ const confirmUpload = async () => {
   }
 };
 
-// 工具函数
-// measureFunction 已在 usePerformanceMonitor() 中定义
-// globalConfirmDelete 已在 useConfirmation() 中定义
+// 宸ュ叿鍑芥暟
+// measureFunction 宸插湪 usePerformanceMonitor() 涓畾涔?
+// globalConfirmDelete 宸插湪 useConfirmation() 涓畾涔?
 
 const readFileContent = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -2029,7 +2235,7 @@ const readFileContent = (file: File): Promise<string> => {
   });
 };
 
-// MCP相关方法
+// MCP鐩稿叧鏂规硶
 const convertToMCP = async () => {
   if (!editorContent.value) {
     ElMessage.warning(t("openapi.selectDocumentFirst"));
@@ -2165,7 +2371,7 @@ const importFromUrl = async () => {
 const handleTestTool = async (tool: MCPTool, params: Record<string, any>) => {
   try {
     ElMessage.info(t("openapi.testingTool", { name: tool.name }));
-    // 这里可以集成实际的工具测试逻辑
+    // 杩欓噷鍙互闆嗘垚瀹為檯鐨勫伐鍏锋祴璇曢€昏緫
     console.log("Testing tool:", tool, "with params:", params);
   } catch (error) {
     ElMessage.error(
@@ -2176,7 +2382,7 @@ const handleTestTool = async (tool: MCPTool, params: Record<string, any>) => {
   }
 };
 
-// 接口相关方法
+// 鎺ュ彛鐩稿叧鏂规硶
 const getMethodTagType = (method: string) => {
   const methodMap: Record<string, string> = {
     get: "success",
@@ -2208,7 +2414,7 @@ const viewApiDetail = (api: any) => {
   );
 };
 
-// API卡片展开/收起处理
+// API鍗＄墖灞曞紑/鏀惰捣澶勭悊
 const toggleApiDetail = (index: number) => {
   const expandedIndex = expandedApis.value.indexOf(index);
   if (expandedIndex > -1) {
@@ -2218,7 +2424,7 @@ const toggleApiDetail = (index: number) => {
   }
 };
 
-// 响应状态码样式类
+// 鍝嶅簲鐘舵€佺爜鏍峰紡绫?
 const getResponseCodeClass = (code: string) => {
   const codeNum = parseInt(code);
   if (codeNum >= 200 && codeNum < 300) {
@@ -2233,28 +2439,28 @@ const getResponseCodeClass = (code: string) => {
   return "response-default";
 };
 
-// 窗口大小变化处理
+// 绐楀彛澶у皬鍙樺寲澶勭悊
 const handleResize = () => {
-  // 触发计算属性重新计算
+  // 瑙﹀彂璁＄畻灞炴€ч噸鏂拌绠?
   if (editorContainerRef.value) {
     nextTick(() => {
-      // 强制重新计算高度
+      // 寮哄埗閲嶆柊璁＄畻楂樺害
       editorHeight.value;
     });
   }
 };
 
-// 生命周期
+// 鐢熷懡鍛ㄦ湡
 onMounted(async () => {
-  // 检查用户认证状态并加载文档
+  // 妫€鏌ョ敤鎴疯璇佺姸鎬佸苟鍔犺浇鏂囨。
   await checkAuthentication();
 
-  // 添加窗口大小变化监听器
+  // 娣诲姞绐楀彛澶у皬鍙樺寲鐩戝惉鍣?
   window.addEventListener("resize", handleResize);
 });
 
 onUnmounted(() => {
-  // 清理窗口大小变化监听器
+  // 娓呯悊绐楀彛澶у皬鍙樺寲鐩戝惉鍣?
   window.removeEventListener("resize", handleResize);
 });
 </script>
@@ -2272,8 +2478,8 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-/* 顶部工具栏样式 */
-/* 页面头部样式 */
+/* 椤堕儴宸ュ叿鏍忔牱寮?*/
+/* 椤甸潰澶撮儴鏍峰紡 */
 .header-section {
   display: flex;
   justify-content: space-between;
@@ -2304,14 +2510,14 @@ onUnmounted(() => {
   gap: 12px;
 }
 
-/* 主要内容区域 */
+/* 涓昏鍐呭鍖哄煙 */
 .manager-content {
   flex: 1;
   padding: 24px 32px;
   overflow: hidden;
 }
 
-/* 左侧文档列表样式 */
+/* 宸︿晶鏂囨。鍒楄〃鏍峰紡 */
 .document-list-card {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-large);
@@ -2479,7 +2685,7 @@ onUnmounted(() => {
   justify-content: center;
 }
 
-/* 右侧详情区域样式 */
+/* 鍙充晶璇︽儏鍖哄煙鏍峰紡 */
 .detail-card {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-large);
@@ -2582,7 +2788,7 @@ onUnmounted(() => {
   box-shadow: var(--shadow-light);
 }
 
-/* 上传对话框样式 */
+/* 涓婁紶瀵硅瘽妗嗘牱寮?*/
 .upload-container {
   padding: 20px 0;
 }
@@ -2633,7 +2839,7 @@ onUnmounted(() => {
   border-top: 1px solid var(--border-color);
 }
 
-/* 对话框样式 */
+/* 瀵硅瘽妗嗘牱寮?*/
 .el-dialog {
   border-radius: var(--radius-xl);
   overflow: hidden;
@@ -2670,7 +2876,7 @@ onUnmounted(() => {
   background: var(--bg-primary);
 }
 
-/* 表单样式增强 */
+/* 琛ㄥ崟鏍峰紡澧炲己 */
 .el-form-item {
   margin-bottom: var(--spacing-lg);
 }
@@ -2713,7 +2919,7 @@ onUnmounted(() => {
   border-radius: 6px;
 }
 
-/* 按钮样式增强 */
+/* 鎸夐挳鏍峰紡澧炲己 */
 .el-button {
   border-radius: 10px;
   font-weight: 500;
@@ -2763,7 +2969,7 @@ onUnmounted(() => {
   box-shadow: 0 4px 16px rgba(64, 158, 255, 0.3);
 }
 
-/* 标签样式 */
+/* 鏍囩鏍峰紡 */
 .el-tag {
   border-radius: 8px;
   font-weight: 500;
@@ -2798,7 +3004,7 @@ onUnmounted(() => {
   color: #e6a23c;
 }
 
-/* API表格样式 */
+/* API琛ㄦ牸鏍峰紡 */
 .el-table {
   border-radius: 12px;
   overflow: hidden;
@@ -2810,7 +3016,7 @@ onUnmounted(() => {
   font-weight: 600;
 }
 
-/* 响应式设计 */
+/* 鍝嶅簲寮忚璁?*/
 @media (max-width: 1200px) {
   .manager-header {
     padding: 16px 24px;
@@ -2846,7 +3052,7 @@ onUnmounted(() => {
   }
 }
 
-/* 滚动条样式 */
+/* 婊氬姩鏉℃牱寮?*/
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -2867,7 +3073,7 @@ onUnmounted(() => {
   background: linear-gradient(135deg, #a8a8a8 0%, #909090 100%);
 }
 
-/* 动画效果 */
+/* 鍔ㄧ敾鏁堟灉 */
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -2898,7 +3104,7 @@ onUnmounted(() => {
   animation: slideInRight 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* 卡片阴影效果 */
+/* 鍗＄墖闃村奖鏁堟灉 */
 .document-list-card,
 .detail-card {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -2910,7 +3116,7 @@ onUnmounted(() => {
   transform: translateY(-2px);
 }
 
-/* API列表样式 */
+/* API鍒楄〃鏍峰紡 */
 .api-list {
   padding: 24px;
 }
@@ -2948,7 +3154,7 @@ onUnmounted(() => {
   border: none;
 }
 
-/* 文件列表样式 */
+/* 鏂囦欢鍒楄〃鏍峰紡 */
 .file-list {
   max-height: 200px;
   overflow-y: auto;
@@ -2989,7 +3195,7 @@ onUnmounted(() => {
   border-radius: 6px;
 }
 
-/* API卡片样式 - Swagger UI风格 */
+/* API鍗＄墖鏍峰紡 - Swagger UI椋庢牸 */
 .api-list {
   padding: 16px;
   background: var(--bg-secondary);
@@ -3236,7 +3442,7 @@ onUnmounted(() => {
   flex: 1;
 }
 
-/* API卡片不同方法的边框颜色 */
+/* API鍗＄墖涓嶅悓鏂规硶鐨勮竟妗嗛鑹?*/
 .api-card--get {
   border-left: 4px solid #61affe;
 }

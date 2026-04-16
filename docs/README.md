@@ -19,6 +19,8 @@ The current top-level governance documents remain at repository root:
 - [Parser Change Verification](./guides/parser-change-verification.md)
 - [Release Readiness Checklist](./guides/release-readiness-checklist.md)
 - [Next Phase Development Plan](./guides/next-phase-development-plan.md)
+- [Endpoint Semantic Layer Requirements](./guides/endpoint-semantic-layer-requirements.md)
+- [Lightweight API Access Management Requirements](./guides/lightweight-api-access-management-requirements.md)
 - [Versioning Policy](./reference/versioning-policy.md)
 - [GitHub Collaboration Workflow](./guides/github-collaboration-workflow.md)
 - [Release v0.2.14](./guides/release-v0.2.14.md)

@@ -1,0 +1,123 @@
+name: mcp-swagger-api db matrix
+
+on:
+  push:
+    paths:
+      - '.github/workflows/mcp-swagger-api-db-matrix.yml'
+      - 'packages/mcp-swagger-api/**'
+      - 'packages/mcp-swagger-ui/**'
+      - 'packages/mcp-swagger-parser/**'
+      - 'packages/mcp-swagger-server/**'
+  pull_request:
+    paths:
+      - '.github/workflows/mcp-swagger-api-db-matrix.yml'
+      - 'packages/mcp-swagger-api/**'
+      - 'packages/mcp-swagger-ui/**'
+      - 'packages/mcp-swagger-parser/**'
+      - 'packages/mcp-swagger-server/**'
+
+jobs:
+  api-db-matrix:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        db_type: [sqlite, postgres]
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: pg
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Set database environment
+        shell: bash
+        run: |
+          echo "NODE_ENV=test" >> "$GITHUB_ENV"
+          echo "PORT=3101" >> "$GITHUB_ENV"
+          echo "MCP_PORT=3422" >> "$GITHUB_ENV"
+
+          if [ "${{ matrix.db_type }}" = "sqlite" ]; then
+            echo "DB_TYPE=sqlite" >> "$GITHUB_ENV"
+            echo "DB_SQLITE_PATH=tmp/ci/sqlite/mcp-swagger.db" >> "$GITHUB_ENV"
+          else
+            echo "DB_TYPE=postgres" >> "$GITHUB_ENV"
+            echo "DB_HOST=127.0.0.1" >> "$GITHUB_ENV"
+            echo "DB_PORT=5432" >> "$GITHUB_ENV"
+            echo "DB_USERNAME=postgres" >> "$GITHUB_ENV"
+            echo "DB_PASSWORD=pg" >> "$GITHUB_ENV"
+            echo "DB_DATABASE=mcp_swagger_api" >> "$GITHUB_ENV"
+          fi
+
+      - name: Prepare PostgreSQL database
+        if: matrix.db_type == 'postgres'
+        shell: bash
+        env:
+          PGPASSWORD: pg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          psql -h 127.0.0.1 -U postgres -d postgres -c "DROP DATABASE IF EXISTS mcp_swagger_api;"
+          psql -h 127.0.0.1 -U postgres -d postgres -c "CREATE DATABASE mcp_swagger_api;"
+
+      - name: Run package tests
+        run: pnpm --filter mcp-swagger-api run test -- --runInBand
+
+      - name: Build API package
+        run: pnpm --filter mcp-swagger-api run build
+
+      - name: Build UI package
+        run: pnpm --filter mcp-swagger-ui run build
+
+      - name: Startup smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p tmp/ci/logs
+          node packages/mcp-swagger-api/dist/src/main.js > tmp/ci/logs/api-${{ matrix.db_type }}.log 2>&1 &
+          API_PID=$!
+          trap 'kill $API_PID || true' EXIT
+
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3101/api/health/live > tmp/ci/logs/health-${{ matrix.db_type }}.json; then
+              break
+            fi
+            sleep 2
+          done
+
+          curl -fsS http://127.0.0.1:3101/api/health/live
+          curl -fsS http://127.0.0.1:3101/api/api/system/initialization
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-db-matrix-${{ matrix.db_type }}-logs
+          path: tmp/ci/logs

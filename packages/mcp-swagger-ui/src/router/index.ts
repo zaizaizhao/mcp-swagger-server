@@ -6,7 +6,6 @@ import {
 import MainLayout from "@/layout/MainLayout.vue";
 import Login from "@/views/Login.vue";
 
-// 路由配置
 const routes: RouteRecordRaw[] = [
   {
     path: "/",
@@ -18,9 +17,9 @@ const routes: RouteRecordRaw[] = [
         name: "servers",
         component: () => import("@/modules/servers/ServerManager.vue"),
         meta: {
-          title: "服务器管理",
+          title: "Server Management",
           icon: "Server",
-          description: "MCP服务器实例管理",
+          description: "Manage MCP server instances",
         },
       },
       {
@@ -28,7 +27,7 @@ const routes: RouteRecordRaw[] = [
         name: "server-detail",
         component: () => import("@/modules/servers/ServerDetail.vue"),
         meta: {
-          title: "服务器详情",
+          title: "Server Detail",
           hidden: true,
           parent: "servers",
         },
@@ -38,9 +37,20 @@ const routes: RouteRecordRaw[] = [
         name: "openapi",
         component: () => import("@/modules/openapi/OpenAPIManager.vue"),
         meta: {
-          title: "OpenAPI管理",
+          title: "OpenAPI Management",
           icon: "Document",
-          description: "OpenAPI规范管理和转换",
+          description: "Manage and convert OpenAPI specs",
+        },
+      },
+      {
+        path: "/endpoint-registry",
+        name: "endpoint-registry",
+        component: () =>
+          import("@/modules/endpoint-registry/EndpointRegistry.vue"),
+        meta: {
+          title: "Endpoint Registry",
+          icon: "Document",
+          description: "Manage manually registered endpoints by Server URL",
         },
       },
       {
@@ -48,9 +58,9 @@ const routes: RouteRecordRaw[] = [
         name: "tester",
         component: () => import("@/modules/testing/APITester.vue"),
         meta: {
-          title: "API测试",
+          title: "API Testing",
           icon: "Tools",
-          description: "MCP工具测试和调试",
+          description: "Test and debug MCP tools",
         },
       },
       {
@@ -58,9 +68,9 @@ const routes: RouteRecordRaw[] = [
         name: "auth",
         component: () => import("@/modules/auth/AuthManager.vue"),
         meta: {
-          title: "认证管理",
+          title: "Authentication",
           icon: "Lock",
-          description: "API认证配置管理",
+          description: "Manage API authentication configuration",
         },
       },
       {
@@ -68,9 +78,9 @@ const routes: RouteRecordRaw[] = [
         name: "config",
         component: () => import("@/modules/config/ConfigManagerNew.vue"),
         meta: {
-          title: "配置管理",
+          title: "Configuration",
           icon: "Setting",
-          description: "系统配置导入导出",
+          description: "Import and export system configuration",
         },
       },
       {
@@ -78,9 +88,9 @@ const routes: RouteRecordRaw[] = [
         name: "logs",
         component: () => import("@/modules/logs/LogViewer.vue"),
         meta: {
-          title: "日志查看",
+          title: "Logs",
           icon: "List",
-          description: "系统日志和调试信息",
+          description: "View system and debug logs",
         },
       },
       {
@@ -89,9 +99,9 @@ const routes: RouteRecordRaw[] = [
         component: () =>
           import("@/modules/monitoring/monitoring/Dashboard.vue"),
         meta: {
-          title: "系统监控",
+          title: "Monitoring",
           icon: "Monitor",
-          description: "系统性能监控和告警",
+          description: "System performance monitoring and alerts",
         },
       },
       {
@@ -99,9 +109,9 @@ const routes: RouteRecordRaw[] = [
         name: "ai",
         component: () => import("@/modules/ai/AIAssistant.vue"),
         meta: {
-          title: "AI助手",
+          title: "AI Assistant",
           icon: "ChatDotRound",
-          description: "AI助手集成配置",
+          description: "AI assistant integration configuration",
         },
       },
     ],
@@ -111,17 +121,16 @@ const routes: RouteRecordRaw[] = [
     name: "login",
     component: Login,
     meta: {
-      title: "登录",
+      title: "Login",
       hidden: true,
     },
   },
-
   {
     path: "/:pathMatch(.*)*",
     name: "not-found",
     component: () => import("@/views/NotFound.vue"),
     meta: {
-      title: "页面未找到",
+      title: "Not Found",
       hidden: true,
     },
   },
@@ -130,92 +139,52 @@ const routes: RouteRecordRaw[] = [
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
-  scrollBehavior(to, from, savedPosition) {
-    if (savedPosition) {
-      return savedPosition;
-    } else {
-      return { top: 0 };
-    }
+  scrollBehavior(_to, _from, savedPosition) {
+    return savedPosition || { top: 0 };
   },
 });
 
-// 路由守卫
-router.beforeEach(async (to, from, next) => {
-  // 动态导入 auth store 以避免循环依赖
+router.beforeEach(async (to, _from, next) => {
   const { useAuthStore } = await import("@/stores/auth");
   const authStore = useAuthStore();
 
-  console.log("路由守卫 - 目标路径:", to.path);
-  console.log("路由守卫 - accessToken:", !!authStore.accessToken);
-  console.log("路由守卫 - currentUser:", !!authStore.currentUser);
-
-  // 公开路由（不需要认证）
   const publicRoutes = ["/login", "/forgot-password"];
   const isPublicRoute = publicRoutes.includes(to.path);
 
-  // 如果是登录页面
   if (to.path === "/login") {
-    // 检查是否需要初始化认证状态（只在有token但没有用户信息时）
     if (authStore.accessToken && !authStore.currentUser) {
-      console.log("登录页面 - 检测到 token 但无用户信息，尝试初始化认证状态");
       try {
         await authStore.initializeAuth();
-        console.log(
-          "登录页面 - 认证初始化完成 - currentUser:",
-          !!authStore.currentUser,
-        );
-        // 如果初始化后有用户信息，重定向到服务器管理
         if (authStore.currentUser) {
-          console.log("登录页面 - 用户已认证，重定向到服务器管理");
           next("/servers");
           return;
         }
-      } catch (error) {
-        console.error("登录页面 - 认证初始化失败:", error);
+      } catch (_error) {
+        // Keep login route reachable even if auth init fails
       }
     } else if (authStore.currentUser) {
-      // 如果已经有用户信息，重定向到服务器管理
-      console.log("登录页面 - 用户已认证，重定向到服务器管理");
       next("/servers");
       return;
     }
-    // 允许访问登录页面
-    console.log("登录页面 - 允许访问");
     next();
     return;
   }
 
-  // 其他公开路由直接通过
   if (isPublicRoute) {
     next();
     return;
   }
 
-  // 对于需要认证的路由，先检查是否需要初始化认证状态
   if (authStore.accessToken && !authStore.currentUser) {
-    console.log("受保护路由 - 检测到 token 但无用户信息，开始初始化认证状态");
     try {
       await authStore.initializeAuth();
-      console.log(
-        "受保护路由 - 认证初始化完成 - currentUser:",
-        !!authStore.currentUser,
-      );
-    } catch (error) {
-      console.error("受保护路由 - 认证初始化失败:", error);
+    } catch (_error) {
+      // Fallback to auth status check below
     }
   }
 
-  // 最终检查认证状态：必须同时有 accessToken 和 currentUser
   const isAuthenticated = !!authStore.accessToken && !!authStore.currentUser;
-  console.log("受保护路由 - 最终认证状态检查:", {
-    hasToken: !!authStore.accessToken,
-    hasUser: !!authStore.currentUser,
-    isAuthenticated,
-  });
-
   if (!isAuthenticated) {
-    console.log("用户未认证，重定向到登录页面");
-    // 重定向到登录页面
     next({
       path: "/login",
       query: { redirect: to.fullPath },
@@ -223,14 +192,10 @@ router.beforeEach(async (to, from, next) => {
     return;
   }
 
-  console.log("用户已认证，允许访问");
-
-  // 设置页面标题
   if (to.meta?.title) {
     document.title = `${to.meta.title} - MCP Gateway`;
   }
 
-  // 已认证，允许访问
   next();
 });
 

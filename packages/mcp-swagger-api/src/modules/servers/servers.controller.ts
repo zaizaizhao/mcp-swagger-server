@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Put,
   Delete,
   Param,
@@ -22,6 +23,8 @@ import {
 } from '@nestjs/swagger';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtAuthGuard } from '../security/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../security/guards/permissions.guard';
+import { RequirePermissions } from '../security/decorators/permissions.decorator';
 
 import { ServerManagerService } from './services/server-manager.service';
 import { SystemLogService } from './services/system-log.service';
@@ -33,6 +36,7 @@ import { ProcessHealthService } from './services/process-health.service';
 import { ProcessErrorHandlerService } from './services/process-error-handler.service';
 import { ProcessResourceMonitorService } from './services/process-resource-monitor.service';
 import { ProcessLogMonitorService } from './services/process-log-monitor.service';
+import { ApiManagementCenterService } from './services/api-management-center.service';
 import { LogLevel } from './interfaces/process.interface';
 import {
   CreateServerDto,
@@ -52,6 +56,12 @@ import {
   SystemLogResponseDto,
   PaginatedSystemLogResponseDto,
 } from './dto/system-log.dto';
+import {
+  ApiCenterQueryDto,
+  ChangeEndpointStateDto,
+  RegisterManualEndpointDto,
+  UpdateApiManagementProfileDto,
+} from './dto/api-management.dto';
 
 
 @ApiTags('服务器管理')
@@ -72,6 +82,7 @@ export class ServersController {
     private readonly processErrorHandler: ProcessErrorHandlerService,
     private readonly processResourceMonitor: ProcessResourceMonitorService,
     private readonly processLogMonitor: ProcessLogMonitorService,
+    private readonly apiManagementCenter: ApiManagementCenterService,
     private readonly eventEmitter: EventEmitter2,
     private readonly openApiService: OpenAPIService,
   ) {}
@@ -126,6 +137,152 @@ export class ServersController {
       throw new HttpException(
         `Failed to get servers: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Get('api-center/overview')
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions('server:read')
+  @ApiOperation({ summary: 'API Center overview', description: '查看 endpoint 接入治理总览（轻量版）' })
+  @ApiResponse({ status: 200, description: '获取成功' })
+  async getApiCenterOverview(@Query() query: ApiCenterQueryDto) {
+    try {
+      return await this.apiManagementCenter.getOverview(query);
+    } catch (error) {
+      this.logger.error(`Failed to get API center overview: ${error.message}`, error.stack);
+      throw new HttpException(
+        `Failed to get API center overview: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Patch(':id/api-center/profile')
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions('server:update')
+  @ApiOperation({ summary: 'Update API center profile', description: '更新接入来源、分类、生命周期等治理画像' })
+  @ApiParam({ name: 'id', description: '服务器ID' })
+  @ApiResponse({ status: 200, description: '更新成功' })
+  async updateApiCenterProfile(
+    @Param('id') id: string,
+    @Body() body: UpdateApiManagementProfileDto,
+  ) {
+    try {
+      return await this.apiManagementCenter.updateProfile(id, body);
+    } catch (error) {
+      this.logger.error(`Failed to update API center profile for ${id}: ${error.message}`, error.stack);
+      if (error.message.includes('not found')) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+      throw new HttpException(
+        `Failed to update API center profile: ${error.message}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Post(':id/api-center/probe')
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions('server:update')
+  @ApiOperation({ summary: 'Probe endpoint availability', description: '主动探测 endpoint 可用性并记录状态' })
+  @ApiParam({ name: 'id', description: '服务器ID' })
+  @ApiResponse({ status: 200, description: '探测完成' })
+  async probeEndpoint(@Param('id') id: string) {
+    try {
+      return await this.apiManagementCenter.probeEndpoint(id);
+    } catch (error) {
+      this.logger.error(`Failed to probe endpoint for ${id}: ${error.message}`, error.stack);
+      if (error.message.includes('not found')) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+      throw new HttpException(
+        `Failed to probe endpoint: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get(':id/api-center/publish-readiness')
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions('server:read')
+  @ApiOperation({ summary: 'Publish readiness check', description: '发布前准入检查（状态+探测结果）' })
+  @ApiParam({ name: 'id', description: '服务器ID' })
+  @ApiResponse({ status: 200, description: '检查完成' })
+  async getPublishReadiness(@Param('id') id: string) {
+    try {
+      return await this.apiManagementCenter.getPublishReadiness(id);
+    } catch (error) {
+      this.logger.error(`Failed to get publish readiness for ${id}: ${error.message}`, error.stack);
+      if (error.message.includes('not found')) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+      throw new HttpException(
+        `Failed to get publish readiness: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get(':id/api-center/probe-history')
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions('server:read')
+  @ApiOperation({ summary: 'Probe history', description: '查看 endpoint 可用性探测历史记录' })
+  @ApiParam({ name: 'id', description: '服务器ID' })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiResponse({ status: 200, description: '获取成功' })
+  async getProbeHistory(@Param('id') id: string, @Query('limit') limit?: number) {
+    try {
+      return await this.apiManagementCenter.getProbeHistory(id, limit ? Number(limit) : 20);
+    } catch (error) {
+      this.logger.error(`Failed to get probe history for ${id}: ${error.message}`, error.stack);
+      if (error.message.includes('not found')) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+      throw new HttpException(
+        `Failed to get probe history: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('api-center/manual-endpoint')
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions('server:manage')
+  @ApiOperation({ summary: 'Register manual endpoint', description: '手工录入 endpoint（最小必填）' })
+  @ApiResponse({ status: 201, description: '注册成功' })
+  async registerManualEndpoint(@Body() body: RegisterManualEndpointDto) {
+    try {
+      return await this.apiManagementCenter.registerManualEndpoint(body);
+    } catch (error) {
+      this.logger.error(`Failed to register manual endpoint: ${error.message}`, error.stack);
+      throw new HttpException(
+        `Failed to register manual endpoint: ${error.message}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Post(':id/api-center/state')
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions('server:manage')
+  @ApiOperation({ summary: 'Change endpoint lifecycle state', description: '执行发布/下线动作（发布会触发准入校验）' })
+  @ApiParam({ name: 'id', description: '服务器ID' })
+  @ApiResponse({ status: 200, description: '状态变更成功' })
+  async changeEndpointState(
+    @Param('id') id: string,
+    @Body() body: ChangeEndpointStateDto,
+  ) {
+    try {
+      return await this.apiManagementCenter.changeEndpointState(id, body);
+    } catch (error) {
+      this.logger.error(`Failed to change endpoint state for ${id}: ${error.message}`, error.stack);
+      if (error.message.includes('not found')) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+      throw new HttpException(
+        `Failed to change endpoint state: ${error.message}`,
+        HttpStatus.BAD_REQUEST,
       );
     }
   }

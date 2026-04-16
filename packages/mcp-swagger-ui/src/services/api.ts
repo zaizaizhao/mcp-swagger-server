@@ -301,6 +301,107 @@ export const serverAPI = {
     return response.data;
   },
 
+  // API Center - 手工注册 endpoint
+  async registerManualEndpoint(payload: {
+    name: string;
+    baseUrl: string;
+    method: string;
+    path: string;
+    description?: string;
+    businessDomain?: string;
+    riskLevel?: string;
+  }): Promise<any> {
+    const response = await api.post("/v1/servers/api-center/manual-endpoint", payload);
+    return response.data;
+  },
+
+  async getApiCenterOverview(params?: {
+    sourceType?: "imported" | "manual";
+    lifecycleStatus?:
+      | "draft"
+      | "verified"
+      | "published"
+      | "degraded"
+      | "offline"
+      | "retired";
+    businessDomain?: string;
+  }): Promise<{
+    total: number;
+    data: Array<{
+      id: string;
+      name: string;
+      version?: string;
+      endpoint?: {
+        method?: string;
+        path?: string;
+      };
+      profile?: {
+        sourceType?: string;
+        sourceRef?: string;
+        businessDomain?: string;
+        riskLevel?: string;
+        lifecycleStatus?: string;
+        publishEnabled?: boolean;
+        probeUrl?: string;
+        lastProbeStatus?: string;
+        lastProbeAt?: string;
+      };
+      toolsCount?: number;
+      healthy?: boolean;
+      updatedAt?: string;
+    }>;
+  }> {
+    const response = await api.get("/v1/servers/api-center/overview", { params });
+    return response.data;
+  },
+
+  async probeApiCenterEndpoint(serverId: string): Promise<{
+    serverId: string;
+    profile?: {
+      lastProbeStatus?: string;
+      lastProbeAt?: string;
+      lifecycleStatus?: string;
+    };
+    probe?: {
+      status?: string;
+      httpStatus?: number;
+      responseTimeMs?: number;
+      errorMessage?: string;
+    };
+  }> {
+    const response = await api.post(`/v1/servers/${serverId}/api-center/probe`);
+    return response.data;
+  },
+
+  async getApiCenterPublishReadiness(serverId: string): Promise<{
+    serverId: string;
+    ready: boolean;
+    reasons: string[];
+  }> {
+    const response = await api.get(
+      `/v1/servers/${serverId}/api-center/publish-readiness`,
+    );
+    return response.data;
+  },
+
+  async changeApiCenterLifecycleState(
+    serverId: string,
+    payload: { action: "publish" | "offline"; reason?: string },
+  ): Promise<{
+    serverId: string;
+    action: "publish" | "offline";
+    profile?: {
+      lifecycleStatus?: string;
+      publishEnabled?: boolean;
+    };
+  }> {
+    const response = await api.post(
+      `/v1/servers/${serverId}/api-center/state`,
+      payload,
+    );
+    return response.data;
+  },
+
   // 获取服务器指标
   async getServerMetrics(
     id: string,
