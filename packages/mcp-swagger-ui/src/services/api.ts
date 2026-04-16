@@ -349,6 +349,8 @@ export const serverAPI = {
         probeUrl?: string;
         lastProbeStatus?: string;
         lastProbeAt?: string;
+        lastProbeError?: string;
+        lastProbeHttpStatus?: number;
       };
       toolsCount?: number;
       healthy?: boolean;

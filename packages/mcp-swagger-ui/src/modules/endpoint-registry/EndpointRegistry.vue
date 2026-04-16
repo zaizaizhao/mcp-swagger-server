@@ -97,6 +97,12 @@
             </template>
           </el-table-column>
           <el-table-column
+            prop="lastProbeSummary"
+            :label="probeDetailsLabel"
+            min-width="280"
+            show-overflow-tooltip
+          />
+          <el-table-column
             prop="publishEnabled"
             :label="t('endpointRegistry.table.publishEnabled')"
             width="130"
@@ -300,6 +306,8 @@ type ApiCenterRow = {
     lifecycleStatus?: string;
     publishEnabled?: boolean;
     lastProbeStatus?: string;
+    lastProbeError?: string;
+    lastProbeHttpStatus?: number;
   };
 };
 
@@ -314,6 +322,7 @@ type EndpointRow = {
   lifecycleStatus: string;
   publishEnabled: boolean;
   lastProbeStatus: string;
+  lastProbeSummary: string;
   updatedAtText: string;
 };
 
@@ -428,6 +437,10 @@ const sourceTypeLabel = computed(() =>
     : { manual: "Manual", imported: "Imported" },
 );
 
+const probeDetailsLabel = computed(() =>
+  locale.value.startsWith("zh") ? "探测说明" : "Probe Details",
+);
+
 const openCreateDialog = () => {
   resetCreateForm();
   formMode.value = "create";
@@ -527,6 +540,41 @@ const getProbeTagType = (status?: string) => {
 const isValidationLikeProbe = (httpStatus?: number) =>
   [400, 401, 403, 405, 409, 415, 422, 429].includes(Number(httpStatus));
 
+const formatProbeSummary = ({
+  probeStatus,
+  httpStatus,
+  errorMessage,
+}: {
+  probeStatus?: string;
+  httpStatus?: number;
+  errorMessage?: string;
+}) => {
+  const normalizedStatus = probeStatus || "unknown";
+
+  if (normalizedStatus === "healthy" && isValidationLikeProbe(httpStatus)) {
+    if (locale.value.startsWith("zh")) {
+      return `探测通过：服务可达（HTTP ${httpStatus}），但当前请求缺少必要参数、认证信息，或不满足该接口的调用条件。${errorMessage ? ` 详情：${errorMessage}` : ""}`;
+    }
+    return `Probe passed: endpoint is reachable (HTTP ${httpStatus}), but the current request is missing required input/authentication or does not satisfy this operation. ${errorMessage ? `Details: ${errorMessage}` : ""}`;
+  }
+
+  if (normalizedStatus === "healthy") {
+    if (locale.value.startsWith("zh")) {
+      return `探测通过：端点可达${httpStatus ? `（HTTP ${httpStatus}）` : ""}`;
+    }
+    return `Probe passed: endpoint is reachable${httpStatus ? ` (HTTP ${httpStatus})` : ""}`;
+  }
+
+  if (normalizedStatus === "unhealthy") {
+    if (locale.value.startsWith("zh")) {
+      return `探测失败${httpStatus ? `（HTTP ${httpStatus}）` : ""}${errorMessage ? `：${errorMessage}` : ""}`;
+    }
+    return `Probe failed${httpStatus ? ` (HTTP ${httpStatus})` : ""}${errorMessage ? `: ${errorMessage}` : ""}`;
+  }
+
+  return locale.value.startsWith("zh") ? "尚无探测记录" : "No probe record yet";
+};
+
 const formatProbeFeedback = (result: {
   probe?: {
     status?: string;
@@ -538,18 +586,12 @@ const formatProbeFeedback = (result: {
   const httpStatus = result?.probe?.httpStatus;
   const errorMessage = result?.probe?.errorMessage;
 
-  if (probeStatus === "healthy" && isValidationLikeProbe(httpStatus)) {
-    if (locale.value.startsWith("zh")) {
-      return `探测通过：服务可达（HTTP ${httpStatus}），但当前请求缺少必要参数、认证信息，或不满足该接口的调用条件。${errorMessage ? ` 详情：${errorMessage}` : ""}`;
-    }
-    return `Probe passed: endpoint is reachable (HTTP ${httpStatus}), but the current request is missing required input/authentication or does not satisfy this operation. ${errorMessage ? `Details: ${errorMessage}` : ""}`;
-  }
-
-  if (probeStatus === "healthy") {
-    if (locale.value.startsWith("zh")) {
-      return `探测通过：端点可达${httpStatus ? `（HTTP ${httpStatus}）` : ""}`;
-    }
-    return `Probe passed: endpoint is reachable${httpStatus ? ` (HTTP ${httpStatus})` : ""}`;
+  if (probeStatus === "healthy" || probeStatus === "unhealthy") {
+    return formatProbeSummary({
+      probeStatus,
+      httpStatus,
+      errorMessage,
+    });
   }
 
   return t("endpointRegistry.messages.probeFinished", { status: probeStatus });
@@ -582,6 +624,11 @@ const mapRow = (item: ApiCenterRow): EndpointRow => {
     lifecycleStatus: item.profile?.lifecycleStatus || "draft",
     publishEnabled: Boolean(item.profile?.publishEnabled),
     lastProbeStatus: item.profile?.lastProbeStatus || "unknown",
+    lastProbeSummary: formatProbeSummary({
+      probeStatus: item.profile?.lastProbeStatus,
+      httpStatus: item.profile?.lastProbeHttpStatus,
+      errorMessage: item.profile?.lastProbeError,
+    }),
     updatedAtText: item.updatedAt ? new Date(item.updatedAt).toLocaleString() : "-",
   };
 };
@@ -609,6 +656,11 @@ const mapImportedRows = (item: ApiCenterRow): EndpointRow[] => {
     lifecycleStatus: item.profile?.lifecycleStatus || "draft",
     publishEnabled: Boolean(item.profile?.publishEnabled),
     lastProbeStatus: item.profile?.lastProbeStatus || "unknown",
+    lastProbeSummary: formatProbeSummary({
+      probeStatus: item.profile?.lastProbeStatus,
+      httpStatus: item.profile?.lastProbeHttpStatus,
+      errorMessage: item.profile?.lastProbeError,
+    }),
     updatedAtText: item.updatedAt ? new Date(item.updatedAt).toLocaleString() : "-",
   }));
 };
