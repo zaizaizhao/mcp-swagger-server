@@ -855,93 +855,6 @@
         </template>
       </el-dialog>
 
-      <!-- 缂栬緫鏂囨。瀵硅瘽妗?-->
-      <el-dialog
-        v-model="showManualDialog"
-        :title="`${t('common.add')} Endpoint`"
-        width="640px"
-        align-center
-      >
-        <el-form
-          ref="manualFormRef"
-          :model="manualForm"
-          :rules="manualFormRules"
-          label-width="120px"
-        >
-          <el-form-item :label="t('servers.serverName')" prop="name">
-            <el-input
-              v-model="manualForm.name"
-              :placeholder="t('openapi.enterDocName')"
-              clearable
-            />
-          </el-form-item>
-          <el-form-item :label="t('servers.serverUrl')" prop="baseUrl">
-            <el-input
-              v-model="manualForm.baseUrl"
-              :placeholder="t('openapi.enterDocUrl')"
-              clearable
-            />
-          </el-form-item>
-          <el-form-item label="HTTP Method" prop="method">
-            <el-select v-model="manualForm.method" style="width: 100%">
-              <el-option label="GET" value="GET" />
-              <el-option label="POST" value="POST" />
-              <el-option label="PUT" value="PUT" />
-              <el-option label="PATCH" value="PATCH" />
-              <el-option label="DELETE" value="DELETE" />
-            </el-select>
-          </el-form-item>
-          <el-form-item :label="t('openapi.paths')" prop="path">
-            <el-input
-              v-model="manualForm.path"
-              placeholder="e.g. /pets/{id}"
-              clearable
-            />
-          </el-form-item>
-          <el-form-item :label="t('common.description')">
-            <el-input
-              v-model="manualForm.description"
-              type="textarea"
-              :rows="2"
-              :placeholder="t('openapi.enterDocDescription')"
-            />
-          </el-form-item>
-          <el-form-item :label="t('common.tags')">
-            <el-input
-              v-model="manualForm.businessDomain"
-              placeholder="e.g. pet/order/user"
-              clearable
-            />
-          </el-form-item>
-          <el-form-item :label="t('common.status')">
-            <el-select v-model="manualForm.riskLevel" style="width: 100%">
-              <el-option label="low" value="low" />
-              <el-option label="medium" value="medium" />
-              <el-option label="high" value="high" />
-            </el-select>
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <div class="dialog-footer">
-            <el-button @click="handleManualDialogClose" size="large">
-              {{ t("common.cancel") }}
-            </el-button>
-            <el-button
-              type="primary"
-              @click="registerManualEndpoint"
-              :loading="manualSubmitting"
-              size="large"
-            >
-              {{
-                manualSubmitting
-                  ? t("common.loading")
-                  : t("common.create")
-              }}
-            </el-button>
-          </div>
-        </template>
-      </el-dialog>
-
       <el-dialog
         v-model="showEditDialog"
         :title="t('openapi.editDocument')"
@@ -1091,18 +1004,15 @@ const authChecking = ref(true); // 璁よ瘉妫€鏌ョ姸鎬?
 const showCreateDialog = ref(false);
 const showUploadDialog = ref(false);
 const showUrlDialog = ref(false);
-const showManualDialog = ref(false);
 const showEditDialog = ref(false);
 const creating = ref(false);
 const uploading = ref(false);
 const importing = ref(false);
-const manualSubmitting = ref(false);
 const editing = ref(false);
 
 // 琛ㄥ崟寮曠敤
 const createFormRef = ref<FormInstance>();
 const urlFormRef = ref<FormInstance>();
-const manualFormRef = ref<FormInstance>();
 const uploadRef = ref();
 const editFormRef = ref<FormInstance>();
 
@@ -1129,16 +1039,6 @@ const urlForm = ref({
   token: "",
   username: "",
   password: "",
-});
-
-const manualForm = ref({
-  name: "",
-  baseUrl: "",
-  method: "GET",
-  path: "",
-  description: "",
-  businessDomain: "",
-  riskLevel: "medium",
 });
 
 const editForm = ref({
@@ -1220,52 +1120,6 @@ const editFormRules = {
       min: 2,
       max: 50,
       message: t("openapi.validation.nameLength"),
-      trigger: "blur",
-    },
-  ],
-};
-
-const manualFormRules = {
-  name: [
-    {
-      required: true,
-      message: t("openapi.validation.docNameRequired"),
-      trigger: "blur",
-    },
-  ],
-  baseUrl: [
-    {
-      required: true,
-      message: t("openapi.validation.urlRequired"),
-      trigger: "blur",
-    },
-    {
-      type: "url",
-      message: t("openapi.validation.urlInvalid"),
-      trigger: "blur",
-    },
-  ],
-  method: [
-    {
-      required: true,
-      message: t("openapi.validation.specNameRequired"),
-      trigger: "change",
-    },
-  ],
-  path: [
-    {
-      required: true,
-      message: t("openapi.validation.specNameRequired"),
-      trigger: "blur",
-    },
-    {
-      validator: (_: any, value: string, callback: (err?: Error) => void) => {
-        if (!value || value.startsWith("/")) {
-          callback();
-          return;
-        }
-        callback(new Error("Path must start with /"));
-      },
       trigger: "blur",
     },
   ],
@@ -2120,58 +1974,6 @@ const handleUploadDialogClose = () => {
   // 娓呯┖涓婁紶缁勪欢鐨勬枃浠跺垪琛?
   if (uploadRef.value) {
     uploadRef.value.clearFiles();
-  }
-};
-
-const handleManualDialogClose = () => {
-  showManualDialog.value = false;
-  manualForm.value = {
-    name: "",
-    baseUrl: "",
-    method: "GET",
-    path: "",
-    description: "",
-    businessDomain: "",
-    riskLevel: "medium",
-  };
-  if (manualFormRef.value) {
-    manualFormRef.value.clearValidate();
-  }
-};
-
-const registerManualEndpoint = async () => {
-  if (!manualFormRef.value || !isAuthenticated.value) {
-    if (!isAuthenticated.value) {
-      ElMessage.error(t("openapi.authRequired"));
-    }
-    return;
-  }
-
-  try {
-    await manualFormRef.value.validate();
-    manualSubmitting.value = true;
-
-    const payload = {
-      name: manualForm.value.name.trim(),
-      baseUrl: manualForm.value.baseUrl.trim().replace(/\/+$/, ""),
-      method: manualForm.value.method.toUpperCase(),
-      path: manualForm.value.path.trim(),
-      description: manualForm.value.description?.trim() || undefined,
-      businessDomain: manualForm.value.businessDomain?.trim() || undefined,
-      riskLevel: manualForm.value.riskLevel || undefined,
-    };
-
-    const result = await serverAPI.registerManualEndpoint(payload);
-
-    handleManualDialogClose();
-    ElMessage.success(t("openapi.createSuccess"));
-  } catch (error: any) {
-    console.error("Manual endpoint registration failed:", error);
-    ElMessage.error(
-      `${t("common.error")}: ${error?.message || error?.error || "Unknown error"}`,
-    );
-  } finally {
-    manualSubmitting.value = false;
   }
 };
 
