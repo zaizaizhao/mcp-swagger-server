@@ -10,9 +10,9 @@ This repository started from the original `mcp-swagger-server` project.
 
 The original upstream provided an excellent initial design for OpenAPI/Swagger parsing, MCP tool generation, and fast MCP server exposure. This repository explicitly acknowledges that foundation and thanks the original author and contributors for that work.
 
-This repository has since evolved in a materially different direction. The current goal is no longer only fast OpenAPI-to-MCP conversion as a technical showcase. The repository is now being developed as a product-oriented API Gateway and API-to-MCP platform with an MCP Gateway application shape.
+This repository has since evolved beyond only fast OpenAPI-to-MCP conversion as a technical showcase. It is being developed as a product-oriented API Gateway and API-to-MCP platform with an MCP Gateway application shape.
 
-Because the product positioning and implementation baseline have diverged substantially, this repository now continues as an independent line of development. The original upstream remains a reference source, but it is no longer the controlling baseline for this repository.
+This repository continues to operate as a downstream project of the original upstream. It keeps tracking upstream changes, aims to preserve useful compatibility where practical, and should continue to contribute focused improvements back upstream when appropriate.
 
 ## Current Product Position
 
@@ -180,7 +180,6 @@ Start from:
 - [PROJECT_BASELINE](./PROJECT_BASELINE.md)
 - [RELEASE_BASELINE_V1](./RELEASE_BASELINE_V1.md)
 - [Documentation Index](./docs/README.md)
-- [Fork Origin And Independence](./docs/guides/fork-origin-and-independence.md)
 - [Current Convergence Plan](./docs/guides/current-convergence-plan.md)
 - [Open Items](./docs/reference/open-items.md)
 

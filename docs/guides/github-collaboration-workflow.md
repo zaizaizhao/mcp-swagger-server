@@ -4,9 +4,9 @@
 
 This document defines the recommended Git and GitHub workflow for this repository under the current operating model:
 
-- `upstream` is low-activity and is not the primary delivery dependency
-- `origin` is the actively maintained product fork
-- the project will continue to evolve with larger architecture changes
+- this repository remains a downstream project of `upstream`
+- `origin` is the working fork used for day-to-day delivery
+- `upstream` should continue to be tracked and reviewed regularly
 - valuable changes should still be split and submitted upstream when appropriate
 
 This is the default collaboration baseline for this repository unless a future governance document replaces it.
@@ -15,8 +15,8 @@ This is the default collaboration baseline for this repository unless a future g
 
 Use this model:
 
-- `origin/main` is the product mainline
-- `upstream/main` is a reference line, not the daily delivery line
+- `origin/main` is the working mainline for this downstream repository
+- `upstream/main` remains the canonical upstream line that should continue to be tracked
 - feature work is always done on feature branches
 - releases are always cut from `main`
 - upstream PRs should stay small, narrow, and reviewable
@@ -25,7 +25,7 @@ Do not use this model:
 
 - do not stack long-running product work directly on `upstream/main`
 - do not put experimental architecture work directly on `main`
-- do not wait for upstream acceptance before moving your own product forward
+- do not let waiting for upstream review stall necessary local stabilization work
 
 ## Remote Roles
 
@@ -76,7 +76,7 @@ That branch should contain only the minimal changes intended for upstream review
 
 ## Core Policy
 
-### Policy 1: your product does not block on upstream
+### Policy 1: downstream delivery should stay compatible with upstream collaboration
 
 If upstream is inactive or does not accept a PR:
 

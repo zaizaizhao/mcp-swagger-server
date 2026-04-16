@@ -8,7 +8,7 @@ It is the reference point for all follow-up work. If an implementation, proposal
 
 This baseline exists to prevent architecture drift, scope drift, and product-positioning drift.
 
-The repository originated from the upstream `mcp-swagger-server` project, but the current baseline is governed by this repository's own product direction and release rules rather than by upstream alignment.
+The repository originated from the upstream `mcp-swagger-server` project and continues to operate as a downstream project that tracks upstream evolution while refining a stronger product baseline in this repository.
 
 ## Product Definition
 
