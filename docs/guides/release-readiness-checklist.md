@@ -123,6 +123,16 @@ Verify:
 - startup logs clearly report `Database mode: postgres`
 - schema initialization and migrations succeed
 
+Current verified baseline on April 16, 2026:
+
+- database `mcp_swagger_api` was dropped and recreated from a clean state
+- API startup in `DB_TYPE=postgres` completed successfully
+- schema and seed initialization completed successfully on an empty database
+- resulting PostgreSQL schema contains 19 public tables, including `endpoint_probe_logs`
+- seed data was recreated with `27` permissions, `5` roles, and `1` super admin user
+- `DB_TYPE=postgres pnpm type-check` passed
+- `DB_TYPE=postgres pnpm test` passed
+
 ## 8. Endpoint Registry Verification
 
 Verify the manual endpoint lifecycle path:

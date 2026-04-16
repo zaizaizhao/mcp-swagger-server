@@ -108,6 +108,7 @@ SUPER_ADMIN_PASSWORD=Admin@123456
 Notes:
 
 - if `DB_TYPE` is omitted, the API defaults to `sqlite`
+- if `packages/mcp-swagger-api/.env` only contains `DB_HOST` / `DB_PORT` / `DB_DATABASE` but omits `DB_TYPE`, runtime still uses SQLite instead of PostgreSQL
 - `DB_SQLITE_PATH` may be relative to the workspace or absolute
 - startup logs should report `Database mode: sqlite`
 
@@ -153,7 +154,24 @@ SUPER_ADMIN_PASSWORD=Admin@123456
 Notes:
 
 - startup logs should report `Database mode: postgres`
+- PostgreSQL mode is enabled only when `DB_TYPE=postgres` is set explicitly
 - PostgreSQL remains the recommended mode for heavier and longer-running deployments
+
+Clean reinitialization path:
+
+Windows PowerShell:
+
+```powershell
+psql -U postgres -h localhost -p 5432 -d postgres -c "DROP DATABASE IF EXISTS mcp_swagger_api;"
+psql -U postgres -h localhost -p 5432 -d postgres -c "CREATE DATABASE mcp_swagger_api;"
+```
+
+Ubuntu:
+
+```bash
+sudo -u postgres psql -d postgres -c "DROP DATABASE IF EXISTS mcp_swagger_api;"
+sudo -u postgres psql -d postgres -c "CREATE DATABASE mcp_swagger_api;"
+```
 
 Recommended validation after switching to PostgreSQL:
 

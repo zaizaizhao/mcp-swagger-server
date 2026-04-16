@@ -36,6 +36,7 @@ node packages/mcp-swagger-api/dist/src/main.js
 Notes:
 
 - if `DB_TYPE` is omitted, the API still defaults to SQLite
+- `DB_HOST`, `DB_PORT`, and `DB_DATABASE` alone do not switch runtime to PostgreSQL
 - startup logs should print `Database mode: sqlite`
 - this is the recommended baseline for local development and light-load use
 
@@ -79,7 +80,24 @@ API_KEY=change-this-api-key
 Notes:
 
 - startup logs should print `Database mode: postgres`
+- PostgreSQL mode is active only when `DB_TYPE=postgres` is set explicitly
 - PostgreSQL is recommended for heavier write volume and multi-user operation
+
+Reset database when you need a clean baseline:
+
+Windows PowerShell:
+
+```powershell
+psql -U postgres -h localhost -p 5432 -d postgres -c "DROP DATABASE IF EXISTS mcp_swagger_api;"
+psql -U postgres -h localhost -p 5432 -d postgres -c "CREATE DATABASE mcp_swagger_api;"
+```
+
+Ubuntu:
+
+```bash
+sudo -u postgres psql -d postgres -c "DROP DATABASE IF EXISTS mcp_swagger_api;"
+sudo -u postgres psql -d postgres -c "CREATE DATABASE mcp_swagger_api;"
+```
 
 ## Product Guidance
 
