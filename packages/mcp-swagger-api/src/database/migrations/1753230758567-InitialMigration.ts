@@ -4,7 +4,7 @@ export class InitialMigration1753230758567 implements MigrationInterface {
     name = 'InitialMigration1753230758567'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`CREATE TYPE "public"."mcp_servers_transport_enum" AS ENUM('streamable', 'sse', 'stdio', 'websocket')`);
+        await queryRunner.query(`CREATE TYPE "public"."mcp_servers_transport_enum" AS ENUM('streamable', 'sse', 'stdio')`);
         await queryRunner.query(`CREATE TYPE "public"."mcp_servers_status_enum" AS ENUM('stopped', 'starting', 'running', 'stopping', 'error')`);
         await queryRunner.query(`CREATE TABLE "mcp_servers" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "name" character varying(255) NOT NULL, "version" character varying(100) NOT NULL DEFAULT '1.0.0', "description" text, "port" integer NOT NULL DEFAULT '3322', "transport" "public"."mcp_servers_transport_enum" NOT NULL DEFAULT 'streamable', "status" "public"."mcp_servers_status_enum" NOT NULL DEFAULT 'stopped', "endpoint" text, "openApiData" jsonb NOT NULL, "tools" jsonb, "toolsCount" integer NOT NULL DEFAULT '0', "config" jsonb, "authConfig" jsonb, "lastHealthCheck" TIMESTAMP, "healthy" boolean NOT NULL DEFAULT true, "errorMessage" text, "metrics" jsonb, "autoStart" boolean NOT NULL DEFAULT true, "tags" jsonb, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "UQ_2ee0138f3dd9575eedd37f2405f" UNIQUE ("name"), CONSTRAINT "PK_c781b3dc7cb2a5d19460b71914d" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE INDEX "IDX_7ed02efd17d98567e515642eb0" ON "mcp_servers" ("status") `);

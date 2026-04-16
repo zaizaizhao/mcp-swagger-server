@@ -338,7 +338,8 @@ export class NotificationService {
 
     } catch (error) {
       notification.error = error.message;
-      notification.status = notification.attempts >= this.maxRetries 
+      const isNonRetryable = this.isNonRetryableChannelError(channel, error);
+      notification.status = isNonRetryable || notification.attempts >= this.maxRetries
         ? NotificationStatus.FAILED 
         : NotificationStatus.RETRYING;
 
@@ -348,7 +349,7 @@ export class NotificationService {
       this.eventEmitter.emit('notification.failed', notification);
 
       // 如果还有重试机会，安排重试
-      if (notification.attempts < this.maxRetries) {
+      if (!isNonRetryable && notification.attempts < this.maxRetries) {
         setTimeout(() => {
           this.sendToChannel(notification, channel);
         }, this.retryDelay * notification.attempts);
@@ -413,10 +414,19 @@ export class NotificationService {
   private async sendEmailNotification(notification: Notification, channel: NotificationChannel): Promise<void> {
     // TODO: 实现邮件发送逻辑
     // 这里可以集成邮件服务提供商（如SendGrid、AWS SES等）
-    this.logger.warn('Email notification not implemented yet');
-    throw new Error('Email notification not implemented');
+    const message = 'Email notification delivery is not part of the current product baseline';
+    this.logger.warn(message);
+    throw new Error(message);
   }
 
+
+  private isNonRetryableChannelError(channel: NotificationChannel, error: Error): boolean {
+    if (channel.type === NotificationChannelType.EMAIL) {
+      return true;
+    }
+
+    return error.message.includes('not part of the current product baseline');
+  }
   /**
    * 发送Slack通知
    */

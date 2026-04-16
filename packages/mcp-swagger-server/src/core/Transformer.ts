@@ -87,6 +87,28 @@ export class Transformer implements ITransformer {
     }
   }
 
+  async transformFromSpec(spec: OpenAPISpec, options: TransformOptions = {}): Promise<MCPTool[]> {
+    const mergedOptions = { ...this.defaultOptions, ...options };
+
+    if (!spec || typeof spec !== 'object') {
+      throw new Error('Specification transformation failed: spec must be a valid object');
+    }
+
+    const sourceOrigin = (!mergedOptions.baseUrl && !mergedOptions.sourceOrigin)
+      ? this.extractSourceOriginFromSpec(spec)
+      : mergedOptions.sourceOrigin;
+    const effectiveOptions: TransformOptions = {
+      ...mergedOptions,
+      sourceOrigin
+    };
+
+    try {
+      return await this.transformFromOpenAPI(spec, effectiveOptions);
+    } catch (error: any) {
+      throw new Error(`Specification transformation failed: ${error?.message || 'Unknown error'}`);
+    }
+  }
+
   private async transformFromOpenAPI(spec: OpenAPISpec, options: TransformOptions): Promise<MCPTool[]> {
     console.log(`🔄 Transforming OpenAPI spec: ${spec.info.title} v${spec.info.version}`);
     console.log(`📊 Found ${Object.keys(spec.paths).length} API paths`);
@@ -165,6 +187,15 @@ export class Transformer implements ITransformer {
     } catch {
       return undefined;
     }
+  }
+
+  private extractSourceOriginFromSpec(spec: OpenAPISpec): string | undefined {
+    const serverUrl = spec?.servers?.[0]?.url;
+    if (!serverUrl || typeof serverUrl !== 'string') {
+      return undefined;
+    }
+
+    return this.extractSourceOrigin(serverUrl);
   }
 
   // 将parser的工具格式转换为我们的格式

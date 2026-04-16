@@ -71,7 +71,7 @@ export class AuthController {
   @ApiBody({ type: RegisterDto })
   @ApiResponse({
     status: 201,
-    description: '注册成功',
+    description: 'Registration accepted. Email delivery is not part of the current baseline, so the account remains pending until verified through an operator-managed flow.',
     type: UserResponseDto,
   })
   @ApiResponse({
@@ -138,16 +138,21 @@ export class AuthController {
   @ApiBody({ type: ForgotPasswordDto })
   @ApiResponse({
     status: 200,
-    description: '密码重置邮件已发送',
+    description: 'Password reset request accepted. Email delivery is not part of the current baseline, and this endpoint does not confirm that any reset mail was sent.',
+    type: OperationResultDto,
   })
   async forgotPassword(
     @Body() forgotPasswordDto: ForgotPasswordDto,
     @Req() req: Request,
-  ): Promise<any> {
+  ): Promise<OperationResultDto> {
     const ipAddress = this.getClientIp(req);
 
-    return this.authService.forgotPassword(forgotPasswordDto, ipAddress);
+    await this.authService.forgotPassword(forgotPasswordDto, ipAddress);
 
+    return {
+      success: true,
+      message: 'Password reset request accepted. Email delivery is not part of the current baseline.',
+    };
   }
 
   @Public()

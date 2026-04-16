@@ -90,8 +90,7 @@ export async function initToolsFromSpec(
   
   try {
     // 注意：这里需要实现transformFromSpec方法，目前先用文件方式
-    console.warn("⚠️ Direct spec transformation not implemented, using file fallback");
-    const tools = await transformer.transformFromFile(undefined, options);
+    const tools = await transformer.transformFromSpec(spec, options);
     
     console.log(`📦 Generated ${tools.length} tools from OpenAPI specification`);
     

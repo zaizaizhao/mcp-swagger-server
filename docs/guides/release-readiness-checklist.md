@@ -1,38 +1,35 @@
 # Release Readiness Checklist
 
-This checklist is the final product-baseline gate before tagging and publishing a version.
+Use this checklist before cutting a release or calling the current baseline publishable.
 
-It is intentionally practical:
+The goal is to validate the real supported path, not to create an aspirational checklist for features that are still incomplete.
 
-- verify the current main user paths
-- verify the current supported database modes
-- verify parser-to-runtime propagation when parser changes are involved
-- confirm that Windows and Ubuntu operators can follow the same product path
+## 1. Baseline Confirmation
 
-## 1. Scope Gate
+Confirm the release still matches the current baseline:
 
-Confirm that the release only promises the current supported baseline:
-
-- managed server transports are `streamable` and `sse`
-- `streamable` supports more than one concurrent session in the same server process
+- supported MCP transports are `stdio`, `streamable`, and `sse`
+- `streamable` multi-session behavior remains working
 - default database mode is `SQLite`
-- `PostgreSQL` remains the heavier deployment mode
-- MCP `websocket` transport is not claimed as supported
-- deferred items remain documented as deferred, not half-exposed as active features
+- `PostgreSQL` remains a supported optional deployment mode
+- email verification delivery, password reset mail delivery, and email notification delivery are not claimed as baseline features unless they are actually implemented
+- active docs do not claim unsupported transport or feature behavior
 
-## 2. Documentation Gate
+## 2. Documentation Check
 
-Confirm the following files are updated together when behavior changes:
+Confirm active documentation is aligned with the implementation:
 
 - `README.md`
 - `docs/guides/local-setup-and-run.md`
-- `docs/guides/deployment-guide.md`
-- the current release note under `docs/guides/`
-- package README files under `packages/`
+- `docs/guides/database-mode-quickstart.md`
+- `docs/guides/database-strategy.md`
+- `docs/guides/current-convergence-plan.md`
+- package README files for affected packages
+- deferred or partial items are tracked in `docs/reference/open-items.md`
 
-## 3. Build And Type-Check Gate
+## 3. Build And Type Validation
 
-Run from repository root:
+Run:
 
 ```bash
 pnpm build
@@ -40,21 +37,21 @@ pnpm type-check
 pnpm --filter mcp-swagger-server run test
 ```
 
-If the release touches `packages/mcp-swagger-parser`, also run:
+If parser behavior changed, also run:
 
 ```bash
 pnpm run verify:parser-chain
 ```
 
-For release work that needs downstream consumer builds too:
+If the release touches broader parser compatibility or downstream contracts, run:
 
 ```bash
 pnpm run verify:parser-chain:full
 ```
 
-## 4. API Test Gate
+## 4. API Test Verification
 
-Run the critical API tests from `packages/mcp-swagger-api`.
+For targeted OpenAPI management and validation paths under `packages/mcp-swagger-api`:
 
 Windows PowerShell:
 
@@ -74,83 +71,82 @@ cd packages/mcp-swagger-api
 ./node_modules/.bin/jest --runInBand src/modules/openapi/services/validator.service.spec.ts
 ```
 
-If you want the broader API suite, run:
+For broader API regression verification:
 
 ```bash
 pnpm --filter mcp-swagger-api test
 ```
 
-## 5. Runtime Path Gate
+## 5. Runtime Path Verification
 
-Verify these main paths:
+Verify the main operator paths:
 
-- UI dev entry: `http://127.0.0.1:3000/`
+- UI main entry: `http://127.0.0.1:3000/`
 - API main entry: `http://127.0.0.1:3001/api`
 - API Swagger docs: `http://127.0.0.1:3001/api/docs`
-- MCP endpoint: `http://127.0.0.1:3322/mcp`
+- MCP endpoint example: `http://127.0.0.1:3322/mcp`
 
-Expected note:
+Check:
 
-- direct browser access to `/mcp` is not a UI page and requires MCP session headers
-- a second Streamable HTTP client session should not terminate the server or invalidate the first session
+- `/mcp` is treated as an MCP protocol endpoint, not a browser page
+- concurrent streamable sessions can be established
 
-## 6. OpenAPI Product Flow Gate
+## 6. OpenAPI Management Verification
 
-Verify the current primary operator flow with a known public sample such as:
+Use at least one known public operator test spec:
 
 - `https://petstore.swagger.io/v2/swagger.json`
 
-Expected product results:
+Verify:
 
-- import from URL succeeds
-- validate specification succeeds
-- API path extraction is populated
-- MCP tool conversion succeeds
-- generated tools can be inspected from the UI and the managed server detail page
+- import from URL works
+- the spec can be parsed and normalized
+- validation succeeds on the normalized document
+- tool preview renders usable results
+- conversion to MCP succeeds on the supported path
 
-## 7. Database Mode Gate
+## 7. Database Mode Verification
 
 ### SQLite
 
-Confirm:
+Verify:
 
-- API starts with `DB_TYPE=sqlite` or with `DB_TYPE` unset
-- startup log prints `Database mode: sqlite`
-- SQLite file path resolves correctly
+- API runs with `DB_TYPE=sqlite` or with `DB_TYPE` omitted
+- startup logs clearly report `Database mode: sqlite`
+- SQLite migrations and startup behavior succeed
 
 ### PostgreSQL
 
-Confirm:
+Verify:
 
-- API starts with `DB_TYPE=postgres`
-- startup log prints `Database mode: postgres`
-- schema initialization and login path remain normal
+- API runs with `DB_TYPE=postgres`
+- startup logs clearly report `Database mode: postgres`
+- schema initialization and migrations succeed
 
-## 8. Windows And Ubuntu Gate
+## 8. Windows And Ubuntu Verification
 
-Verify the documented command path is still correct for both:
+Check the documented run path on both:
 
 - Windows PowerShell
 - Ubuntu
 
-Minimum checks:
+At minimum verify:
 
 - dependency install
 - API startup
 - UI startup
-- build commands
-- parser-chain verification commands
+- basic import and conversion workflow
+- parser verification path
 - `pnpm --filter mcp-swagger-server run test:streamable-session`
 
-## 9. Release Decision
+## 9. Open Items Review
 
-The release is ready only when:
+Before release, review `docs/reference/open-items.md` and confirm:
 
-- build and type-check pass
-- critical API tests pass
-- the documented runtime paths are still correct
-- the OpenAPI import/validate/convert path is verified
-- SQLite default mode is confirmed
-- any PostgreSQL-specific release changes are explicitly verified
+- unfinished items are not being claimed as release-complete
+- operator-visible gaps are disclosed clearly enough
+- no archived guide is still treated as an active source of truth
+- security, auth, monitoring, and UI placeholder risks are understood
+- deferred auth and notification flows are described honestly in API and operator guidance
 
-If any item fails, update code or docs first and rerun the gate.
+A release is ready only when the documented baseline, the real implementation, and the tested operator path all match.

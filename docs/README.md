@@ -2,9 +2,9 @@
 
 ## Purpose
 
-This directory now separates current-use documentation from archived historical material.
+This directory separates current-use documentation from archived historical material.
 
-Use this index as the entry point. Do not treat archived plans, old implementation notes, or completion summaries as the current project baseline.
+Use this index as the documentation entry point. Do not treat archived plans, old implementation notes, or completion summaries as the current project baseline.
 
 The current top-level governance documents remain at repository root:
 
@@ -13,76 +13,46 @@ The current top-level governance documents remain at repository root:
 - [PROJECT_BASELINE](../PROJECT_BASELINE.md)
 - [RELEASE_BASELINE_V1](../RELEASE_BASELINE_V1.md)
 - [PROJECT_ANALYSIS_AND_V1_PLAN](../PROJECT_ANALYSIS_AND_V1_PLAN.md)
+
+## Current Active Documents
+
+### Baseline and setup
+
 - [Database Mode Quickstart](./guides/database-mode-quickstart.md)
 - [Database Strategy](./guides/database-strategy.md)
 - [Local Setup And Run](./guides/local-setup-and-run.md)
 - [Parser Change Verification](./guides/parser-change-verification.md)
 - [Release Readiness Checklist](./guides/release-readiness-checklist.md)
+
+### Planning and governance
+
+- [Current Convergence Plan](./guides/current-convergence-plan.md)
 - [Next Phase Development Plan](./guides/next-phase-development-plan.md)
 - [Endpoint Semantic Layer Requirements](./guides/endpoint-semantic-layer-requirements.md)
 - [Lightweight API Access Management Requirements](./guides/lightweight-api-access-management-requirements.md)
+- [Open Items](./reference/open-items.md)
 - [Versioning Policy](./reference/versioning-policy.md)
 - [GitHub Collaboration Workflow](./guides/github-collaboration-workflow.md)
-- [Release v0.2.14](./guides/release-v0.2.14.md)
-- [Release v0.2.17](./guides/release-v0.2.17.md)
 
-## Setup First
+## Archive
 
-Before running package-level commands, complete environment bootstrap:
-
-1. Install Node.js `>=20`
-2. Enable Corepack and activate pnpm
-3. Run `pnpm install` at repository root
-
-Primary setup guide:
-
-- [Local Setup And Run](./guides/local-setup-and-run.md)
-
-## Structure
-
-### Current guides
-
-Location:
-
-- [guides](./guides/README.md)
-
-Use for:
-
-- setup
-- usage
-- deployment
-- auth-related operation guides
-- release gating
-- troubleshooting on active product paths
-
-### Current reference
-
-Location:
-
-- [reference](./reference/README.md)
-
-Use for:
-
-- release and versioning reference
-- module-system notes
-- MCP protocol-related reference
-- publication and packaging reference
-
-### Archive
-
-Location:
+Historical documents live under:
 
 - [archive](./archive/README.md)
 
-Use for:
+Use archive for:
 
-- historical plans
-- superseded proposals
-- stage summaries
-- old UI design docs
-- prototypes and exploratory material
+- superseded plans
+- historical release notes
+- obsolete guides
+- exploratory design material
+- prototypes and implementation history
 
-Archived content is kept for traceability, not as the current implementation source of truth.
+Examples now treated as archive material:
+
+- release-specific notes
+- troubleshooting deep dives that do not define the current baseline
+- feature-specific implementation guides that are no longer part of the active operator path
 
 ## Reading Order
 

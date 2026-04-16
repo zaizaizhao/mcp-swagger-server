@@ -255,10 +255,7 @@ export class ProcessHealthService implements OnModuleInit, OnModuleDestroy {
           this.logger.debug(`Performing HTTP health check for server ${server.id} at ${endpoint}`);
           return await this.httpHealthCheck(endpoint);
         
-        case TransportType.WEBSOCKET:
-          this.logger.debug(`Performing WebSocket health check for server ${server.id}`);
-          return await this.websocketHealthCheck(`ws://localhost:${server.port}`);
-        
+
         default:
           throw new Error(`Unsupported transport type: ${server.transport}`);
       }
@@ -301,23 +298,6 @@ export class ProcessHealthService implements OnModuleInit, OnModuleDestroy {
       };
     }
   }
-
-  /**
-   * WebSocket健康检查（CLI spawn模式）
-   */
-  private async websocketHealthCheck(endpoint: string): Promise<HealthCheckResult> {
-    const startTime = Date.now();
-    // TODO: 实现WebSocket健康检查
-    // 这里可以尝试建立WebSocket连接来检查健康状态
-    return {
-        healthy: true,
-        responseTime: Date.now() - startTime,
-        status: 200,
-        lastCheck: new Date()
-      };
-  }
-
-
 
   /**
    * 更新进程指标（CLI spawn模式）

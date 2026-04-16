@@ -23,7 +23,6 @@ export enum ServerStatus {
 export enum TransportType {
   STREAMABLE = 'streamable',
   SSE = 'sse',
-  WEBSOCKET = 'websocket',
 }
 
 @Entity('mcp_servers')

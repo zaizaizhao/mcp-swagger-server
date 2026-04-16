@@ -2,325 +2,219 @@
 
 ## Purpose
 
-This document records the latest cross-check between current project documentation and the actual implementation state.
+This document defines the next focused product-convergence stage after the current baseline cleanup.
 
-It has two goals:
+It is intentionally narrow. It does not try to open a new broad feature roadmap.
 
-- identify the current gaps between docs, code, and product baseline
-- define the next development plan in a product-first order
+## Current Situation
 
-This document should be treated as the active planning baseline for the next stage of work.
+The project already has a usable main path, but the next bottlenecks are now concentrated in four areas:
 
-## Current Execution Status
+- architecture documentation is not yet a reliable engineering reference everywhere
+- some active guides are stale and should be archived rather than endlessly patched
+- intentionally unimplemented items are not yet managed through a clear open-items mechanism
+- some non-baseline or partially implemented surfaces still create operator confusion
 
-The following cleanup phases have already been executed on the current baseline:
+## Next Stage Goal
 
-- Phase 1: documentation convergence and release identity
-- Phase 2: transport and contract clarification
-- Phase 3: build-chain hardening
-- Phase 4: baseline cleanup for unfinished operator-facing placeholders
-- Phase 5: release-readiness baseline and OpenAPI smoke coverage
+The next stage goal is:
 
-Current state after these phases:
+- make the documentation set trustworthy as a product engineering baseline
+- keep deferred items visible through open-items rather than through hidden placeholders
+- reduce active-surface noise without pretending unfinished work does not exist
+- tighten the contract between architecture docs and current code reality
 
-- active README and guide structure has been converged to the current runtime baseline
-- managed transport surface has been narrowed to `streamable` and `sse`
-- parser-to-consumer verification now has an explicit documented command path
-- role copy, permission-role listing, and permission tree endpoints no longer fail with raw `not implemented` errors
-- unfinished profile/account/settings entries have been removed or disabled from the active operator surface
-- OpenAPI validation and transformation baseline now has explicit service-level smoke coverage
-- release gating is documented as a concrete checklist instead of an implicit manual process
+## Stage Name
 
-Items still intentionally deferred from the current baseline:
+Recommended stage name:
 
-- MCP `websocket` transport as a managed runtime path
-- email notification delivery
-- websocket-specific health checks for managed servers
-- richer CPU usage metrics
+- Phase 6: Product Baseline Consolidation
 
-## Audit Scope
+## Scope
 
-The review covered:
+### Workstream 1: documentation baseline cleanup
 
-- root governance documents
-- root `README.md`
-- `docs/guides`
-- package-level README files
-- current package scripts and runtime configuration
-- selected implementation hotspots in `parser`, `api`, `server`, and `ui`
+Deliverables:
 
-## Cross-Check Summary
-
-## 1. Areas already aligned
-
-The following areas are materially aligned with the current product baseline:
-
-- default database mode is SQLite
-- PostgreSQL remains the heavier deployment mode
-- API startup and setup guidance in `docs/guides/local-setup-and-run.md` is broadly aligned with the current implementation
-- parser-level OpenAPI 3.0.4 compatibility logic exists in source and current build output
-- API/UI/CLI runtime paths and main startup commands are already documented in a usable form
-- documentation structure has been cleaned up into `guides`, `reference`, and `archive`
-
-## 2. Documentation defects found
-
-### 2.1 Encoding corruption in README files
-
-Multiple README files still contain mojibake or broken non-ASCII rendering.
-
-Confirmed examples:
-
-- root `README.md`
-- `packages/mcp-swagger-api/README.md`
-- `packages/mcp-swagger-server/README.md`
-- `packages/mcp-swagger-ui/README.md`
-
-This is not cosmetic only. It makes the product harder to understand and weakens release quality.
-
-### 2.2 Package README drift
-
-Several package README files no longer match the current product baseline.
-
-Examples:
-
-- `packages/mcp-swagger-ui/README.md` still says the dev server is at `5173`, while current Vite config uses `3000`
-- `packages/mcp-swagger-ui/README.md` describes an older UI structure and workflow
-- `packages/mcp-swagger-api/README.md` still presents some transport/configuration descriptions in a mixed and partially outdated way
-
-### 2.3 Version communication drift
-
-There is still inconsistency between:
-
-- Git tags such as `v0.2.x`
-- parser/server package versions such as `1.7.0`
-- API/UI package versions still at `1.0.0`
-- historical tag `v1.7.1`
-
-This does not immediately break runtime behavior, but it weakens release clarity and makes support harder.
-
-## 3. Implementation gaps found
-
-### 3.1 Build-chain sensitivity still exists
-
-The recent OpenAPI `3.0.4` validation issue showed a real product risk:
-
-- source code was correct
-- runtime behavior was wrong until the parser package was rebuilt
-
-This means the monorepo build and dependency propagation path is still too fragile for long-running product work.
-
-The product needs a more reliable policy for:
-
-- package build order
-- workspace dependency refresh
-- operator guidance after lower-layer fixes
-
-### 3.2 `websocket` semantics are still mixed
-
-There are two different meanings currently present:
-
-- monitoring/UI websocket functionality in the backend and UI
-- MCP server transport value `websocket`
-
-Current code and docs show these are not fully aligned.
-
-Examples:
-
-- API and UI still expose or type `websocket` as a transport value
-- backend comments explicitly say WebSocket transport is not yet implemented in server lifecycle
-- API package README says websocket is planned
-- monitoring websocket module does exist
-
-This creates operator confusion and should be clarified at the contract level.
-
-### 3.3 Unimplemented security/management endpoints still exist
-
-There are still controller and service areas that throw or contain explicit TODOs.
-
-Examples include:
-
-- permission-related controller methods throwing `Method not implemented`
-- role copy functionality not implemented
-- some notification paths not implemented
-- websocket health check placeholders in server/process services
-
-These do not all block the current main path, but they should be classified more clearly as:
-
-- current baseline
-- deferred non-baseline capability
-- planned feature
-
-### 3.4 UI/operator layer still carries historical overlap
-
-The UI package still contains signs of historical drift:
-
-- older README structure
-- local validation utility paths in addition to backend validation paths
-- mixed transport descriptions
-- layout/profile/settings placeholders
-
-This is not yet a clean operator-facing product layer.
-
-### 3.5 Release baseline is still under-specified for versioning
-
-The repository now has release notes and operation docs, but it still lacks a single clean rule for:
-
-- product version number source of truth
-- package version synchronization policy
-- release tag to package version mapping
-
-## 4. Planned or partially implemented features not yet fully delivered
-
-The following capabilities exist in planning, types, or partial implementation, but are not yet fully closed as product-ready functions:
-
-- MCP `websocket` transport as a real runtime path
-- complete permission tree / permission relationship workflows
-- role copy workflow
-- email-related notification flows
-- robust websocket health checking for managed servers
-- richer process CPU metrics implementation
-- stronger build propagation rules across parser -> api -> ui/server consumers
-
-## 5. Product risks if left unresolved
-
-If the current gaps are not handled, the project will continue to face these risks:
-
-- docs will keep drifting away from the actual product behavior
-- operators will confuse monitoring websocket support with MCP websocket transport support
-- fixes in lower packages may appear “not working” because build propagation remains fragile
-- package-level documentation will remain weaker than the current product baseline
-- release identity will remain confusing because tags and package versions are not clearly governed
-
-## Recommended Next Development Plan
-
-## Phase 1: documentation convergence and release identity
-
-Priority: highest
-
-Scope:
-
-- rewrite root `README.md` into clean UTF-8 and current product baseline wording
-- rewrite package README files for `api`, `server`, and `ui`
-- align all package README runtime ports, startup commands, and transport descriptions
-- define and document release/versioning policy
+- rewrite the active architecture document so it matches current implementation
+- keep only current-use guides in `docs/guides`
+- archive stale guides that no longer match the current baseline
+- update `docs/README.md`, `docs/guides/README.md`, and `docs/reference/README.md` to reflect the cleaned structure
 
 Exit criteria:
 
-- no mojibake in active documentation
-- package README files match current runtime behavior
-- release/version policy is documented in one source of truth
+- active docs can be used as current engineering references
+- stale guides no longer appear as active guidance
 
-## Phase 2: transport and contract clarification
+### Workstream 2: open-items management
 
-Priority: high
+Deliverables:
 
-Scope:
-
-- clarify the difference between monitoring websocket and MCP websocket transport
-- remove unsupported transport options from operator-facing paths where necessary
-- align API DTOs, UI types, and docs around the actual supported transport matrix
+- create and maintain `docs/reference/open-items.md`
+- move intentionally deferred or partially implemented design items into that list
+- reference open items from active planning docs where needed
 
 Exit criteria:
 
-- no operator-facing surface suggests unsupported MCP websocket transport as a working path
-- monitoring websocket remains clearly documented as a separate capability
+- unfinished items are visible and explicitly tracked
+- active docs do not imply that deferred items are already part of the release baseline
 
-## Phase 3: build-chain hardening
+### Workstream 3: operator-surface reduction
 
-Priority: high
+Deliverables:
 
-Scope:
-
-- define reliable package build order in the monorepo
-- reduce cases where lower-layer fixes require manual guesswork to become effective
-- add a documented verification path for parser changes affecting API/UI behavior
+- identify UI and API surfaces that still expose non-baseline or fragile capabilities
+- either remove them from the active path or clearly classify them as not baseline
+- keep user-facing flows focused on import, validate, convert, and managed runtime
 
 Exit criteria:
 
-- parser changes can be propagated and verified with a predictable build workflow
-- release checklist includes cross-package rebuild verification where needed
+- the main operator path is clearer
+- fewer entry points imply unfinished capability
 
-## Phase 4: baseline cleanup for non-main-path placeholders
+### Workstream 4: code-to-doc contract tightening
 
-Priority: medium
+Deliverables:
 
-Scope:
-
-- inventory controller/service methods that still throw `not implemented`
-- classify each as:
-  - remove from active surface
-  - defer and document
-  - implement in next milestone
-- trim or hide unfinished operator-facing actions that do not belong in the current baseline
+- confirm architecture docs against current runtime, API, and UI contracts
+- confirm that parser propagation guidance still matches the actual build chain
+- confirm that security boundary notes match current implementation status
 
 Exit criteria:
 
-- active UI/API surfaces do not expose misleading unfinished capabilities
-- deferred items are explicitly documented rather than implicitly broken
+- architecture and planning docs do not over-claim functionality
+- next engineering decisions can use the docs as a reliable baseline
 
-## Phase 5: next product increment
+## Concrete Execution Order
 
-Priority: medium
+1. rewrite active architecture documentation
+2. create open-items and move deferred design notes into it
+3. archive stale guides from the active guide set
+4. update guide indexes and documentation entry points
+5. review UI/API non-baseline surfaces and classify them against open-items
+6. prepare the next implementation-focused increment only after the baseline docs are stable
 
-Recommended target:
+## Recommended Implementation Backlog After Doc Consolidation
 
-- stable OpenAPI import/validate/normalize/convert flow
-- stable managed server lifecycle for supported transports
-- stable operator-facing document and server management path
-- clear release identity and deployment guidance
+The next implementation increment should stay narrow and focus on product reliability, not feature expansion.
 
-This should be treated as the next releasable product increment.
+Status note:
 
-## Suggested Execution Order
+- the first tightening pass for Steps 1 through 5 below has already been completed
+- the next pass should focus on release-path verification, residual surface cleanup, and shrinking the remaining open-items set without inventing a new roadmap
 
-Use this order for follow-up work:
+### Step 1: security boundary tightening
 
-1. clean and rewrite active README files
-2. define release/version policy
-3. clarify transport support matrix
-4. harden parser build propagation
-5. inventory and reduce unfinished API/UI actions
-6. only then expand adjacent features
+Target:
 
-## Concrete Near-Term Task List
+- review management endpoint guard coverage in `packages/mcp-swagger-api/src/modules/servers/servers.controller.ts`
+- confirm which endpoints must require authenticated access by default
+- remove any ambiguity between documented auth expectations and actual controller behavior
 
-### Task Group A: active documentation rewrite
+Expected result:
 
-- rewrite root `README.md`
-- rewrite `packages/mcp-swagger-api/README.md`
-- rewrite `packages/mcp-swagger-server/README.md`
-- rewrite `packages/mcp-swagger-ui/README.md`
+- management APIs no longer expose unclear or inconsistent protection boundaries
 
-### Task Group B: transport support matrix
+### Step 2: runtime transformation path cleanup
 
-- document current support:
-  - `stdio`
-  - `streamable`
-  - `sse`
-- explicitly mark MCP `websocket` transport as unsupported until fully implemented
-- remove or hide unsupported selections in UI/API where necessary
+Target:
 
-### Task Group C: monorepo build reliability
+- review `packages/mcp-swagger-server/src/lib/initTools.ts`
+- reduce or eliminate fallback-only transformation behavior where practical
+- keep parser output and runtime transformation behavior aligned
 
-- create a documented parser-change verification flow
-- ensure API/UI/server consuming packages are rebuilt when parser logic changes
-- consider adding an integration verification script for parser compatibility fixes
+Expected result:
 
-### Task Group D: unfinished surface reduction
+- fewer surprising differences between validation, preview, and runtime conversion paths
 
-- audit `TODO` / `not implemented` controller paths
-- downgrade or hide non-baseline features from active operator workflows
-- document deferred items in a controlled backlog document
+### Step 3: operator-surface cleanup in UI
 
-## Decision
+Target:
 
-The next stage should not prioritize broad new feature expansion.
+- review development placeholders in `packages/mcp-swagger-ui/src/layout/MainLayout.vue`
+- review fragile component usage in `packages/mcp-swagger-ui/src/modules/servers/ServerManager.vue`
+- remove or downgrade non-baseline actions that confuse operators
 
-The next stage should prioritize:
+Expected result:
 
-- documentation correctness
-- transport/contract clarity
-- build-chain reliability
-- removal of misleading unfinished surface area
+- the UI emphasizes import, validate, convert, and server operations instead of unfinished side paths
 
-Only after these are closed should the project move into a larger new architecture increment.
+### Step 4: observability honesty and monitoring cleanup
+
+Target:
+
+- review placeholder CPU metrics in `packages/mcp-swagger-api/src/modules/servers/services/server-metrics.service.ts`
+- ensure monitoring surfaces do not over-claim metric accuracy
+- classify any incomplete monitoring behavior in `open-items`
+
+Expected result:
+
+- monitoring remains useful without presenting placeholder data as production-grade telemetry
+
+### Step 5: deferred auth and notification capabilities
+
+Target:
+
+- keep email verification, password reset mail, and notification delivery explicitly classified as deferred until implemented
+- avoid treating those structures as release-complete features
+
+Expected result:
+
+- operator expectations remain aligned with the current product reality
+
+## Next Pass After The First Tightening Round
+
+The next implementation pass should be execution-oriented rather than exploratory.
+
+### Pass A: release-path verification
+
+Target:
+
+- verify the real release path against `docs/guides/release-readiness-checklist.md`
+- confirm SQLite default mode, PostgreSQL optional mode, Windows, and Ubuntu guidance still match implementation
+- re-check the OpenAPI import -> validate -> convert -> managed runtime path with known public specs
+
+Expected result:
+
+- the documented publishable path is confirmed against the current codebase
+
+### Pass B: residual operator-surface cleanup
+
+Target:
+
+- identify any remaining API/UI entry points that still overstate unfinished capability
+- either downgrade them to explicit non-baseline behavior or move them behind clearer operator expectations
+
+Expected result:
+
+- the operator surface is narrower and less misleading
+
+### Pass C: open-items reduction with traceability
+
+Target:
+
+- review `docs/reference/open-items.md` item by item
+- close only items that are truly aligned across code, docs, and verification
+- keep the remaining items explicit instead of burying them in broad planning language
+
+Expected result:
+
+- open-items becomes a smaller, more actionable product engineering register
+
+## Out Of Scope For This Stage
+
+Do not prioritize these during this stage unless they directly unblock baseline consolidation:
+
+- new MCP transport expansion
+- broad new UI feature families
+- large speculative architecture rewrites
+- hidden cleanup that removes traceability of deferred work
+
+## Success Criteria
+
+This stage is complete when:
+
+- active docs are smaller, clearer, and closer to the code
+- stale active docs are archived
+- deferred items are tracked in open-items
+- architecture docs can be used to plan the next engineering increment

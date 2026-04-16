@@ -30,7 +30,7 @@ mcp-swagger-server --help
 mcp-swagger --help  # 简短别名
 
 # 从 GitHub API 启动 HTTP 服务器
-mcp-swagger-server --transport http --port 3322 --openapi https://api.github.com/openapi.json
+mcp-swagger-server --transport streamable --port 3322 --openapi https://api.github.com/openapi.json
 
 # 从本地文件启动，并监控文件变化
 mcp-swagger-server --transport streamable --openapi ./my-api.json --watch
@@ -58,7 +58,7 @@ mcp-swagger-server --transport stdio --openapi https://petstore.swagger.io/v2/sw
 
 ```bash
 # 🌐 HTTP 服务器模式 - 适合 Web 应用集成
-mcp-swagger-server --transport http --port 3322 --openapi https://api.github.com/openapi.json
+mcp-swagger-server --transport streamable --port 3322 --openapi https://api.github.com/openapi.json
 
 # 📡 SSE (Server-Sent Events) 模式 - 适合实时 Web 应用
 mcp-swagger-server --transport sse --port 3323 --openapi ./openapi.yaml
@@ -70,7 +70,7 @@ mcp-swagger-server --transport streamable --port 3324 --openapi https://petstore
 mcp-swagger-server --transport stdio --openapi https://api.example.com/v1/openapi.json
 
 # 👁️ 监控模式 - 自动重载配置变化
-mcp-swagger-server --transport http --openapi ./api.yaml --watch
+mcp-swagger-server --transport streamable --openapi ./api.yaml --watch
 
 # 🔧 托管模式 - 自动重启和错误恢复
 mcp-swagger-server --transport streamable --openapi https://api.example.com/openapi.json --auto-restart
@@ -223,7 +223,7 @@ mcp-swagger-server --transport stdio --openapi https://internal-api.company.com/
 
 ```bash
 # 启动调试服务器
-mcp-swagger-server --transport http --port 3322 --openapi ./my-api.yaml --watch
+mcp-swagger-server --transport streamable --port 3322 --openapi ./my-api.yaml --watch
 
 # 访问 http://localhost:3322 进行交互式测试
 # 修改 my-api.yaml 文件会自动重载
@@ -338,7 +338,7 @@ mcp-swagger-server --openapi ./api.yaml 2>&1 | tee server.log
 
 ```bash
 # 使用 PM2 进程管理
-pm2 start "mcp-swagger-server --transport http --openapi https://api.prod.com/openapi.json" --name "mcp-api-server"
+pm2 start "mcp-swagger-server --transport streamable --openapi https://api.prod.com/openapi.json" --name "mcp-api-server"
 
 # Docker 部署
 docker run -d \
@@ -352,7 +352,7 @@ docker run -d \
 
 ```bash
 # 限制访问地址
-mcp-swagger-server --transport http --host 127.0.0.1 --openapi ./internal-api.yaml
+mcp-swagger-server --transport streamable --host 127.0.0.1 --openapi ./internal-api.yaml
 
 # 使用 HTTPS OpenAPI 源
 mcp-swagger-server --openapi https://secure-api.company.com/openapi.json

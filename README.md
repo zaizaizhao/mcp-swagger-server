@@ -1,82 +1,83 @@
 # MCP Swagger Server
 
-将 OpenAPI / Swagger 文档转换为可接入大模型应用的 MCP Tools 与 MCP Server。
+Convert OpenAPI and Swagger specifications into MCP tools and runnable MCP servers.
 
-**Languages**: [English](./README_EN.md) | 中文
+Documentation priority is accuracy over localization. Active docs may remain primarily in English during convergence.
 
-## 当前定位
+## Current Product Position
 
-本项目当前目标是收敛一个可实际运行、可发布、可维护的产品化版本，而不是继续无边界扩展功能面。
+This repository is in a product-convergence stage.
 
-当前主路径为：
+The current goal is not broad feature expansion. The goal is to keep a stable, runnable, and releasable baseline that can actually be connected to model applications and operated over time.
 
-- OpenAPI / Swagger 导入
-- 规范解析、校验、标准化
-- 接口路径与操作提取
-- MCP Tools 生成
-- MCP Server 运行与管理
-- API / UI / CLI 统一接入
+Current primary product paths:
 
-## Monorepo 结构
+- import OpenAPI / Swagger documents
+- parse, validate, and normalize specifications
+- inspect API paths and generated tool definitions
+- convert API operations into MCP tools
+- run and manage MCP servers
+- keep CLI, API, and UI behavior aligned
+
+## Monorepo Structure
 
 - `packages/mcp-swagger-parser`
-  负责 OpenAPI / Swagger 解析、校验、标准化与兼容处理。
+  Parses, validates, normalizes, and reconciles OpenAPI / Swagger inputs.
 - `packages/mcp-swagger-server`
-  负责将 OpenAPI 操作转换为 MCP Tools，并提供 CLI 与 MCP Server 运行能力。
+  Transforms normalized API operations into MCP tools and provides the MCP runtime.
 - `packages/mcp-swagger-api`
-  负责管理后端、文档管理、服务器管理、认证与持久化。
+  Provides management APIs, persistence, authentication, server orchestration, and monitoring support.
 - `packages/mcp-swagger-ui`
-  负责操作界面，面向文档导入、校验、转换与服务器管理。
+  Provides the operator-facing import, validation, conversion, and server management UI.
 
-## 当前支持基线
+## Current Baseline
 
-### 运行环境
+### Runtime requirements
 
 - Node.js `>= 20`
 - pnpm `>= 8`
 - Windows
-- Linux，重点兼容 Ubuntu
+- Linux, with Ubuntu treated as the primary Linux compatibility target
 
-### 数据库模式
+### Database modes
 
-- 默认模式：SQLite
-- 可选模式：PostgreSQL
+- default: `SQLite`
+- optional: `PostgreSQL`
 
-SQLite 适用于单机、小规模、低运维成本场景。
+SQLite is the default path for single-node and lightweight deployments.
 
-PostgreSQL 适用于更高并发、更长期运行、更强可运维性的部署场景。
+PostgreSQL remains the heavier deployment path for higher concurrency, longer-running operations, and stronger operational requirements.
 
-### MCP 传输支持
+### Supported MCP transports
 
-当前明确支持：
+Current baseline transports:
 
 - `stdio`
 - `streamable`
 - `sse`
 
-说明：
-- `streamable` now supports concurrent multi-session access in the current product baseline
+Notes:
 
-- 监控与管理层存在 websocket 能力
-- MCP `websocket` transport 仍不应视为当前发布基线
+- `streamable` is expected to support concurrent multi-session access in the current baseline
+- API/UI websocket channels are used for management and monitoring, but they are not MCP transports
 
-## 快速开始
+## Quick Start
 
-### 1. 作为 CLI / MCP Server 直接运行
+### Run as a CLI / MCP server
 
-先安装：
+Install:
 
 ```bash
 npm install -g mcp-swagger-server
 ```
 
-然后启动：
+Start with `stdio`:
 
 ```bash
 mss --openapi https://petstore.swagger.io/v2/swagger.json --transport stdio
 ```
 
-用于 MCP 客户端时，可参考：
+Example MCP client configuration:
 
 ```json
 {
@@ -94,9 +95,7 @@ mss --openapi https://petstore.swagger.io/v2/swagger.json --transport stdio
 }
 ```
 
-### 2. 本地开发运行
-
-环境初始化：
+### Local development
 
 ```bash
 node -v
@@ -104,11 +103,6 @@ corepack enable
 corepack prepare pnpm@latest --activate
 pnpm -v
 pnpm install
-```
-
-常用命令：
-
-```bash
 pnpm build
 pnpm dev
 pnpm test
@@ -116,68 +110,68 @@ pnpm lint
 pnpm type-check
 ```
 
-完整安装、数据库配置、API/UI/CLI 启动命令见：
+See:
 
 - [Local Setup And Run](./docs/guides/local-setup-and-run.md)
 - [Database Mode Quickstart](./docs/guides/database-mode-quickstart.md)
 - [Database Strategy](./docs/guides/database-strategy.md)
 
-数据库模式快速确认：
+Database mode quick check:
 
-- 默认不设置 `DB_TYPE` 时，`mcp-swagger-api` 走 `SQLite`
-- 设置 `DB_TYPE=postgres` 后，`mcp-swagger-api` 走 `PostgreSQL`
-- API 启动日志会打印 `Database mode: sqlite` 或 `Database mode: postgres`
-- 当前基线已经验证：
-  - `SQLite` 默认模式可正常运行
-  - `PostgreSQL` 模式可完成建表、初始化与启动
-  - 双模式回归已纳入 CI
+- if `DB_TYPE` is omitted, `mcp-swagger-api` defaults to `SQLite`
+- if `DB_TYPE=postgres`, `mcp-swagger-api` runs in `PostgreSQL` mode
+- startup logs print `Database mode: sqlite` or `Database mode: postgres`
+- the current baseline has already verified:
+  - SQLite default startup path
+  - PostgreSQL schema initialization and startup path
+  - CI coverage for both database modes
 
-## 当前主要访问路径
+## Main Runtime Endpoints
 
-默认开发环境下：
+In the default development layout:
 
 - UI: `http://127.0.0.1:3000`
 - API: `http://127.0.0.1:3001`
-- MCP Streamable 示例: `http://127.0.0.1:3322/mcp`
+- MCP streamable example: `http://127.0.0.1:3322/mcp`
 
-说明：
+Notes:
 
-- `/mcp` 是 MCP 协议入口，不是浏览器查看页面
-- opening a second or later Streamable HTTP session should work normally in the current baseline
-- 浏览器直接访问时，如果缺少 MCP 会话头，返回 `Mcp-Session-Id header is required` 属于正常行为
+- `/mcp` is an MCP protocol endpoint, not a browser UI page
+- if a browser hits `/mcp` directly and receives `Mcp-Session-Id header is required`, that is expected protocol behavior
 
-## 当前已收敛的产品能力
+## Current Product Capabilities
 
-- OpenAPI / Swagger 文档导入
-- URL 导入、文本导入、上传导入
-- 规范校验与标准化
-- Swagger 2.0 到 OpenAPI 3.x 兼容转换
-- OpenAPI `3.0.4` 校验兼容处理
-- 工具列表预览与转换
-- Bearer Token 与自定义请求头配置
-- Streamable HTTP multi-session concurrency
-- CLI / Server smoke tests and multi-session regression coverage
-- 服务器管理与进程日志查看
-- SQLite / PostgreSQL 双数据库模式
+- OpenAPI / Swagger import
+- URL import, raw text import, and file upload import
+- specification validation and normalization
+- Swagger 2.0 to OpenAPI 3.x compatibility conversion
+- OpenAPI `3.0.4` compatibility handling in the validation path
+- tool preview and conversion workflows
+- Bearer token and custom header injection
+- streamable multi-session support
+- CLI and server smoke test coverage
+- managed process lifecycle and process log inspection
+- SQLite / PostgreSQL dual database support
 
-## 当前文档入口
+## Documentation Entry Points
 
-项目基线与说明请优先从这里进入：
+Start from:
 
 - [PRODUCT_CONSTRAINTS](./PRODUCT_CONSTRAINTS.md)
 - [PROJECT_BASELINE](./PROJECT_BASELINE.md)
 - [RELEASE_BASELINE_V1](./RELEASE_BASELINE_V1.md)
 - [Documentation Index](./docs/README.md)
-- [Next Phase Development Plan](./docs/guides/next-phase-development-plan.md)
+- [Current Convergence Plan](./docs/guides/current-convergence-plan.md)
+- [Open Items](./docs/reference/open-items.md)
 
-## 当前工作原则
+## Working Rules
 
-- 先保证主路径稳定可发布，再扩展功能
-- 外部需求文档仅作为参考，不直接覆盖当前产品基线
-- Windows 与 Linux / Ubuntu 必须同时可运行
-- 文档、CLI、API、UI 的主路径描述必须尽量一致
-- 长时间运行的稳定性和可靠性优先于功能堆叠
+- stabilize the release path before expanding scope
+- keep deferred items visible instead of implying they already work
+- keep Windows and Linux / Ubuntu support aligned
+- keep docs, CLI, API, and UI aligned with the real implementation
+- prefer reliability of long-running operation over feature count
 
 ## License
 
-MIT，见 [LICENSE](./LICENSE)
+MIT, see [LICENSE](./LICENSE)

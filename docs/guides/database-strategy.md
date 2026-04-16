@@ -1,6 +1,6 @@
-# Database Strategy
+# ?????
 
-## Purpose
+## ??
 
 This project will support two database modes as first-class product paths:
 
@@ -9,9 +9,9 @@ This project will support two database modes as first-class product paths:
 
 These two modes are not replacements for each other. They serve different operating scenarios under one product architecture.
 
-## Product Positioning
+## ????
 
-### SQLite mode
+### SQLite ??
 
 Use `SQLite` when the goal is:
 
@@ -22,7 +22,7 @@ Use `SQLite` when the goal is:
 
 SQLite mode should be the default out-of-box experience.
 
-### PostgreSQL mode
+### PostgreSQL ??
 
 Use `PostgreSQL` when the goal is:
 
@@ -34,7 +34,7 @@ Use `PostgreSQL` when the goal is:
 
 PostgreSQL remains the primary heavy-duty deployment option.
 
-## Top-Level Constraints
+## ????
 
 The following constraints are project-level rules for all future database work:
 
@@ -46,7 +46,7 @@ The following constraints are project-level rules for all future database work:
 6. PostgreSQL mode must retain full production viability and must not be degraded to fit SQLite.
 7. Any database-specific capability must be isolated behind explicit compatibility rules.
 
-## Stability First
+## ?????
 
 This project is not a short-lived test harness. It manages MCP server configuration, startup, health checking, logs, and operational state over long runtimes.
 
@@ -62,11 +62,11 @@ That means database strategy must be evaluated against:
 
 Database simplification is acceptable only if it does not undermine those qualities.
 
-## Current Workload Characteristics
+## ????????
 
 The current system stores both low-frequency configuration data and higher-frequency operational data.
 
-### Low-frequency data
+### ????
 
 Examples:
 
