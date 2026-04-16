@@ -215,6 +215,47 @@ Impact:
 
 - medium
 
+### 12. Semantic endpoint layer for LLM-oriented publishing
+
+Related documents:
+
+- `docs/guides/endpoint-semantic-layer-requirements.md`
+- `docs/guides/endpoint-semantic-layer-sprint-breakdown.md`
+
+Status:
+
+- planned / deferred
+
+Why it remains open:
+
+- manual and imported endpoints can now be governed at a lightweight lifecycle level, but tool publication still largely reflects upstream API semantics directly
+- the planned semantic layer for operator-defined endpoint meaning, naming refinement, and LLM-oriented descriptions has not been implemented yet
+
+Impact:
+
+- high
+
+### 13. Imported-endpoint governance is still narrower than the manual registry path
+
+Related code:
+
+- `packages/mcp-swagger-api/src/modules/servers/services/api-management-center.service.ts`
+- `packages/mcp-swagger-ui/src/modules/endpoint-registry/EndpointRegistry.vue`
+
+Status:
+
+- partially addressed
+
+Why it remains open:
+
+- the current API Center and Endpoint Registry now provide a usable control path for manually registered endpoints
+- imported OpenAPI endpoints still do not have the same operator-facing registry workflow, selective publication controls, or lifecycle review surface end to end
+- this is an intentional scope boundary for the current convergence pass, but it must remain visible so the product is not misrepresented as a full API governance platform
+
+Impact:
+
+- high
+
 ## What Is Not An Open Item
 
 The following are already decided baseline positions, not open items:

@@ -293,4 +293,79 @@ describe('ApiManagementCenterService', () => {
     expect(result.profile.lifecycleStatus).toBe('draft');
     expect(result.profile.publishEnabled).toBe(false);
   });
+
+  it('does not auto-reactivate an offline endpoint after a healthy probe', async () => {
+    serverRepository.findOne.mockResolvedValue({
+      id: 'probe-5',
+      name: 'offline-endpoint',
+      openApiData: { openapi: '3.0.0' },
+      config: {
+        management: {
+          probeUrl: 'http://localhost:3001/health',
+          lifecycleStatus: 'offline',
+          publishEnabled: false,
+        },
+      },
+    });
+    serverRepository.save.mockImplementation(async (value) => value);
+    httpService.head.mockReturnValue(of({ status: 200 }));
+
+    const result = await service.probeEndpoint('probe-5');
+
+    expect(result.probe?.status).toBe('healthy');
+    expect(result.profile.lifecycleStatus).toBe('offline');
+    expect(result.profile.publishEnabled).toBe(false);
+  });
+
+  it('supports the manual endpoint lifecycle workflow through readiness and state transitions', async () => {
+    const server = {
+      id: 'manual-flow-1',
+      name: 'health-endpoint',
+      openApiData: {
+        openapi: '3.0.3',
+        servers: [{ url: 'http://localhost:3001' }],
+        paths: {
+          '/health': {
+            get: {},
+          },
+        },
+      },
+      config: {
+        management: {
+          sourceType: 'manual',
+          sourceRef: 'http://localhost:3001',
+          probeUrl: 'http://localhost:3001/health',
+          lifecycleStatus: 'draft',
+          publishEnabled: false,
+        },
+      },
+    };
+    serverRepository.findOne.mockImplementation(async ({ where }: { where: { id: string } }) => {
+      if (where.id === server.id) {
+        return server;
+      }
+      return null;
+    });
+    serverRepository.save.mockImplementation(async (value) => {
+      Object.assign(server, value);
+      return value;
+    });
+    httpService.head.mockReturnValue(of({ status: 200 }));
+
+    const probeResult = await service.probeEndpoint(server.id);
+    const readiness = await service.getPublishReadiness(server.id);
+    const publishResult = await service.changeEndpointState(server.id, { action: 'publish' });
+    const offlineResult = await service.changeEndpointState(server.id, {
+      action: 'offline',
+      reason: 'maintenance',
+    });
+
+    expect(probeResult.profile.lifecycleStatus).toBe('verified');
+    expect(probeResult.profile.publishEnabled).toBe(true);
+    expect(readiness.ready).toBe(true);
+    expect(publishResult.profile.lifecycleStatus).toBe('published');
+    expect(offlineResult.profile.lifecycleStatus).toBe('offline');
+    expect(offlineResult.profile.publishEnabled).toBe(false);
+    expect(offlineResult.profile.lastProbeError).toBe('maintenance');
+  });
 });

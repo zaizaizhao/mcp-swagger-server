@@ -123,7 +123,18 @@ Verify:
 - startup logs clearly report `Database mode: postgres`
 - schema initialization and migrations succeed
 
-## 8. Windows And Ubuntu Verification
+## 8. Endpoint Registry Verification
+
+Verify the manual endpoint lifecycle path:
+
+- register a manual endpoint from the UI or API
+- edit the manual endpoint and confirm the method/path display updates correctly
+- run `probe` and verify healthy endpoints do not incorrectly revive `offline` items
+- run `publish readiness` and confirm blocking reasons are visible when applicable
+- run `publish` and `offline` and confirm lifecycle status changes match the operator action
+- delete the manual endpoint and confirm it disappears from the grouped registry view
+
+## 9. Windows And Ubuntu Verification
 
 Check the documented run path on both:
 
@@ -139,7 +150,7 @@ At minimum verify:
 - parser verification path
 - `pnpm --filter mcp-swagger-server run test:streamable-session`
 
-## 9. Open Items Review
+## 10. Open Items Review
 
 Before release, review `docs/reference/open-items.md` and confirm:
 

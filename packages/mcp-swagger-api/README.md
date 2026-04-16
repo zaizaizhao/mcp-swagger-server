@@ -9,6 +9,7 @@ It is responsible for:
 - MCP server management
 - authentication and session support
 - process state, logs, and selected operational endpoints
+- manual endpoint registration and lightweight endpoint lifecycle governance
 
 ## Current Position
 
@@ -101,6 +102,20 @@ Notes:
 - `/api/docs` provides Swagger UI documentation
 - actual available endpoints are defined by the current controller implementation
 - incomplete management capabilities should not be treated as released product commitments
+
+Current API-management endpoints in active use include:
+
+- `GET /api/v1/servers/api-center/overview`
+- `POST /api/v1/servers/api-center/manual-endpoint`
+- `POST /api/v1/servers/:id/api-center/probe`
+- `GET /api/v1/servers/:id/api-center/publish-readiness`
+- `POST /api/v1/servers/:id/api-center/state`
+
+Current scope note:
+
+- the API Center implementation is intentionally lightweight
+- it currently covers manual endpoint registration, grouping, probe status, readiness checks, and publish/offline lifecycle controls
+- semantic endpoint enrichment and broader imported-endpoint governance are still deferred and tracked in `docs/reference/open-items.md`
 
 ## Responsibility Boundary
 

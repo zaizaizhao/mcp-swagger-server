@@ -147,11 +147,19 @@ Notes:
 - Swagger 2.0 to OpenAPI 3.x compatibility conversion
 - OpenAPI `3.0.4` compatibility handling in the validation path
 - tool preview and conversion workflows
+- manual endpoint registration through Endpoint Registry
+- endpoint probe, readiness, publish, and offline lifecycle actions for manual endpoints
 - Bearer token and custom header injection
 - streamable multi-session support
 - CLI and server smoke test coverage
 - managed process lifecycle and process log inspection
 - SQLite / PostgreSQL dual database support
+
+Current operator boundary note:
+
+- OpenAPI Management remains the import and specification workflow
+- Endpoint Registry is a peer management surface for manually registered endpoints grouped by `Server URL`
+- the semantic-layer enhancement discussed in planning is still deferred and tracked as an open item
 
 ## Documentation Entry Points
 

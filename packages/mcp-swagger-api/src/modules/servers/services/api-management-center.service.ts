@@ -139,12 +139,22 @@ export class ApiManagementCenterService {
       lastProbeHttpStatus: result.httpStatus,
     };
 
-    if (
-      result.status === EndpointProbeStatus.HEALTHY &&
-      nextProfile.lifecycleStatus !== EndpointLifecycleStatus.PUBLISHED
-    ) {
-      nextProfile.lifecycleStatus = EndpointLifecycleStatus.VERIFIED;
-      nextProfile.publishEnabled = true;
+    if (result.status === EndpointProbeStatus.HEALTHY) {
+      switch (nextProfile.lifecycleStatus) {
+        case EndpointLifecycleStatus.DRAFT:
+        case EndpointLifecycleStatus.VERIFIED:
+        case EndpointLifecycleStatus.DEGRADED:
+          nextProfile.lifecycleStatus = EndpointLifecycleStatus.VERIFIED;
+          nextProfile.publishEnabled = true;
+          break;
+        case EndpointLifecycleStatus.PUBLISHED:
+          nextProfile.publishEnabled = true;
+          break;
+        case EndpointLifecycleStatus.OFFLINE:
+        case EndpointLifecycleStatus.RETIRED:
+        default:
+          break;
+      }
     }
 
     this.saveProfile(server, nextProfile);

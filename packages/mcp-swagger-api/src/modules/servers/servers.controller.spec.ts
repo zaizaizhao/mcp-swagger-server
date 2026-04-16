@@ -20,6 +20,10 @@ describe('ServersController', () => {
   let controller: ServersController;
 
   const apiManagementCenter = {
+    getOverview: jest.fn(),
+    probeEndpoint: jest.fn(),
+    getPublishReadiness: jest.fn(),
+    registerManualEndpoint: jest.fn(),
     changeEndpointState: jest.fn(),
   };
 
@@ -60,5 +64,62 @@ describe('ServersController', () => {
     await expect(
       controller.changeEndpointState('server-1', { action: 'publish' }),
     ).rejects.toBeInstanceOf(HttpException);
+  });
+
+  it('returns API center overview', async () => {
+    apiManagementCenter.getOverview.mockResolvedValue({
+      total: 1,
+      data: [{ id: 'server-1', name: 'health-endpoint' }],
+    });
+
+    await expect(controller.getApiCenterOverview({ sourceType: 'manual' } as any)).resolves.toEqual({
+      total: 1,
+      data: [{ id: 'server-1', name: 'health-endpoint' }],
+    });
+  });
+
+  it('registers a manual endpoint', async () => {
+    apiManagementCenter.registerManualEndpoint.mockResolvedValue({
+      serverId: 'server-1',
+      name: 'health-endpoint',
+    });
+
+    await expect(
+      controller.registerManualEndpoint({
+        name: 'health-endpoint',
+        baseUrl: 'http://localhost:3001',
+        method: 'GET',
+        path: '/health',
+      } as any),
+    ).resolves.toEqual({
+      serverId: 'server-1',
+      name: 'health-endpoint',
+    });
+  });
+
+  it('returns probe result for an endpoint', async () => {
+    apiManagementCenter.probeEndpoint.mockResolvedValue({
+      serverId: 'server-1',
+      probe: { status: 'healthy' },
+    });
+
+    await expect(controller.probeEndpoint('server-1')).resolves.toEqual({
+      serverId: 'server-1',
+      probe: { status: 'healthy' },
+    });
+  });
+
+  it('returns publish readiness', async () => {
+    apiManagementCenter.getPublishReadiness.mockResolvedValue({
+      serverId: 'server-1',
+      ready: true,
+      reasons: [],
+    });
+
+    await expect(controller.getPublishReadiness('server-1')).resolves.toEqual({
+      serverId: 'server-1',
+      ready: true,
+      reasons: [],
+    });
   });
 });
