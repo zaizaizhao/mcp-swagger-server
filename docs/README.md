@@ -27,6 +27,7 @@ The current top-level governance documents remain at repository root:
 ### Planning and governance
 
 - [Current Convergence Plan](./guides/current-convergence-plan.md)
+- [Fork Origin And Independence](./guides/fork-origin-and-independence.md)
 - [Next Phase Development Plan](./guides/next-phase-development-plan.md)
 - [Endpoint Semantic Layer Requirements](./guides/endpoint-semantic-layer-requirements.md)
 - [Lightweight API Access Management Requirements](./guides/lightweight-api-access-management-requirements.md)
