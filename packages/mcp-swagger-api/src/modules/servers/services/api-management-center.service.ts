@@ -202,16 +202,20 @@ export class ApiManagementCenterService {
     const profile = this.getProfile(server);
     const reasons: string[] = [];
 
-    if (!profile.publishEnabled) {
-      reasons.push('publishEnabled=false');
-    }
     if (
       profile.lifecycleStatus !== EndpointLifecycleStatus.VERIFIED &&
-      profile.lifecycleStatus !== EndpointLifecycleStatus.PUBLISHED
+      profile.lifecycleStatus !== EndpointLifecycleStatus.PUBLISHED &&
+      profile.lifecycleStatus !== EndpointLifecycleStatus.OFFLINE
     ) {
       reasons.push(
-        `lifecycleStatus is ${profile.lifecycleStatus}, expected verified or published`,
+        `lifecycleStatus is ${profile.lifecycleStatus}, expected verified, published, or offline`,
       );
+    }
+    if (
+      !profile.publishEnabled &&
+      profile.lifecycleStatus !== EndpointLifecycleStatus.OFFLINE
+    ) {
+      reasons.push('publishEnabled=false');
     }
     if (profile.lastProbeStatus !== EndpointProbeStatus.HEALTHY) {
       reasons.push(`lastProbeStatus is ${profile.lastProbeStatus || 'unknown'}, expected healthy`);
@@ -240,6 +244,7 @@ export class ApiManagementCenterService {
       }
       profile.lifecycleStatus = EndpointLifecycleStatus.PUBLISHED;
       profile.publishEnabled = true;
+      profile.lastProbeError = undefined;
       this.saveProfile(server, profile);
       await this.serverRepository.save(server);
       return {

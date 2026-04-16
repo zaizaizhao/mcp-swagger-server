@@ -464,6 +464,12 @@ export class ServerResponseDto {
   @ApiProperty({ description: '错误信息' })
   errorMessage?: string;
 
+  @ApiPropertyOptional({ description: 'OpenAPI 规范数据', type: 'object' })
+  openApiData?: any;
+
+  @ApiPropertyOptional({ description: '服务器配置', type: 'object' })
+  config?: any;
+
   @ApiProperty({ description: '最后健康检查时间' })
   lastHealthCheck?: Date;
 

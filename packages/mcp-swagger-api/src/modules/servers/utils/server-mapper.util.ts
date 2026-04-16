@@ -24,6 +24,8 @@ export class ServerMapper {
     dto.autoStart = entity.autoStart;
     dto.tags = entity.tags || [];
     dto.errorMessage = entity.errorMessage;
+    dto.openApiData = entity.openApiData;
+    dto.config = entity.config;
     dto.lastHealthCheck = entity.lastHealthCheck;
     dto.createdAt = entity.createdAt;
     dto.updatedAt = entity.updatedAt;

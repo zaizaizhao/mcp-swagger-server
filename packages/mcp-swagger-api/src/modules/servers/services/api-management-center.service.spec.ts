@@ -510,4 +510,40 @@ describe('ApiManagementCenterService', () => {
     expect(offlineResult.profile.publishEnabled).toBe(false);
     expect(offlineResult.profile.lastProbeError).toBe('maintenance');
   });
+
+  it('allows a healthy offline endpoint to be published again without rebuilding the server', async () => {
+    serverRepository.findOne.mockResolvedValue({
+      id: 'offline-republish-1',
+      name: 'imported-petstore',
+      openApiData: {
+        openapi: '3.0.4',
+        servers: [{ url: '/api/v3' }],
+        paths: {
+          '/pet': {
+            get: {},
+          },
+        },
+      },
+      config: {
+        management: {
+          sourceType: 'imported',
+          lifecycleStatus: 'offline',
+          publishEnabled: false,
+          lastProbeStatus: 'healthy',
+          lastProbeHttpStatus: 200,
+          lastProbeError: 'maintenance',
+        },
+      },
+    });
+    serverRepository.save.mockImplementation(async (value) => value);
+
+    const readiness = await service.getPublishReadiness('offline-republish-1');
+    const result = await service.changeEndpointState('offline-republish-1', { action: 'publish' });
+
+    expect(readiness.ready).toBe(true);
+    expect(readiness.reasons).toEqual([]);
+    expect(result.profile.lifecycleStatus).toBe('published');
+    expect(result.profile.publishEnabled).toBe(true);
+    expect(result.profile.lastProbeError).toBeUndefined();
+  });
 });

@@ -19,6 +19,7 @@ import { PermissionsGuard } from '../security/guards/permissions.guard';
 describe('ServersController', () => {
   let controller: ServersController;
   const serverManager = {
+    getServerById: jest.fn(),
     updateServer: jest.fn(),
     deleteServer: jest.fn(),
   };
@@ -125,6 +126,46 @@ describe('ServersController', () => {
       serverId: 'server-1',
       ready: true,
       reasons: [],
+    });
+  });
+
+  it('returns server details with openapi data for endpoint editing flows', async () => {
+    serverManager.getServerById.mockResolvedValue({
+      id: 'server-1',
+      name: 'health-endpoint',
+      openApiData: {
+        openapi: '3.0.3',
+        paths: {
+          '/health': {
+            get: {},
+          },
+        },
+      },
+      config: {
+        management: {
+          sourceType: 'manual',
+          probeUrl: 'http://localhost:3001/health',
+        },
+      },
+    });
+
+    await expect(controller.getServerById('server-1')).resolves.toEqual({
+      id: 'server-1',
+      name: 'health-endpoint',
+      openApiData: {
+        openapi: '3.0.3',
+        paths: {
+          '/health': {
+            get: {},
+          },
+        },
+      },
+      config: {
+        management: {
+          sourceType: 'manual',
+          probeUrl: 'http://localhost:3001/health',
+        },
+      },
     });
   });
 
