@@ -12,6 +12,7 @@ import {
   EndpointLifecycleStatus,
   EndpointSourceType,
   PublishReadinessDto,
+  ProbeEndpointDto,
   RegisterManualEndpointDto,
   UpdateApiManagementProfileDto,
 } from '../dto/api-management.dto';
@@ -21,6 +22,7 @@ import {
 } from '../entities/endpoint-probe-log.entity';
 import { ServerManagerService } from './server-manager.service';
 import { ManagedTransportType } from '../dto/server.dto';
+import { DocumentsService } from '../../documents/services/documents.service';
 
 type ApiManagementProfile = {
   sourceType: EndpointSourceType;
@@ -49,6 +51,11 @@ type EndpointSummary = {
   path?: string;
 };
 
+type EndpointDescriptor = {
+  method: string;
+  path: string;
+};
+
 @Injectable()
 export class ApiManagementCenterService {
   private readonly logger = new Logger(ApiManagementCenterService.name);
@@ -60,6 +67,7 @@ export class ApiManagementCenterService {
     private readonly probeLogRepository: Repository<EndpointProbeLogEntity>,
     private readonly httpService: HttpService,
     private readonly serverManager: ServerManagerService,
+    private readonly documentsService: DocumentsService,
   ) {}
 
   async getOverview(query: ApiCenterQueryDto) {
@@ -83,12 +91,14 @@ export class ApiManagementCenterService {
       data: filtered.map((server) => {
         const profile = this.getProfile(server);
         const endpoint = this.extractPrimaryEndpoint(server.openApiData);
+        const endpoints = this.extractEndpoints(server.openApiData);
         return {
           id: server.id,
           name: server.name,
           version: server.version,
           profile,
           endpoint,
+          endpoints,
           toolsCount: server.toolsCount || 0,
           healthy: server.healthy,
           updatedAt: server.updatedAt,
@@ -114,10 +124,10 @@ export class ApiManagementCenterService {
     };
   }
 
-  async probeEndpoint(serverId: string) {
+  async probeEndpoint(serverId: string, dto: ProbeEndpointDto = {}) {
     const server = await this.requireServer(serverId);
     const profile = this.getProfile(server);
-    const probeUrl = this.resolveProbeUrl(server, profile);
+    const probeUrl = await this.resolveProbeUrl(server, profile, dto.path);
 
     let result: ProbeResult;
     if (!probeUrl) {
@@ -344,7 +354,7 @@ export class ApiManagementCenterService {
         }),
       );
       const responseTimeMs = Date.now() - startedAt;
-      const healthy = head.status >= 200 && head.status < 400;
+      const healthy = this.isReachableProbeStatus(head.status);
       if (!healthy && this.shouldFallbackToGet(head.status)) {
         return this.runGetProbe(probeUrl, startedAt);
       }
@@ -373,7 +383,7 @@ export class ApiManagementCenterService {
         }),
       );
       const responseTimeMs = Date.now() - startedAt;
-      const healthy = getResp.status >= 200 && getResp.status < 400;
+      const healthy = this.isReachableProbeStatus(getResp.status);
       return {
         status: healthy ? EndpointProbeStatus.HEALTHY : EndpointProbeStatus.UNHEALTHY,
         httpStatus: getResp.status,
@@ -399,15 +409,102 @@ export class ApiManagementCenterService {
     return status === 404 || status === 405 || status === 501;
   }
 
-  private resolveProbeUrl(server: MCPServerEntity, profile: ApiManagementProfile): string | undefined {
+  private isReachableProbeStatus(status?: number): boolean {
+    if (!status) {
+      return false;
+    }
+
+    if (status >= 200 && status < 400) {
+      return true;
+    }
+
+    // For lightweight probing, some 4xx responses still prove the route exists and the
+    // upstream service is online; they usually indicate missing auth or required inputs.
+    return [400, 401, 403, 405, 409, 415, 422, 429].includes(status);
+  }
+
+  private async resolveProbeUrl(
+    server: MCPServerEntity,
+    profile: ApiManagementProfile,
+    endpointPath?: string,
+  ): Promise<string | undefined> {
     if (profile.probeUrl) {
-      return profile.probeUrl;
+      return endpointPath ? this.joinUrl(profile.probeUrl, endpointPath) : profile.probeUrl;
     }
+
     const servers = server.openApiData?.servers;
-    if (Array.isArray(servers) && servers[0]?.url) {
-      return String(servers[0].url);
+    const firstServerUrl = Array.isArray(servers) && servers[0]?.url
+      ? String(servers[0].url)
+      : undefined;
+    if (!firstServerUrl) {
+      return undefined;
     }
+
+    if (this.isAbsoluteHttpUrl(firstServerUrl)) {
+      return endpointPath ? this.joinUrl(firstServerUrl, endpointPath) : firstServerUrl;
+    }
+
+    const sourceRef = await this.resolveImportedSourceRef(server, profile);
+    if (sourceRef && this.isAbsoluteHttpUrl(sourceRef)) {
+      try {
+        const resolvedBaseUrl = new URL(firstServerUrl, sourceRef).toString();
+        return endpointPath ? this.joinUrl(resolvedBaseUrl, endpointPath) : resolvedBaseUrl;
+      } catch {
+        return undefined;
+      }
+    }
+
     return undefined;
+  }
+
+  private async resolveImportedSourceRef(
+    server: MCPServerEntity,
+    profile: ApiManagementProfile,
+  ): Promise<string | undefined> {
+    if (profile.sourceRef && this.isAbsoluteHttpUrl(profile.sourceRef)) {
+      return profile.sourceRef;
+    }
+
+    const raw = (server.config || {}) as Record<string, any>;
+    const openApiDocumentId = raw.openApiDocumentId;
+    if (!openApiDocumentId) {
+      return profile.sourceRef;
+    }
+
+    try {
+      const document = await this.documentsService.findOne(null, openApiDocumentId);
+      const metadata = (document?.metadata || {}) as Record<string, any>;
+      const originalUrl = metadata.originalUrl;
+      if (this.isAbsoluteHttpUrl(originalUrl)) {
+        return String(originalUrl);
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Failed to resolve original document URL for imported endpoint ${server.id}: ${(error as Error).message}`,
+      );
+    }
+
+    return profile.sourceRef;
+  }
+
+  private isAbsoluteHttpUrl(value?: string): boolean {
+    if (!value) {
+      return false;
+    }
+    try {
+      const parsed = new URL(value);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+
+  private joinUrl(baseUrl: string, endpointPath: string): string {
+    const normalizedBaseUrl = String(baseUrl || '').replace(/\/+$/, '');
+    const normalizedPath = String(endpointPath || '').startsWith('/')
+      ? String(endpointPath || '')
+      : `/${String(endpointPath || '')}`;
+    return `${normalizedBaseUrl}${normalizedPath}`;
   }
 
   private extractPrimaryEndpoint(openApiData: any): EndpointSummary {
@@ -431,6 +528,28 @@ export class ApiManagementCenterService {
       method: firstMethod ? firstMethod.toUpperCase() : undefined,
       path: firstPath,
     };
+  }
+
+  private extractEndpoints(openApiData: any): EndpointDescriptor[] {
+    const paths = openApiData?.paths;
+    if (!paths || typeof paths !== 'object') {
+      return [];
+    }
+
+    const endpoints: EndpointDescriptor[] = [];
+    for (const [path, operations] of Object.entries(paths)) {
+      if (!operations || typeof operations !== 'object') {
+        continue;
+      }
+      for (const method of Object.keys(operations)) {
+        endpoints.push({
+          method: method.toUpperCase(),
+          path,
+        });
+      }
+    }
+
+    return endpoints;
   }
 
   private buildProbeUrl(baseUrl: string, path: string): string {

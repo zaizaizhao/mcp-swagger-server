@@ -123,3 +123,10 @@ export class ChangeEndpointStateDto {
   @IsString()
   reason?: string;
 }
+
+export class ProbeEndpointDto {
+  @ApiPropertyOptional({ description: '指定探测的 endpoint path，例如 /pet' })
+  @IsOptional()
+  @IsString()
+  path?: string;
+}

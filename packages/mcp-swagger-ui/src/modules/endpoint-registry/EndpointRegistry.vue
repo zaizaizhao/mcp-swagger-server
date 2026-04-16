@@ -289,6 +289,10 @@ type ApiCenterRow = {
     method?: string;
     path?: string;
   };
+  endpoints?: Array<{
+    method: string;
+    path: string;
+  }>;
   profile?: {
     sourceType?: "manual" | "imported";
     sourceRef?: string;
@@ -301,8 +305,10 @@ type ApiCenterRow = {
 
 type EndpointRow = {
   id: string;
+  serverId: string;
   name: string;
   baseUrl: string;
+  endpointPath: string;
   methodPath: string;
   sourceType: "manual" | "imported";
   lifecycleStatus: string;
@@ -410,7 +416,7 @@ const activeSubtitle = computed(() =>
   locale.value.startsWith("zh")
     ? selectedSourceType.value === "manual"
       ? "按 Server URL 分组管理手工 Endpoint，与 OpenAPI 文档管理隔离。"
-      : "对导入 Endpoint 提供轻量生命周期治理，与手工录入分开管理。"
+      : "对导入 Endpoint 提供轻量生命周期治理，并与手工录入分开管理。"
     : selectedSourceType.value === "manual"
       ? "Manual endpoints grouped by Server URL (baseUrl), isolated from OpenAPI specs."
       : "Imported endpoints with lightweight lifecycle governance, kept separate from manual registration.",
@@ -518,6 +524,37 @@ const getProbeTagType = (status?: string) => {
   }
 };
 
+const isValidationLikeProbe = (httpStatus?: number) =>
+  [400, 401, 403, 405, 409, 415, 422, 429].includes(Number(httpStatus));
+
+const formatProbeFeedback = (result: {
+  probe?: {
+    status?: string;
+    httpStatus?: number;
+    errorMessage?: string;
+  };
+}) => {
+  const probeStatus = result?.probe?.status || "unknown";
+  const httpStatus = result?.probe?.httpStatus;
+  const errorMessage = result?.probe?.errorMessage;
+
+  if (probeStatus === "healthy" && isValidationLikeProbe(httpStatus)) {
+    if (locale.value.startsWith("zh")) {
+      return `探测通过：服务可达（HTTP ${httpStatus}），但当前请求缺少必要参数、认证信息，或不满足该接口的调用条件。${errorMessage ? ` 详情：${errorMessage}` : ""}`;
+    }
+    return `Probe passed: endpoint is reachable (HTTP ${httpStatus}), but the current request is missing required input/authentication or does not satisfy this operation. ${errorMessage ? `Details: ${errorMessage}` : ""}`;
+  }
+
+  if (probeStatus === "healthy") {
+    if (locale.value.startsWith("zh")) {
+      return `探测通过：端点可达${httpStatus ? `（HTTP ${httpStatus}）` : ""}`;
+    }
+    return `Probe passed: endpoint is reachable${httpStatus ? ` (HTTP ${httpStatus})` : ""}`;
+  }
+
+  return t("endpointRegistry.messages.probeFinished", { status: probeStatus });
+};
+
 const detectMethodPath = (item: ApiCenterRow) => {
   if (item.endpoint?.method && item.endpoint?.path) {
     return `${item.endpoint.method} ${item.endpoint.path}`;
@@ -536,8 +573,10 @@ const mapRow = (item: ApiCenterRow): EndpointRow => {
   const baseUrl = normalizeBaseUrl(item.profile?.sourceRef || item.profile?.probeUrl);
   return {
     id: item.id,
+    serverId: item.id,
     name: item.name,
     baseUrl,
+    endpointPath: item.endpoint?.path || "",
     methodPath: detectMethodPath(item),
     sourceType: (item.profile?.sourceType as "manual" | "imported") || "imported",
     lifecycleStatus: item.profile?.lifecycleStatus || "draft",
@@ -545,6 +584,33 @@ const mapRow = (item: ApiCenterRow): EndpointRow => {
     lastProbeStatus: item.profile?.lastProbeStatus || "unknown",
     updatedAtText: item.updatedAt ? new Date(item.updatedAt).toLocaleString() : "-",
   };
+};
+
+const mapImportedRows = (item: ApiCenterRow): EndpointRow[] => {
+  const baseUrl = normalizeBaseUrl(item.profile?.sourceRef || item.profile?.probeUrl);
+  const endpoints = Array.isArray(item.endpoints) && item.endpoints.length > 0
+    ? item.endpoints
+    : item.endpoint?.path
+      ? [{ method: item.endpoint.method || "GET", path: item.endpoint.path }]
+      : [];
+
+  if (endpoints.length === 0) {
+    return [mapRow(item)];
+  }
+
+  return endpoints.map((endpoint) => ({
+    id: `${item.id}::${endpoint.method}::${endpoint.path}`,
+    serverId: item.id,
+    name: item.name,
+    baseUrl,
+    endpointPath: endpoint.path,
+    methodPath: `${endpoint.method} ${endpoint.path}`,
+    sourceType: (item.profile?.sourceType as "manual" | "imported") || "imported",
+    lifecycleStatus: item.profile?.lifecycleStatus || "draft",
+    publishEnabled: Boolean(item.profile?.publishEnabled),
+    lastProbeStatus: item.profile?.lastProbeStatus || "unknown",
+    updatedAtText: item.updatedAt ? new Date(item.updatedAt).toLocaleString() : "-",
+  }));
 };
 
 const grouped = computed<Group[]>(() => {
@@ -588,7 +654,11 @@ const loadOverview = async () => {
       sourceType: selectedSourceType.value,
     });
     const data = Array.isArray(result?.data) ? result.data : [];
-    rows.value = data.map((item) => mapRow(item as ApiCenterRow));
+    rows.value = data.flatMap((item) =>
+      selectedSourceType.value === "imported"
+        ? mapImportedRows(item as ApiCenterRow)
+        : [mapRow(item as ApiCenterRow)],
+    );
     expandedGroupKeys.value = grouped.value.map((g) => g.groupKey);
   } catch (error: any) {
     rows.value = [];
@@ -728,11 +798,18 @@ const handleDelete = async (row: EndpointRow) => {
 const handleProbe = async (row: EndpointRow) => {
   try {
     setActionLoading(row.id, "probe");
-    const result = await serverAPI.probeApiCenterEndpoint(row.id);
+    const result = await serverAPI.probeApiCenterEndpoint(row.serverId, {
+      path: row.sourceType === "imported" ? row.endpointPath : undefined,
+    });
     const probeStatus = result?.probe?.status || "unknown";
-    ElMessage.success(
-      t("endpointRegistry.messages.probeFinished", { status: probeStatus }),
-    );
+    const feedback = formatProbeFeedback(result);
+    if (probeStatus === "healthy") {
+      ElMessage.success(feedback);
+    } else if (probeStatus === "unknown") {
+      ElMessage.warning(feedback);
+    } else {
+      ElMessage.error(feedback);
+    }
     await loadOverview();
   } catch (error: any) {
     ElMessage.error(error?.message || t("endpointRegistry.messages.probeFailed"));
@@ -744,7 +821,7 @@ const handleProbe = async (row: EndpointRow) => {
 const handleReadiness = async (row: EndpointRow) => {
   try {
     setActionLoading(row.id, "readiness");
-    const result = await serverAPI.getApiCenterPublishReadiness(row.id);
+    const result = await serverAPI.getApiCenterPublishReadiness(row.serverId);
     if (result.ready) {
       ElMessage.success(t("endpointRegistry.messages.readinessReady"));
       return;
@@ -771,7 +848,7 @@ const handlePublish = async (row: EndpointRow) => {
       { type: "warning" },
     );
     setActionLoading(row.id, "publish");
-    await serverAPI.changeApiCenterLifecycleState(row.id, { action: "publish" });
+    await serverAPI.changeApiCenterLifecycleState(row.serverId, { action: "publish" });
     ElMessage.success(t("endpointRegistry.messages.publishSuccess"));
     await loadOverview();
   } catch (error: any) {
@@ -790,7 +867,7 @@ const handleOffline = async (row: EndpointRow) => {
       { type: "warning" },
     );
     setActionLoading(row.id, "offline");
-    await serverAPI.changeApiCenterLifecycleState(row.id, { action: "offline" });
+    await serverAPI.changeApiCenterLifecycleState(row.serverId, { action: "offline" });
     ElMessage.success(t("endpointRegistry.messages.offlineSuccess"));
     await loadOverview();
   } catch (error: any) {

@@ -59,6 +59,7 @@ import {
 import {
   ApiCenterQueryDto,
   ChangeEndpointStateDto,
+  ProbeEndpointDto,
   RegisterManualEndpointDto,
   UpdateApiManagementProfileDto,
 } from './dto/api-management.dto';
@@ -189,9 +190,9 @@ export class ServersController {
   @ApiOperation({ summary: 'Probe endpoint availability', description: '主动探测 endpoint 可用性并记录状态' })
   @ApiParam({ name: 'id', description: '服务器ID' })
   @ApiResponse({ status: 200, description: '探测完成' })
-  async probeEndpoint(@Param('id') id: string) {
+  async probeEndpoint(@Param('id') id: string, @Body() body: ProbeEndpointDto) {
     try {
-      return await this.apiManagementCenter.probeEndpoint(id);
+      return await this.apiManagementCenter.probeEndpoint(id, body);
     } catch (error) {
       this.logger.error(`Failed to probe endpoint for ${id}: ${error.message}`, error.stack);
       if (error.message.includes('not found')) {

@@ -256,6 +256,27 @@ Impact:
 
 - high
 
+### 14. I18n locale-file modularization and encoding hardening
+
+Related code:
+
+- `packages/mcp-swagger-ui/src/locales/zh-CN.ts`
+- `packages/mcp-swagger-ui/src/locales/en-US.ts`
+
+Status:
+
+- planned / deferred
+
+Why it remains open:
+
+- the current locale files remain large, centralized, and fragile under repeated edits
+- historical encoding corruption is still visible in parts of the locale surface, especially in Chinese strings
+- locale content should be split by feature module and backed by stricter encoding discipline so future changes do not create wide, noisy diffs or cross-module merge conflicts
+
+Impact:
+
+- medium
+
 ## What Is Not An Open Item
 
 The following are already decided baseline positions, not open items:

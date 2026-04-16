@@ -335,6 +335,10 @@ export const serverAPI = {
         method?: string;
         path?: string;
       };
+      endpoints?: Array<{
+        method: string;
+        path: string;
+      }>;
       profile?: {
         sourceType?: string;
         sourceRef?: string;
@@ -355,7 +359,7 @@ export const serverAPI = {
     return response.data;
   },
 
-  async probeApiCenterEndpoint(serverId: string): Promise<{
+  async probeApiCenterEndpoint(serverId: string, payload?: { path?: string }): Promise<{
     serverId: string;
     profile?: {
       lastProbeStatus?: string;
@@ -369,7 +373,7 @@ export const serverAPI = {
       errorMessage?: string;
     };
   }> {
-    const response = await api.post(`/v1/servers/${serverId}/api-center/probe`);
+    const response = await api.post(`/v1/servers/${serverId}/api-center/probe`, payload || {});
     return response.data;
   },
 

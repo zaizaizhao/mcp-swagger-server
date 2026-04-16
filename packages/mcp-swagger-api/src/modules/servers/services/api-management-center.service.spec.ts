@@ -7,6 +7,7 @@ import { MCPServerEntity } from '../../../database/entities/mcp-server.entity';
 import { EndpointProbeLogEntity } from '../entities/endpoint-probe-log.entity';
 import { EndpointSourceType } from '../dto/api-management.dto';
 import { ServerManagerService } from './server-manager.service';
+import { DocumentsService } from '../../documents/services/documents.service';
 
 describe('ApiManagementCenterService', () => {
   let service: ApiManagementCenterService;
@@ -32,6 +33,10 @@ describe('ApiManagementCenterService', () => {
     createServer: jest.fn(),
   };
 
+  const documentsService = {
+    findOne: jest.fn(),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
@@ -52,6 +57,10 @@ describe('ApiManagementCenterService', () => {
         {
           provide: ServerManagerService,
           useValue: serverManager,
+        },
+        {
+          provide: DocumentsService,
+          useValue: documentsService,
         },
       ],
     }).compile();
@@ -192,8 +201,10 @@ describe('ApiManagementCenterService', () => {
 
     expect(manualResult.total).toBe(1);
     expect(manualResult.data[0].id).toBe('manual-1');
+    expect(manualResult.data[0].endpoints).toEqual([{ method: 'GET', path: '/health' }]);
     expect(importedResult.total).toBe(1);
     expect(importedResult.data[0].id).toBe('imported-1');
+    expect(importedResult.data[0].endpoints).toEqual([{ method: 'GET', path: '/pets' }]);
   });
 
   it('publishes when readiness check passes', async () => {
@@ -305,6 +316,99 @@ describe('ApiManagementCenterService', () => {
     );
     expect(result.probe?.status).toBe('healthy');
     expect(result.profile.lifecycleStatus).toBe('verified');
+  });
+
+  it('resolves imported relative server urls against the original document url and endpoint path', async () => {
+    serverRepository.findOne.mockResolvedValue({
+      id: 'probe-imported-1',
+      name: 'petstore-imported',
+      openApiData: {
+        openapi: '3.0.4',
+        servers: [{ url: '/api/v3' }],
+        paths: {
+          '/pet': {
+            get: {},
+          },
+        },
+      },
+      config: {
+        openApiDocumentId: 'doc-1',
+        management: {
+          sourceType: 'imported',
+          lifecycleStatus: 'draft',
+          publishEnabled: false,
+        },
+      },
+    });
+    documentsService.findOne.mockResolvedValue({
+      id: 'doc-1',
+      metadata: {
+        originalUrl: 'https://petstore3.swagger.io/api/v3/openapi.json',
+      },
+    });
+    serverRepository.save.mockImplementation(async (value) => value);
+    httpService.head.mockReturnValue(of({ status: 405 }));
+
+    const result = await service.probeEndpoint('probe-imported-1', { path: '/pet' });
+
+    expect(documentsService.findOne).toHaveBeenCalledWith(null, 'doc-1');
+    expect(httpService.head).toHaveBeenCalledWith(
+      'https://petstore3.swagger.io/api/v3/pet',
+      expect.objectContaining({
+        timeout: 8000,
+      }),
+    );
+    expect(httpService.get).not.toHaveBeenCalled();
+    expect(result.probe?.status).toBe('healthy');
+    expect(result.probe?.httpStatus).toBe(405);
+  });
+
+  it('treats imported endpoint validation errors as reachable when the route exists', async () => {
+    serverRepository.findOne.mockResolvedValue({
+      id: 'probe-imported-2',
+      name: 'petstore-find-by-status',
+      openApiData: {
+        openapi: '3.0.4',
+        servers: [{ url: '/api/v3' }],
+        paths: {
+          '/pet/findByStatus': {
+            get: {},
+          },
+        },
+      },
+      config: {
+        openApiDocumentId: 'doc-2',
+        management: {
+          sourceType: 'imported',
+          lifecycleStatus: 'draft',
+          publishEnabled: false,
+        },
+      },
+    });
+    documentsService.findOne.mockResolvedValue({
+      id: 'doc-2',
+      metadata: {
+        originalUrl: 'https://petstore3.swagger.io/api/v3/openapi.json',
+      },
+    });
+    serverRepository.save.mockImplementation(async (value) => value);
+    httpService.head.mockReturnValue(of({ status: 400 }));
+
+    const result = await service.probeEndpoint('probe-imported-2', {
+      path: '/pet/findByStatus',
+    });
+
+    expect(httpService.head).toHaveBeenCalledWith(
+      'https://petstore3.swagger.io/api/v3/pet/findByStatus',
+      expect.objectContaining({
+        timeout: 8000,
+      }),
+    );
+    expect(httpService.get).not.toHaveBeenCalled();
+    expect(result.probe?.status).toBe('healthy');
+    expect(result.probe?.httpStatus).toBe(400);
+    expect(result.profile.lifecycleStatus).toBe('verified');
+    expect(result.profile.publishEnabled).toBe(true);
   });
 
   it('keeps GET 404 probes unhealthy', async () => {

@@ -107,10 +107,11 @@ describe('ServersController', () => {
       probe: { status: 'healthy' },
     });
 
-    await expect(controller.probeEndpoint('server-1')).resolves.toEqual({
+    await expect(controller.probeEndpoint('server-1', { path: '/health' } as any)).resolves.toEqual({
       serverId: 'server-1',
       probe: { status: 'healthy' },
     });
+    expect(apiManagementCenter.probeEndpoint).toHaveBeenCalledWith('server-1', { path: '/health' });
   });
 
   it('returns publish readiness', async () => {
