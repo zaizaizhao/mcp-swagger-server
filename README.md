@@ -1,26 +1,18 @@
 # MCP Swagger Server
 
-将 OpenAPI / Swagger 规范转换为 MCP Tools，并以可运行的 MCP Server 形式对外提供。
-
-当前文档以中文说明为主；如有必要，可附带英文说明，但默认以中文表述作为主版本。
+Convert OpenAPI and Swagger specifications into MCP tools and runnable MCP servers.
 
 ## Project Origin
 
-本仓库起源于原始的 `mcp-swagger-server` 项目。
+This repository started from the original `mcp-swagger-server` project.
 
-原始 upstream 为 OpenAPI / Swagger 解析、MCP Tool 生成以及 MCP Server 快速运行提供了良好的初始设计。本仓库在此基础上继续维护，并感谢原作者与贡献者的工作。
+The original upstream provided the initial design for OpenAPI / Swagger parsing, MCP tool generation, and MCP server runtime support. This downstream repository continues to track upstream and keeps a small set of practical improvements where needed.
 
-本仓库继续沿用 upstream 的总体方向：导入 OpenAPI / Swagger，完成标准化处理，生成兼容 MCP 的 Tools，并通过可用的运行时形态对外提供。
+## Current Position
 
-本仓库当前仍作为 upstream 的下游项目维护，会继续跟踪 upstream 变化，在实际可行的前提下保持兼容，并将合适的改进回馈给 upstream。
+This repository stays close to the original upstream direction and focuses on a stable, runnable, and releasable baseline.
 
-## Current Product Position
-
-本仓库当前处于收敛阶段。
-
-当前目标不是大规模扩展功能，而是在尽量贴近 upstream 项目形态的前提下，收敛出一个稳定、可运行、可发布的基线版本，并补足可靠性、兼容性和基本可用性。
-
-当前主路径：
+Current primary paths:
 
 - import OpenAPI / Swagger documents
 - parse, validate, and normalize specifications
