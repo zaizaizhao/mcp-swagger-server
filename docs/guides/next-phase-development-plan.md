@@ -13,7 +13,7 @@ The project already has a usable main path, but the next bottlenecks are now con
 - architecture documentation is not yet a reliable engineering reference everywhere
 - some active guides are stale and should be archived rather than endlessly patched
 - intentionally unimplemented items are not yet managed through a clear open-items mechanism
-- some non-baseline or partially implemented surfaces still create operator confusion
+- some non-baseline or partially implemented supporting surfaces still create operator confusion
 
 ## Next Stage Goal
 
@@ -22,6 +22,7 @@ The next stage goal is:
 - make the documentation set trustworthy as a product engineering baseline
 - keep deferred items visible through open-items rather than through hidden placeholders
 - reduce active-surface noise without pretending unfinished work does not exist
+- keep the project baseline closer to the original upstream shape instead of expanding the current management surfaces into a separate product line
 - tighten the contract between architecture docs and current code reality
 
 ## Stage Name
@@ -59,7 +60,7 @@ Exit criteria:
 - unfinished items are visible and explicitly tracked
 - active docs do not imply that deferred items are already part of the release baseline
 
-### Workstream 3: operator-surface reduction
+### Workstream 3: support-surface reduction
 
 Deliverables:
 
@@ -89,7 +90,7 @@ Exit criteria:
 
 1. rewrite active architecture documentation
 2. create open-items and move deferred design notes into it
-3. archive stale guides from the active guide set
+3. archive stale guides from the active guide set and keep deferred requirement documents out of `docs/guides`
 4. update guide indexes and documentation entry points
 5. review UI/API non-baseline surfaces and classify them against open-items
 6. prepare the next implementation-focused increment only after the baseline docs are stable
@@ -127,7 +128,7 @@ Expected result:
 
 - fewer surprising differences between validation, preview, and runtime conversion paths
 
-### Step 3: operator-surface cleanup in UI
+### Step 3: support-surface cleanup in UI
 
 Target:
 
@@ -184,6 +185,7 @@ Target:
 
 - identify any remaining API/UI entry points that still overstate unfinished capability
 - either downgrade them to explicit non-baseline behavior or move them behind clearer operator expectations
+- keep larger endpoint-governance and semantic-layer concepts out of the active baseline until there is a clear upstream-compatible rationale
 
 Expected result:
 

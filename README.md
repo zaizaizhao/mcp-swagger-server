@@ -1,6 +1,6 @@
 # MCP Swagger Server
 
-Convert OpenAPI and Swagger specifications into MCP tools, runnable MCP servers, and a product-oriented MCP Gateway operating surface.
+Convert OpenAPI and Swagger specifications into MCP tools and runnable MCP servers, with supporting API and UI surfaces around import, validation, conversion, and runtime management.
 
 Documentation priority is accuracy over localization. Active docs may remain primarily in English during convergence.
 
@@ -10,7 +10,7 @@ This repository started from the original `mcp-swagger-server` project.
 
 The original upstream provided an excellent initial design for OpenAPI/Swagger parsing, MCP tool generation, and fast MCP server exposure. This repository explicitly acknowledges that foundation and thanks the original author and contributors for that work.
 
-This repository has since evolved beyond only fast OpenAPI-to-MCP conversion as a technical showcase. It is being developed as a product-oriented API Gateway and API-to-MCP platform with an MCP Gateway application shape.
+This repository has since evolved beyond only fast OpenAPI-to-MCP conversion as a technical showcase. It is being developed as a more complete implementation of the same general product shape: import OpenAPI/Swagger, normalize it, generate MCP-compatible tools, and expose them through usable runtime and supporting management surfaces.
 
 This repository continues to operate as a downstream project of the original upstream. It keeps tracking upstream changes, aims to preserve useful compatibility where practical, and should continue to contribute focused improvements back upstream when appropriate.
 
@@ -27,7 +27,6 @@ Current primary product paths:
 - inspect API paths and generated tool definitions
 - convert API operations into MCP tools
 - run and manage MCP servers
-- provide MCP Gateway-style operator workflows across CLI, API, and UI
 - keep CLI, API, and UI behavior aligned
 
 ## Monorepo Structure
@@ -158,8 +157,6 @@ Notes:
 - Swagger 2.0 to OpenAPI 3.x compatibility conversion
 - OpenAPI `3.0.4` compatibility handling in the validation path
 - tool preview and conversion workflows
-- manual endpoint registration through Endpoint Registry
-- endpoint probe, readiness, publish, and offline lifecycle actions for manual endpoints
 - Bearer token and custom header injection
 - streamable multi-session support
 - CLI and server smoke test coverage
@@ -168,9 +165,9 @@ Notes:
 
 Current operator boundary note:
 
-- OpenAPI Management remains the import and specification workflow
-- Endpoint Registry is a peer management surface for manually registered endpoints and lightweight governance of imported endpoints
-- the semantic-layer enhancement discussed in planning is still deferred and tracked as an open item
+- OpenAPI import, validation, preview, conversion, and managed runtime remain the core baseline
+- supporting API/UI management surfaces exist to help operators work with the runtime, but they should not be treated as a separate API governance platform baseline
+- broader endpoint-governance and semantic-layer ideas remain deferred and are not part of the current upstream-aligned baseline
 
 ## Documentation Entry Points
 

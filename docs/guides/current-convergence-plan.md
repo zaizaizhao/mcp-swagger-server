@@ -20,6 +20,7 @@ Only these MCP transports are part of the active baseline:
 
 - introducing new MCP transports that are not already implemented end to end
 - expanding the operator surface before the current release path is stable
+- promoting supporting management surfaces into a separate API governance platform baseline
 - hiding incomplete design items behind vague wording in active docs
 
 ### Realtime channel that remains in scope
@@ -66,7 +67,7 @@ That websocket path is management infrastructure. It is not an MCP transport and
 1. clean up active documentation and archive stale materials
 2. keep architecture and implementation notes aligned with the codebase
 3. keep open, partial, and deferred items visible in `docs/reference/open-items.md`
-4. reduce operator confusion from non-baseline UI and API surfaces
+4. reduce confusion from non-baseline supporting UI and API surfaces
 5. preserve release verification around current supported paths
 
 ## Current Execution Status
@@ -78,14 +79,16 @@ The current convergence cycle has already completed one focused tightening pass 
 - obvious UI placeholders and broken server-management interactions were removed or corrected
 - placeholder CPU values were downgraded into explicit "unavailable" telemetry fields
 - deferred email auth and notification delivery paths were reclassified so they no longer present themselves as release-complete behavior
+- larger endpoint-governance and semantic-layer positioning has been pushed back out of the active baseline
 
 The cycle is not finished yet. The remaining work is mostly release-path consolidation rather than broad feature development.
 
 ## Remaining Convergence Focus
 
 - keep active docs synchronized with the tightened API and runtime boundaries
-- continue pruning non-baseline operator surfaces that still imply unfinished capability
+- continue pruning non-baseline supporting surfaces that still imply unfinished capability
 - keep release verification honest for SQLite default mode, PostgreSQL optional mode, Windows, and Ubuntu
+- keep deferred requirement documents archived when they no longer define the active baseline
 - preserve traceability for still-open items instead of silently removing them from planning
 
 ## Deferred Topics

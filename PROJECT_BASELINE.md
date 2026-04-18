@@ -8,7 +8,7 @@ It is the reference point for all follow-up work. If an implementation, proposal
 
 This baseline exists to prevent architecture drift, scope drift, and product-positioning drift.
 
-The repository originated from the upstream `mcp-swagger-server` project and continues to operate as a downstream project that tracks upstream evolution while refining a stronger product baseline in this repository.
+The repository originated from the upstream `mcp-swagger-server` project and continues to operate as a downstream project that tracks upstream evolution while refining a more stable implementation baseline in this repository.
 
 ## Product Definition
 
@@ -20,10 +20,9 @@ The main product chain is:
 
 - OpenAPI/Swagger input
 - parsing and normalization
-- endpoint extraction and filtering
 - MCP tool generation
 - MCP runtime exposure
-- management and operator workflows
+- supporting import, preview, and runtime workflows
 
 ## Current Product Surfaces
 
@@ -63,10 +62,10 @@ Package:
 Responsibilities:
 
 - orchestrate parser and runtime capabilities
-- provide management APIs
+- provide supporting APIs around import, conversion, and runtime management
 - persist documents, server configs, and operational records
 - enforce security boundaries
-- expose health, management, and operator-facing workflows
+- expose health, runtime, and supporting operator-facing workflows
 
 ### 4. UI/operator layer
 
@@ -76,7 +75,7 @@ Package:
 
 Responsibilities:
 
-- provide operator workflows for import, preview, management, and monitoring
+- provide supporting workflows for import, preview, conversion, and runtime monitoring
 - consume stable backend contracts
 - avoid re-implementing parser/runtime business logic
 
@@ -107,14 +106,15 @@ README, package docs, and API docs must reflect actual ports, routes, auth bound
 - validate and normalize specs
 - generate MCP-compatible tools from parsed endpoints
 - run MCP servers on supported transports
-- manage server instances through the backend
-- expose UI workflows for existing backend capabilities
+- manage runtime server instances through the backend
+- expose UI workflows that support the main import, conversion, and runtime path
 - support auth-related runtime configuration already present in the codebase
 
 ### Explicitly not the current baseline
 
 - full automatic discovery-first import from arbitrary API homepages as a required path
 - broad new feature branching before current contracts are stabilized
+- treating the current supporting API/UI management surfaces as a full API governance platform baseline
 - replacing current persistence architecture with a new storage model
 - treating FastAPI as a separate core input format from OpenAPI
 - large-scale architecture rewrites before a releasable baseline exists

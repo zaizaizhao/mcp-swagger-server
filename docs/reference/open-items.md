@@ -215,46 +215,28 @@ Impact:
 
 - medium
 
-### 12. Semantic endpoint layer for LLM-oriented publishing
+### 12. Extended endpoint-governance concepts remain deferred
 
 Related documents:
 
-- `docs/guides/endpoint-semantic-layer-requirements.md`
-- `docs/guides/endpoint-semantic-layer-sprint-breakdown.md`
+- `docs/archive/guides/endpoint-semantic-layer-requirements.md`
+- `docs/archive/guides/endpoint-semantic-layer-sprint-breakdown.md`
+- `docs/archive/guides/lightweight-api-access-management-requirements.md`
+- `docs/archive/guides/lightweight-api-access-management-sprint-breakdown.md`
 
 Status:
 
-- planned / deferred
+- deferred / not part of the active baseline
 
 Why it remains open:
 
-- manual and imported endpoints can now be governed at a lightweight lifecycle level, but tool publication still largely reflects upstream API semantics directly
-- the planned semantic layer for operator-defined endpoint meaning, naming refinement, and LLM-oriented descriptions has not been implemented yet
+- documents and partial code paths exist around semantic endpoint publishing, endpoint registry control, and lightweight access-management ideas
+- these concepts reflect a broader management shape than the current upstream-aligned baseline
+- they should remain deferred until there is a clear reason to productize them without causing baseline drift
 
 Impact:
 
-- high
-
-### 13. Imported-endpoint governance is still narrower than the manual registry path
-
-Related code:
-
-- `packages/mcp-swagger-api/src/modules/servers/services/api-management-center.service.ts`
-- `packages/mcp-swagger-ui/src/modules/endpoint-registry/EndpointRegistry.vue`
-
-Status:
-
-- partially addressed
-
-Why it remains open:
-
-- the current API Center and Endpoint Registry now provide a usable control path for manually registered endpoints
-- imported OpenAPI endpoints now have a lightweight registry view with probe/readiness/publish/offline controls, but they still do not have the same operator-facing editing, selective publication policy, or lifecycle review depth as the manual path
-- this is an intentional scope boundary for the current convergence pass, but it must remain visible so the product is not misrepresented as a full API governance platform
-
-Impact:
-
-- high
+- medium
 
 ### 14. I18n locale-file modularization and encoding hardening
 

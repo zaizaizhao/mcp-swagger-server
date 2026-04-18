@@ -28,6 +28,8 @@ HTML prototypes and exploratory artifacts.
 
 Former active guides that became stale, drifted from the current baseline, or were replaced by tighter documentation.
 
+This also includes deferred requirement and sprint-planning documents that are preserved for traceability but are not part of the current active baseline.
+
 ## Rules
 
 - Archived documents are read-only by default.

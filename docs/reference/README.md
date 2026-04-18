@@ -22,3 +22,8 @@ This directory contains durable reference material used for maintenance, release
 Keep only durable reference material here.
 
 Do not store temporary plans, execution logs, milestone summaries, or active operator guides in this directory.
+
+If a requirement, sprint plan, or design note no longer defines the current baseline:
+
+- move it into `docs/archive` if it is mainly historical or exploratory
+- keep only a short durable pointer in `open-items` when the deferred concept still needs traceability

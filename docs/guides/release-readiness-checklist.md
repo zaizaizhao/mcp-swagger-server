@@ -26,6 +26,7 @@ Confirm active documentation is aligned with the implementation:
 - `docs/guides/current-convergence-plan.md`
 - package README files for affected packages
 - deferred or partial items are tracked in `docs/reference/open-items.md`
+- deferred requirement documents that no longer define the current baseline are archived rather than left in `docs/guides`
 
 ## 3. Build And Type Validation
 
@@ -133,22 +134,14 @@ Current verified baseline on April 16, 2026:
 - `DB_TYPE=postgres pnpm type-check` passed
 - `DB_TYPE=postgres pnpm test` passed
 
-## 8. Endpoint Registry Verification
+## 8. Supporting Management Surface Verification
 
-Verify the manual endpoint lifecycle path:
+Verify only the supporting surfaces that are part of the current upstream-aligned baseline:
 
-- register a manual endpoint from the UI or API
-- edit the manual endpoint and confirm the method/path display updates correctly
-- run `probe` and verify healthy endpoints do not incorrectly revive `offline` items
-- run `publish readiness` and confirm blocking reasons are visible when applicable
-- run `publish` and `offline` and confirm lifecycle status changes match the operator action
-- delete the manual endpoint and confirm it disappears from the grouped registry view
-
-Verify the imported endpoint governance path:
-
-- enter the registry from OpenAPI Management and confirm the `imported` source view opens
-- confirm imported endpoints can be listed and grouped without exposing manual create/edit/delete actions
-- run `probe`, `publish readiness`, `publish`, and `offline` on an imported endpoint and confirm the lifecycle state updates correctly
+- imported or generated server/runtime entries can still be listed from the management UI/API
+- server start, stop, status, and basic log/history views still work
+- import, validate, preview, convert, and managed runtime remain the dominant user path
+- no supporting surface presents itself as a full API governance platform baseline
 
 ## 9. Windows And Ubuntu Verification
 

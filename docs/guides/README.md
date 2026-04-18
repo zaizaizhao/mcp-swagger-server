@@ -12,8 +12,6 @@ This directory contains active operational and usage-oriented documentation for 
 - [current-convergence-plan](./current-convergence-plan.md)
 - [next-phase-development-plan](./next-phase-development-plan.md)
 - [github-collaboration-workflow](./github-collaboration-workflow.md)
-- [endpoint-semantic-layer-requirements](./endpoint-semantic-layer-requirements.md)
-- [lightweight-api-access-management-requirements](./lightweight-api-access-management-requirements.md)
 
 ## Guide Inclusion Rule
 
@@ -34,3 +32,8 @@ It should primarily cover:
 - current planning and engineering workflow
 
 Feature-specific experiments, release notes, troubleshooting deep dives, and historical implementation guides should live in `docs/archive/guides`.
+
+The following requirement families are currently archived because they are deferred and no longer part of the active baseline:
+
+- endpoint semantic-layer requirement documents
+- lightweight API access-management requirement documents

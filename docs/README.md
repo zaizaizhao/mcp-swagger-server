@@ -28,8 +28,6 @@ The current top-level governance documents remain at repository root:
 
 - [Current Convergence Plan](./guides/current-convergence-plan.md)
 - [Next Phase Development Plan](./guides/next-phase-development-plan.md)
-- [Endpoint Semantic Layer Requirements](./guides/endpoint-semantic-layer-requirements.md)
-- [Lightweight API Access Management Requirements](./guides/lightweight-api-access-management-requirements.md)
 - [Open Items](./reference/open-items.md)
 - [Versioning Policy](./reference/versioning-policy.md)
 - [GitHub Collaboration Workflow](./guides/github-collaboration-workflow.md)
@@ -53,6 +51,7 @@ Examples now treated as archive material:
 - release-specific notes
 - troubleshooting deep dives that do not define the current baseline
 - feature-specific implementation guides that are no longer part of the active operator path
+- deferred requirement documents for endpoint semantics or lightweight access-management ideas that are not part of the current upstream-aligned baseline
 
 ## Reading Order
 

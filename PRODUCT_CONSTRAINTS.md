@@ -8,7 +8,7 @@ These constraints override local implementation preferences. Future changes must
 
 ## Product Positioning
 
-`mcp-swagger-server` is a product for converting OpenAPI/Swagger-described APIs into usable MCP capabilities for AI clients and management platforms.
+`mcp-swagger-server` is a product for converting OpenAPI/Swagger-described APIs into usable MCP capabilities for AI clients, with supporting runtime and management surfaces around import, validation, conversion, and operation.
 
 The repository contains four product layers:
 
@@ -19,7 +19,7 @@ The repository contains four product layers:
 
 The core product value is the stable chain:
 
-- `OpenAPI input -> parser -> MCP tool model -> runtime transport -> operator/client integration`
+- `OpenAPI input -> parser -> MCP tool model -> runtime transport -> client integration`
 
 ## Top-Level Constraints
 
@@ -96,7 +96,7 @@ Until the main path is stabilized, avoid prioritizing:
 - cosmetic-only UI expansion
 - broad feature branching without contract cleanup
 - duplicate parser/transformer logic in higher layers
-- adding management features that rely on unstable core semantics
+- adding larger governance or platform features that rely on unstable core semantics
 
 ## Acceptance Standard For Future Changes
 
