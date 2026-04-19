@@ -20,7 +20,6 @@
 ## 🎯 Project Screenshots
 
 ![Project Screenshot](./docs/img/mss.png)
-![Project Screenshot](./docs/img/ui.png)
 ## 🎯 Project Overview
 
 MCP Swagger Server is a tool that converts OpenAPI/Swagger specifications to Model Context Protocol (MCP) format.
@@ -32,7 +31,6 @@ mcp-swagger-server/
 ├── packages/
 │   ├── mcp-swagger-server/     # 🔧 Core MCP Server (Available)
 │   ├── mcp-swagger-parser/     # 📝 OpenAPI Parser (Available)
-│   ├── mcp-swagger-ui/         # 🎨 Web Interface (In Development)
 │   └── mcp-swagger-api/        # 🔗 REST API Backend (Available)
 └── scripts/                    # 🔨 Build Scripts
 ```
@@ -41,6 +39,7 @@ mcp-swagger-server/
 
 - **🔄 Zero Configuration**: Input OpenAPI spec, get MCP tools instantly
 - **🎯 Progressive Command Line**: Provides step-by-step guided command line interface for easy user configuration
+- **🖥️ Terminal-first workflow**: CLI and interactive terminal are the primary user experience
 - **🔌 Multi-Transport**: Support for SSE, Streamable, and Stdio transports
 - **🔐 Secure Authentication**: Bearer Token authentication to protect API access
 
@@ -318,10 +317,10 @@ await startStreamableMcpServer(server, '/mcp', 3322);
 # Build all packages
 pnpm build
 
-# Build only backend packages
+# Build core workspace packages
 pnpm build:packages
 
-# Development mode
+# Terminal development mode (CLI / parser watch)
 pnpm dev
 
 # Clean build artifacts
@@ -365,7 +364,6 @@ npx @modelcontextprotocol/inspector node dist/index.js
 |---------|--------|-------------|
 | `mcp-swagger-server` | ✅ Available | Core MCP server with multi-transport support |
 | `mcp-swagger-parser` | ✅ Available | OpenAPI parser and conversion tools |
-| `mcp-swagger-ui` | 🚧 In Development | Vue.js web interface |
 | `mcp-swagger-api` | ✅ Available | NestJS REST API backend |
 
 ## 🤝 Contributing

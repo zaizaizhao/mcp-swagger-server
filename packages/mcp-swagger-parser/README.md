@@ -59,7 +59,6 @@ MIT License - see [LICENSE](../../LICENSE) for details.
 ## 🔗 Related Packages
 
 - [@mcp-swagger/server](../mcp-swagger-server/) - MCP protocol server
-- [@mcp-swagger/ui](../mcp-swagger-ui/) - Web interface
 
 ---
 

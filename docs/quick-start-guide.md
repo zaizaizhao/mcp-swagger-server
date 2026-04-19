@@ -2,316 +2,180 @@
 
 ## 项目概述
 
-本项目是一个基于 monorepo 架构的 OpenAPI/Swagger 到 MCP (Model Context Protocol) 转换工具集，包含解析器、服务器和前端界面三个主要组件。
+本项目是一个基于 monorepo 的 OpenAPI / Swagger 到 MCP 转换工具集，当前保留三条核心链路：
+
+- `mcp-swagger-parser`：负责解析、校验和标准化 OpenAPI / Swagger 文档
+- `mcp-swagger-server`：负责 CLI、交互式终端和 MCP Server 启动
+- `mcp-swagger-api`：负责可选的 NestJS REST API 后端
+
+当前仓库不再包含独立的 Web UI 项目，默认使用方式是终端和 CLI。
 
 ## 项目结构
 
-```
+```text
 mcp-swagger-server/
 ├── packages/
 │   ├── mcp-swagger-parser/    # 核心解析器包
-│   ├── mcp-swagger-server/    # MCP 服务器
-│   └── mcp-swagger-ui/        # Vue.js 前端界面
+│   ├── mcp-swagger-server/    # MCP 服务器与交互式终端
+│   └── mcp-swagger-api/       # 可选的 REST API 后端
 ├── scripts/
-│   ├── build.js              # 统一构建脚本
-│   ├── dev.js                # 开发环境脚本
-│   ├── clean.js              # 清理脚本
-│   └── diagnostic.js         # 诊断脚本
-├── docs/                     # 技术文档
+│   ├── build.js               # 统一构建脚本
+│   ├── dev.js                 # CLI / parser 开发环境脚本
+│   ├── clean.js               # 清理脚本
+│   └── diagnostic.js          # 诊断脚本
+├── docs/                      # 技术文档
 └── README.md
 ```
 
 ## 环境要求
 
-- **Node.js**: >=18.0.0
-- **pnpm**: 最新版本（推荐使用 pnpm 作为包管理器）
-- **操作系统**: macOS, Linux, Windows
+- Node.js `>= 18.0.0`
+- pnpm `>= 8`
+- macOS、Linux、Windows 均可
 
 ## 安装指南
 
 ### 1. 安装 pnpm
 
-选择以下任一方式安装 pnpm：
-
-**方式一：使用 Homebrew（macOS 推荐）**
-```bash
-brew install pnpm
-```
-
-**方式二：使用 npm**
-```bash
-# 配置 npm 全局目录（避免权限问题）
-mkdir ~/.npm-global
-npm config set prefix '~/.npm-global'
-echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.zshrc
-source ~/.zshrc
-
-# 安装 pnpm
-npm install -g pnpm
-```
-
-**方式三：使用 Corepack（Node.js 16.10+）**
 ```bash
 corepack enable
 corepack prepare pnpm@latest --activate
 ```
 
+如果你已经有 pnpm，可以直接跳过这一步。
+
 ### 2. 克隆并安装项目
 
 ```bash
-# 克隆项目
 git clone <repository-url>
 cd mcp-swagger-server
-
-# 安装依赖（会自动构建依赖包）
 pnpm install
 ```
 
-## 开发指南
+## 常用命令
 
-### 快速启动开发环境
-
-```bash
-# 启动完整开发环境
-pnpm run dev
-```
-
-这个命令会：
-1. 构建所有依赖包
-2. 启动依赖包的 watch 模式
-3. 启动前端开发服务器
-
-### 仅启动前端开发
+### 根目录命令
 
 ```bash
-# 仅启动 UI 开发服务器
-pnpm run dev:ui
-```
-
-### 构建项目
-
-```bash
-# 构建所有包
+# 构建当前工作区包
 pnpm run build
 
-# 仅构建依赖包（不包括前端）
+# 构建核心包（当前等同于 parser/server/api）
 pnpm run build:packages
-```
 
-### 清理项目
-
-```bash
-# 清理所有构建产物和 node_modules
-pnpm run clean
-
-# 仅清理构建产物
-pnpm run clean:build
-```
-
-### 项目诊断
-
-```bash
-# 运行项目健康检查
-pnpm run diagnostic
-```
-
-## 包管理说明
-
-### 依赖关系图
-
-```
-mcp-swagger-ui
-    ↓ depends on
-mcp-swagger-parser
-    ↓ depends on
-External packages (axios, swagger-parser, etc.)
-```
-
-### 为什么需要预先构建
-
-1. **TypeScript 编译链**: 源码在 `src/`，但包入口指向编译后的 `dist/`
-2. **模块解析机制**: Vite 等构建工具需要找到实际的入口文件
-3. **类型检查**: TypeScript 需要 `.d.ts` 类型定义文件
-
-### 自动化构建的优势
-
-- **依赖拓扑排序**: 自动按正确顺序构建包
-- **并行优化**: 无依赖关系的包可并行构建
-- **增量构建**: 只构建变更的包及其依赖者
-- **错误处理**: 构建失败时提供详细诊断信息
-
-## 开发最佳实践
-
-### 1. 开发新功能
-
-```bash
-# 1. 确保环境干净
-pnpm run clean:build
-
-# 2. 安装最新依赖
-pnpm install
-
-# 3. 启动开发环境
+# 终端开发模式：构建并启动 parser/server 的 watch 流程
 pnpm run dev
+
+# 清理构建产物
+pnpm run clean
+
+# 项目诊断
+pnpm run diagnostic
 ```
 
-### 2. 添加新包
-
-1. 在 `packages/` 目录下创建新包
-2. 添加 `package.json` 文件
-3. 如果有构建需求，确保包含 `build` 脚本
-4. 运行 `pnpm run diagnostic` 验证配置
-
-### 3. 处理依赖问题
+### CLI / 终端链路开发
 
 ```bash
-# 1. 运行诊断
-pnpm run diagnostic
+cd packages/mcp-swagger-server
 
-# 2. 检查特定包的构建状态
-cd packages/mcp-swagger-parser
+# 开发模式
+pnpm run dev
+
+# 查看 CLI 帮助
+pnpm run cli -- --help
+
+# 构建产物
 pnpm run build
+```
 
-# 3. 清理并重新构建
+### Parser 开发
+
+```bash
+cd packages/mcp-swagger-parser
+
+pnpm run build
+pnpm run test
+pnpm run type-check
+```
+
+### API 后端开发
+
+```bash
+cd packages/mcp-swagger-api
+
+pnpm run start:dev
+pnpm run test
+pnpm run build
+```
+
+## 推荐开发路径
+
+### 只关注终端功能
+
+```bash
+pnpm install
+pnpm run build
+cd packages/mcp-swagger-server
+pnpm run cli -- --help
+```
+
+### 修改 parser 或 CLI 后的最小验证
+
+```bash
+pnpm run build:packages
+cd packages/mcp-swagger-server
+pnpm run build
+```
+
+### 排查依赖或构建异常
+
+```bash
+pnpm run diagnostic
 pnpm run clean
 pnpm install
+pnpm run build
 ```
 
-### 4. 性能优化
+## 常见问题
 
-- 使用 `pnpm run build:packages` 跳过前端构建
-- 利用 watch 模式进行增量编译
-- 定期清理构建缓存
+### 1. 依赖解析失败
 
-## 故障排除
+如果出现类似下面的问题：
 
-### 常见问题
-
-#### 1. 权限错误
-```
-Error: EACCES: permission denied
-```
-**解决方案**: 使用 Homebrew 安装 pnpm 或配置 npm 全局目录
-
-#### 2. 依赖解析失败
-```
+```text
 Failed to resolve entry for package "mcp-swagger-parser"
 ```
-**解决方案**: 
+
+先执行：
+
 ```bash
 pnpm run build:packages
 ```
 
-#### 3. 类型检查错误
-```
+### 2. 类型定义找不到
+
+如果出现：
+
+```text
 Cannot find module 'mcp-swagger-parser'
 ```
-**解决方案**: 确保包已构建并生成类型定义文件
 
-#### 4. 开发服务器启动失败
-**解决方案**: 
-```bash
-# 重置环境
-pnpm run clean
-pnpm install
-pnpm run dev
-```
-
-### 调试技巧
-
-1. **使用诊断脚本**:
-   ```bash
-   pnpm run diagnostic
-   ```
-
-2. **检查构建日志**:
-   ```bash
-   pnpm run build --verbose
-   ```
-
-3. **逐包调试**:
-   ```bash
-   cd packages/specific-package
-   pnpm run build
-   ```
-
-## 部署指南
-
-### 生产构建
+说明依赖包还没有构建出 `dist` 和类型定义，先重新执行：
 
 ```bash
-# 清理环境
-pnpm run clean
-
-# 安装生产依赖
-pnpm install --frozen-lockfile
-
-# 构建所有包
 pnpm run build
 ```
 
-### Docker 部署
+### 3. 开发模式没有启动 API 后端
 
-```dockerfile
-FROM node:18-alpine
+根目录的 `pnpm run dev` 只负责 parser / CLI 相关链路。API 后端需要单独进入 `packages/mcp-swagger-api` 运行：
 
-# 安装 pnpm
-RUN npm install -g pnpm
-
-WORKDIR /app
-
-# 复制依赖文件
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY packages/*/package.json ./packages/*/
-
-# 安装依赖
-RUN pnpm install --frozen-lockfile
-
-# 复制源码
-COPY . .
-
-# 构建项目
-RUN pnpm run build
-
-EXPOSE 3000
-
-CMD ["pnpm", "start"]
+```bash
+pnpm run start:dev
 ```
 
-## 脚本说明
+## 进一步阅读
 
-### build.js
-- 智能包发现和依赖分析
-- 拓扑排序确保正确构建顺序
-- 支持选择性构建（`--non-ui`）
-
-### dev.js
-- 自动构建依赖包
-- 启动 watch 模式
-- 启动开发服务器
-
-### clean.js
-- 清理构建产物
-- 支持选择性清理（`--build-only`）
-
-### diagnostic.js
-- 项目结构检查
-- 依赖完整性验证
-- 构建产物验证
-- 脚本可用性检查
-
-## 贡献指南
-
-1. Fork 项目
-2. 创建功能分支: `git checkout -b feature/amazing-feature`
-3. 提交更改: `git commit -m 'Add amazing feature'`
-4. 推送分支: `git push origin feature/amazing-feature`
-5. 创建 Pull Request
-
-## 许可证
-
-本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
-
----
-
-*本指南持续更新，如有问题请提交 Issue。*
+- [文档索引](./README.md)
+- [使用指南](./usage-guide.md)
+- [技术架构](./technical-architecture.md)

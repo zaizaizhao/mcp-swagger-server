@@ -3,15 +3,20 @@ import { parseArgs } from 'node:util';
 import { startStdioMcpServer, startSseMcpServer, startStreamableMcpServer } from '../transportUtils';
 import type { CLIOptions, AdapterConfig } from '../types';
 
+type ServerFactory = () => Promise<McpServer>;
+
 /**
  * CLI适配器 - 处理命令行启动
+ *
+ * 注意：对于 SSE 和 Streamable 传输，使用工厂函数模式以支持多会话。
+ * 对于 STDIO 传输，仍然使用单实例模式（STDIO 本身是单会话的）。
  */
 export class CLIAdapter {
-  private server: McpServer;
+  private serverFactory: ServerFactory;
   private config: AdapterConfig;
 
-  constructor(server: McpServer, config: AdapterConfig = {}) {
-    this.server = server;
+  constructor(serverFactory: ServerFactory, config: AdapterConfig = {}) {
+    this.serverFactory = serverFactory;
     this.config = config;
   }
 
@@ -99,15 +104,19 @@ export class CLIAdapter {
     try {
       switch (options.transport) {
         case 'stdio':
-          await startStdioMcpServer(this.server);
+          // STDIO 传输是单会话的，创建单个实例
+          const stdioServer = await this.serverFactory();
+          await startStdioMcpServer(stdioServer);
           break;
         case 'sse':
           console.log(`SSE Server starting on port ${options.port} with endpoint ${options.endpoint}`);
-          await startSseMcpServer(this.server, options.endpoint, options.port);
+          // SSE 传输使用工厂函数支持多会话
+          await startSseMcpServer(this.serverFactory, options.endpoint, options.port);
           break;
         case 'streamable':
           console.log(`Streamable Server starting on port ${options.port} with endpoint ${options.endpoint}`);
-          await startStreamableMcpServer(this.server, options.endpoint, options.port);
+          // Streamable 传输使用工厂函数支持多会话
+          await startStreamableMcpServer(this.serverFactory, options.endpoint, options.port);
           break;
         default:
           throw new Error(`Unsupported transport: ${options.transport}`);

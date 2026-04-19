@@ -21,7 +21,7 @@ mcp-swagger-server/
 ├── packages/
 │   ├── mcp-swagger-server/  # 主服务包
 │   ├── mcp-swagger-parser/  # 解析器包
-│   └── mcp-swagger-ui/      # UI包（可选）
+│   └── mcp-swagger-api/     # 私有 API 包
 └── package.json            # 根包配置
 ```
 

@@ -107,7 +107,9 @@ export function createProgrammaticAdapter(config?: ProgrammaticConfig): Programm
 
 /**
  * 创建CLI适配器 - 新API
+ * @param serverFactory - 服务器工厂函数，用于支持多会话
+ * @param config - 适配器配置
  */
-export function createCLIAdapter(server: McpServer, config?: any): CLIAdapter {
-  return new CLIAdapter(server, config);
+export function createCLIAdapter(serverFactory: () => Promise<McpServer>, config?: any): CLIAdapter {
+  return new CLIAdapter(serverFactory, config);
 }

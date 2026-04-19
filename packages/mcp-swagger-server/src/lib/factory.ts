@@ -39,47 +39,54 @@ export async function createSwaggerMCPServer(config: {
   adapter: CLIAdapter;
   start: () => Promise<void>;
 }> {
-  // 创建MCP服务器
-  const server = new McpServer(
-    {
-      name: config.server.name,
-      version: config.server.version,
-      description: config.server.description || `MCP Server for ${config.server.name}`,
-    },
-    {
-      capabilities: {
-        tools: {},
+  // 创建服务器工厂函数
+  const createServerInstance = async () => {
+    const serverInstance = new McpServer(
+      {
+        name: config.server.name,
+        version: config.server.version,
+        description: config.server.description || "A Model Context Protocol server for Swagger documentation",
       },
-    }
-  );
-
-  // 如果提供了Swagger配置，初始化工具
-  if (config.swagger) {
-    const transformer = new Transformer();
-    let tools;
-
-    if (config.swagger.file) {
-      tools = await transformer.transformFromFile(config.swagger.file, config.swagger.transformOptions);
-    } else if (config.swagger.url) {
-      tools = await transformer.transformFromUrl(config.swagger.url, config.swagger.transformOptions);
-    } else {
-      tools = await transformer.transformFromFile(undefined, config.swagger.transformOptions);
-    }
-
-    for (const tool of tools) {
-      server.registerTool(
-        tool.name,
-        {
-          description: tool.description,
-          inputSchema: tool.inputSchema,
+      {
+        capabilities: {
+          tools: {},
         },
-        tool.handler
-      );
-    }
-  }
+      }
+    );
 
-  // 创建适配器
-  const adapter = new CLIAdapter(server);
+    // 如果提供了Swagger配置，初始化工具
+    if (config.swagger) {
+      const transformer = new Transformer();
+      let tools;
+
+      if (config.swagger.file) {
+        tools = await transformer.transformFromFile(config.swagger.file, config.swagger.transformOptions);
+      } else if (config.swagger.url) {
+        tools = await transformer.transformFromUrl(config.swagger.url, config.swagger.transformOptions);
+      } else {
+        tools = await transformer.transformFromFile(undefined, config.swagger.transformOptions);
+      }
+
+      for (const tool of tools) {
+        serverInstance.registerTool(
+          tool.name,
+          {
+            description: tool.description,
+            inputSchema: tool.inputSchema,
+          },
+          tool.handler
+        );
+      }
+    }
+
+    return serverInstance;
+  };
+
+  // 创建适配器（传入工厂函数）
+  const adapter = new CLIAdapter(createServerInstance);
+
+  // 为了向后兼容，创建一个初始服务器实例
+  const server = await createServerInstance();
 
   // 返回服务器实例和启动函数
   return {

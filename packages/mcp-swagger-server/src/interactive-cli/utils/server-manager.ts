@@ -249,7 +249,7 @@ export class ServerManager extends EventEmitter {
     serverPromise: Promise<void>;
     close: () => Promise<void>;
     httpServer?: HttpServer;
-    mcpServer: McpServer;
+    mcpServer?: McpServer;
   }> {
     // 加载OpenAPI数据
     const openApiData = config.openApiUrl ? await this.loadOpenApiData(config.openApiUrl) : null;
@@ -277,20 +277,24 @@ export class ServerManager extends EventEmitter {
       console.log(`- 未设置operationFilter，将转换所有接口`);
     }
 
-    const mcpServer = await createMcpServer(
-      {
-        openApiData,
-        authConfig,
-        customHeaders,
-        debugHeaders: this.debugMode,
-        operationFilter,
-        baseUrl: config.baseUrl,
-        sourceOrigin
-      },
-      { registerSignalHandlers: false }
-    );
+    // 创建服务器工厂函数，用于支持多会话
+    const createSessionServer = async () => {
+      return await createMcpServer(
+        {
+          openApiData,
+          authConfig,
+          customHeaders,
+          debugHeaders: this.debugMode,
+          operationFilter,
+          baseUrl: config.baseUrl,
+          sourceOrigin
+        },
+        { registerSignalHandlers: false }
+      );
+    };
 
     let httpServer: HttpServer | undefined;
+    let mcpServer: McpServer | undefined;
     let resolveLifecycle: () => void = () => {};
     let rejectLifecycle: (error: Error) => void = () => {};
     const serverPromise = new Promise<void>((resolve, reject) => {
@@ -302,7 +306,8 @@ export class ServerManager extends EventEmitter {
       if (httpServer) {
         await new Promise<void>((resolve) => httpServer!.close(() => resolve()));
       }
-      await mcpServer.close();
+      // 注意：使用工厂模式时，每个会话有自己的 McpServer 实例
+      // 这里不需要手动关闭，因为传输层会处理
       resolveLifecycle();
     };
 
@@ -314,7 +319,7 @@ export class ServerManager extends EventEmitter {
         );
       case 'sse':
         httpServer = await startSseMcpServer(
-          mcpServer,
+          createSessionServer,
           '/sse',
           config.port || 3322,
           {
@@ -324,7 +329,7 @@ export class ServerManager extends EventEmitter {
         break;
       case 'streamable':
         httpServer = await startStreamableMcpServer(
-          mcpServer,
+          createSessionServer,
           '/mcp',
           config.port || 3322,
           {
@@ -341,7 +346,8 @@ export class ServerManager extends EventEmitter {
       httpServer.once('error', (error: Error) => rejectLifecycle(error));
     }
 
-    return { serverPromise, close, httpServer, mcpServer };
+    // 注意：使用工厂模式时，mcpServer 为 undefined，因为每个会话有自己的实例
+    return { serverPromise, close, httpServer, mcpServer: undefined };
   }
 
   /**

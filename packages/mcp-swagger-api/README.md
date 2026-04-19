@@ -198,9 +198,9 @@ pnpm build
 
 ## 📚 Documentation
 
-- [🏗️ Architecture Overview](../docs/mcp-swagger-ui-architecture.md)
-- [🚀 Development Guide](../docs/mcp-swagger-ui-development-guide.md)
-- [📖 Technical Documentation](../docs/mcp-swagger-ui-technical-documentation.md)
+- [⚡ Quick Start Guide](../../docs/quick-start-guide.md)
+- [📚 Documentation Index](../../docs/README.md)
+- [🚚 Deployment Guide](../../docs/deployment-guide.md)
 - [🔧 API Documentation](http://localhost:3000/api) (when server is running)
 
 ## 🤝 Contributing

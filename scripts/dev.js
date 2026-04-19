@@ -5,23 +5,14 @@ const MonorepoBuildManager = require('./build');
 
 class DevEnvironmentManager extends MonorepoBuildManager {
   async startDevelopment() {
-    console.log('🚀 Starting development environment...');
+    console.log('🚀 Starting terminal development environment...');
     
     try {
-      // 1. 首先构建所有依赖包（除了前端）
-      console.log('📦 Building dependencies...');
+      console.log('📦 Building workspace packages...');
       await this.buildNonUIPackages();
       
-      // 2. 启动 watch 模式
-      console.log('👀 Starting watch mode for packages...');
+      console.log('👀 Starting watch mode for workspace packages...');
       this.startWatchMode();
-      
-      // 等待一秒让 watch 模式启动
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // 3. 启动前端开发服务器
-      console.log('🌐 Starting UI development server...');
-      this.startUIDevServer();
       
     } catch (error) {
       console.error('💥 Failed to start development environment:', error);
@@ -60,41 +51,6 @@ class DevEnvironmentManager extends MonorepoBuildManager {
         }
       });
     }
-  }
-
-  startUIDevServer() {
-    const uiPackage = this.packages.find(pkg => 
-      pkg.name.includes('ui') || pkg.name.includes('UI')
-    );
-    
-    if (!uiPackage) {
-      console.log('ℹ️  No UI package found.');
-      return;
-    }
-
-    console.log(`🌐 Starting UI dev server for ${uiPackage.name}`);
-    
-    const child = spawn('pnpm', ['run', 'dev'], {
-      cwd: uiPackage.path,
-      stdio: 'inherit'
-    });
-
-    child.on('error', (error) => {
-      console.error(`❌ UI dev server failed:`, error);
-    });
-
-    child.on('close', (code) => {
-      if (code !== 0) {
-        console.error(`❌ UI dev server exited with code ${code}`);
-      }
-    });
-
-    // 优雅关闭处理
-    process.on('SIGINT', () => {
-      console.log('\\n🛑 Shutting down development environment...');
-      child.kill('SIGINT');
-      process.exit(0);
-    });
   }
 
   hasWatchScript(pkg) {

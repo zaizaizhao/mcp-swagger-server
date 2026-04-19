@@ -93,3 +93,4 @@ packages/*/dist/
 .debug/
 debug.log
 debug/
+.omc/

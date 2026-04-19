@@ -25,7 +25,6 @@
 ## 🎯 项目截图
 
 ![项目截图](./docs/img/mss.png)
-![项目截图](./docs/img/ui.png)
 ## 🎯 项目简介
 
 MCP Swagger Server 是一个将 OpenAPI/Swagger 规范转换为 Model Context Protocol (MCP) 格式的工具。
@@ -37,7 +36,6 @@ mcp-swagger-server/
 ├── packages/
 │   ├── mcp-swagger-server/     # 🔧 核心 MCP 服务器 (可用)
 │   ├── mcp-swagger-parser/     # 📝 OpenAPI 解析器 (可用)
-│   ├── mcp-swagger-ui/         # 🎨 Web 界面 (开发中)
 │   └── mcp-swagger-api/        # 🔗 REST API 后端 (可用)
 └── scripts/                    # 🔨 构建脚本
 ```
@@ -46,6 +44,7 @@ mcp-swagger-server/
 
 - **🔄 零配置转换**: 输入 OpenAPI 规范，立即获得 MCP 工具
 - **🎯 渐进式命令行**: 提供逐步引导的命令行界面，方便用户配置
+- **🖥️ 终端优先体验**: 以 CLI / 交互式终端作为主要使用方式
 - **🔌 多传输协议**: 支持 SSE、Streamable 和 Stdio 传输
 - **🔐 安全认证**: 支持 Bearer Token 认证保护 API 访问
 
@@ -190,10 +189,10 @@ API_TOKEN=your-bearer-token-here
 # 构建所有包
 pnpm build
 
-# 仅构建后端包
+# 构建核心工作区包
 pnpm build:packages
 
-# 开发模式
+# 终端开发模式（CLI / parser watch）
 pnpm dev
 
 # 清理构建产物
