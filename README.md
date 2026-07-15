@@ -124,6 +124,17 @@ mss [选项]
 
 > 提示：如果要在 `mss` 中直接启动（跳过交互界面），请显式传入 `--openapi` 参数。若 OpenAPI 文档中的 `servers.url` 是相对路径（如 `/v1`），请优先使用远程 URL 加载文档，或显式传入 `--base-url`。Swagger 2.0 文档会在启动时自动转换为 OpenAPI 3.x（含 `host/basePath` 映射）。
 
+#### Xquik API Key 请求头示例
+
+```bash
+export XQUIK_API_KEY="your-xquik-api-key"
+mss --openapi https://xquik.com/openapi.json \
+  --base-url https://xquik.com \
+  --custom-header-env x-api-key=XQUIK_API_KEY \
+  --transport streamable \
+  --port 3323
+```
+
 ### 🔐 Bearer Token 认证
 
 `mcp-swagger-server` 支持 Bearer Token 认证，可以保护需要身份验证的 API 访问。

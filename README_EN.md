@@ -148,6 +148,14 @@ mss --openapi ./swagger.json --transport sse --port 3322
 # Use remote OpenAPI URL
 mss --openapi https://api.example.com/openapi.json --transport streamable --port 3323
 
+# Use Xquik with an API key header
+export XQUIK_API_KEY="your-xquik-api-key"
+mss --openapi https://xquik.com/openapi.json \
+  --base-url https://xquik.com \
+  --custom-header-env x-api-key=XQUIK_API_KEY \
+  --transport streamable \
+  --port 3323
+
 # Monitor file changes
 mss --openapi ./api.yaml --transport stdio --watch
 
