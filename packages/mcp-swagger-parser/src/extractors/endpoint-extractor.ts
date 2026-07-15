@@ -35,7 +35,10 @@ export class EndpointExtractor {
           operationId: operation.operationId,
           summary: operation.summary,
           description: operation.description,
-          parameters: this.extractParameters(operation.parameters || []),
+          parameters: this.mergeParameters(
+            this.extractParameters(pathItem.parameters || []),
+            this.extractParameters(operation.parameters || [])
+          ),
           requestBody: operation.requestBody && !this.isReferenceObject(operation.requestBody) 
             ? operation.requestBody 
             : undefined,
@@ -57,6 +60,30 @@ export class EndpointExtractor {
    */
   private static extractParameters(parameters: (ParameterObject | { $ref: string })[]): ParameterObject[] {
     return parameters.filter(param => !this.isReferenceObject(param)) as ParameterObject[];
+  }
+
+  /**
+   * Merge path and operation parameters by OpenAPI identity
+   */
+  private static mergeParameters(
+    pathParameters: ParameterObject[],
+    operationParameters: ParameterObject[]
+  ): ParameterObject[] {
+    const merged = new Map<string, ParameterObject>();
+
+    for (const parameter of pathParameters) {
+      merged.set(this.getParameterKey(parameter), parameter);
+    }
+
+    for (const parameter of operationParameters) {
+      merged.set(this.getParameterKey(parameter), parameter);
+    }
+
+    return Array.from(merged.values());
+  }
+
+  private static getParameterKey(parameter: ParameterObject): string {
+    return `${parameter.in}:${parameter.name}`;
   }
 
   /**
